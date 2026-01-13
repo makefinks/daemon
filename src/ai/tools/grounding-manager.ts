@@ -14,8 +14,10 @@ const groundingSourceSchema = z.object({
 	textFragment: z
 		.string()
 		.min(1)
-		.max(100)
-		.describe("A short phrase or subphrase (MUST BE COPIED VERBATIM) from the source text for deep-linking."),
+		.max(150)
+		.describe(
+			"A short phrase or subphrase (MUST BE COPIED VERBATIM) from the source text for deep-linking. Max 150 characters."
+		),
 });
 
 const groundedStatementSchema = z.object({

@@ -39,6 +39,8 @@ function extractGroundingInput(input: unknown): GroundingInput | null {
 }
 
 function GroundingBody({ call }: ToolLayoutRenderProps) {
+	if (call.status === "failed") return null;
+
 	const input = extractGroundingInput(call.input);
 	if (!input || input.items.length === 0) return null;
 
