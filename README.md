@@ -16,6 +16,9 @@ npm i -g @makefinks/daemon
 
 # bun (recommended)
 bun add -g @makefinks/daemon
+
+# additional installs (macOS)
+brew install sox # For Audio Input / Output
 ```
 
 Then run with:
