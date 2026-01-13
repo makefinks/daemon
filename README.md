@@ -8,6 +8,25 @@ but can also interact with and **control** your system through the terminal with
 
 ![DAEMON terminal avatar](img/daemon.gif)
 
+## Installation
+
+```bash
+# npm (might throw warnings)
+npm i -g @makefinks/daemon
+
+# bun (recommended)
+bun add -g @makefinks/daemon
+```
+
+Then run with:
+```bash
+daemon
+```
+
+> **Note:** DAEMON requires [Bun](https://bun.sh) at runtime. Install Bun first: `curl -fsSL https://bun.com/install | bash`
+
+See full installation details below for configuration and system dependencies.
+
 ## Highlights
 
 ### 👤 Interactive Avatar
@@ -110,10 +129,6 @@ sudo pacman -S sox
 DAEMON defaults to Exa-based `fetchUrls` for retrieving web page text. For JavaScript-heavy sites (SPAs) where `fetchUrls` returns "shell-only" content, DAEMON can optionally use a local Playwright Chromium renderer via the `renderUrl` tool.
 
 This feature is **optional** and intentionally not installed by default (browser downloads are large). The render tool is not available to DAEMON without the installation below.
-
-### For global installs (`npm i -g` / `bun add -g`)
-
-Playwright must also be installed globally:
 
 ```bash
 # 1) Install Playwright globally
