@@ -1,0 +1,76 @@
+{
+	"name": "@makefinks/daemon",
+	"description": "Terminal-first AI agent with an interactive avatar, vim-style controls, and advanced voice capabilities.",
+	"author": "makefinks",
+	"license": "MIT",
+	"keywords": [
+		"agent",
+		"llm-agent",
+		"terminal-ui",
+		"tui",
+		"cli",
+		"ai",
+		"terminal",
+		"llm",
+		"daemon",
+		"makefinks",
+		"openrouter",
+		"bun",
+		"voice",
+		"ai-assistant"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/makefinks/daemon.git"
+	},
+	"bugs": {
+		"url": "https://github.com/makefinks/daemon/issues"
+	},
+	"module": "src/index.tsx",
+	"type": "module",
+	"version": "0.1.0",
+	"bin": {
+		"daemon": "dist/cli.js"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": ["dist", "src", "LICENSE", "README.md", "package.json"],
+	"scripts": {
+		"build:cli": "bun build src/cli.ts --outdir dist --target node",
+		"dev": "bun run --watch src/index.tsx",
+		"check": "bun run typecheck && bun run lint && bun run format:check",
+		"typecheck": "bunx tsc -p tsconfig.json --noEmit",
+		"lint": "biome lint src __tests__",
+		"lint:fix": "biome lint --write src __tests__",
+		"format": "biome format --write src __tests__",
+		"format:check": "biome format src __tests__",
+		"preview:avatar": "bun run src/avatar-preview.ts",
+		"preview:avatar:mp4": "bun run src/avatar-preview.ts --mp4 tmp/avatar-preview.mp4",
+		"setup:browsers": "bun run src/scripts/setup-browsers.ts",
+		"test": "bun test",
+		"test:watch": "bun test --watch",
+		"prepublishOnly": "bun run build:cli"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"@types/bun": "latest",
+		"@types/react": "^19.2.7",
+		"playwright": "^1.57.0"
+	},
+	"peerDependencies": {
+		"typescript": "^5.9.2"
+	},
+	"dependencies": {
+		"@ai-sdk/openai": "^3.0.0",
+		"@openrouter/ai-sdk-provider": "1.5.4",
+		"@opentui-ui/toast": "^0.0.3",
+		"@opentui/core": "^0.1.63",
+		"@opentui/react": "^0.1.63",
+		"ai": "^6.0.0",
+		"exa-js": "^2.0.12",
+		"openai": "^6.16.0",
+		"opentui-spinner": "^0.0.6",
+		"react": "^19.2.3"
+	}
+}
