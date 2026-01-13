@@ -50,7 +50,10 @@
 		"setup:browsers": "bun run src/scripts/setup-browsers.ts",
 		"test": "bun test",
 		"test:watch": "bun test --watch",
-		"prepublishOnly": "bun run build:cli"
+		"prepublishOnly": "bun run build:cli",
+		"release:patch": "npm version patch && git push && git push --tags && npm publish",
+		"release:minor": "npm version minor && git push && git push --tags && npm publish",
+		"release:major": "npm version major && git push && git push --tags && npm publish"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
