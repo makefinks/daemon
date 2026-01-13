@@ -20,7 +20,7 @@ export const AVAILABLE_MODELS: ModelOption[] = [
 ];
 
 // Default model ID
-export const DEFAULT_MODEL_ID = "openai/gpt-oss-120b:exacto";
+export const DEFAULT_MODEL_ID = "google/gemini-3-flash-preview";
 
 // Current selected model (mutable)
 let currentModelId = DEFAULT_MODEL_ID;
