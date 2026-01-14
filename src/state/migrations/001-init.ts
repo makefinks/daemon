@@ -29,5 +29,17 @@ export function createMigration001Init(defaultUsageJson: string): (db: Database)
 			CREATE INDEX IF NOT EXISTS idx_grounding_maps_session_message
 			ON grounding_maps(session_id, message_id);
 		`);
+		db.exec(`
+			CREATE TABLE IF NOT EXISTS todo_lists (
+				id TEXT PRIMARY KEY,
+				session_id TEXT NOT NULL,
+				created_at TEXT NOT NULL,
+				items_json TEXT NOT NULL
+			);
+		`);
+		db.exec(`
+			CREATE INDEX IF NOT EXISTS idx_todo_lists_session_created
+			ON todo_lists(session_id, created_at DESC);
+		`);
 	};
 }

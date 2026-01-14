@@ -12,11 +12,12 @@ import type {
 	ModelMessage,
 	SessionInfo,
 	SessionSnapshot,
+	TodoItem,
 	TokenUsage,
 } from "../types";
 import { debug } from "../utils/debug-logger";
 import { getAppConfigDir } from "../utils/preferences";
-import { ensureWorkspaceExists, deleteWorkspace } from "../utils/workspace-manager";
+import { deleteWorkspace, ensureWorkspaceExists } from "../utils/workspace-manager";
 import { getSessionMigrations } from "./migrations";
 
 const SESSION_DB_FILE = "sessions.sqlite";
@@ -355,5 +356,48 @@ export async function loadLatestGroundingMap(sessionId: string): Promise<Groundi
 		const err = error instanceof Error ? error : new Error(String(error));
 		debug.error("grounding-load-failed", { message: err.message });
 		return null;
+	}
+}
+
+function parseTodoItems(raw: string): TodoItem[] {
+	try {
+		const parsed = JSON.parse(raw) as unknown;
+		if (!Array.isArray(parsed)) return [];
+		return parsed as TodoItem[];
+	} catch {
+		return [];
+	}
+}
+
+export async function saveTodoList(sessionId: string, items: TodoItem[]): Promise<void> {
+	try {
+		const database = await getDb();
+		const now = new Date().toISOString();
+		const id = crypto.randomUUID();
+		const itemsJson = JSON.stringify(items);
+
+		database
+			.prepare("INSERT INTO todo_lists (id, session_id, created_at, items_json) VALUES (?, ?, ?, ?)")
+			.run(id, sessionId, now, itemsJson);
+	} catch (error) {
+		const err = error instanceof Error ? error : new Error(String(error));
+		debug.error("todo-save-failed", { message: err.message });
+	}
+}
+
+export async function loadLatestTodoList(sessionId: string): Promise<TodoItem[]> {
+	try {
+		const database = await getDb();
+		const row = database
+			.prepare("SELECT items_json FROM todo_lists WHERE session_id = ? ORDER BY created_at DESC LIMIT 1")
+			.get(sessionId) as { items_json: string } | undefined;
+
+		if (!row) return [];
+
+		return parseTodoItems(row.items_json);
+	} catch (error) {
+		const err = error instanceof Error ? error : new Error(String(error));
+		debug.error("todo-load-failed", { message: err.message });
+		return [];
 	}
 }

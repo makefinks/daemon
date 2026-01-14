@@ -1,23 +1,11 @@
 import { tool } from "ai";
 import { z } from "zod";
-import type { TodoItem, TodoStatus } from "../../types";
+import { getRuntimeContext } from "../../state/runtime-context";
+import { loadLatestTodoList, saveTodoList } from "../../state/session-store";
+import type { TodoItem } from "../../types";
 
-// Session-based todo storage
-const todoSessions = new Map<string, TodoItem[]>();
-
-// Default session for single-user mode
-const DEFAULT_SESSION = "default";
-
-function getTodos(sessionId: string = DEFAULT_SESSION): TodoItem[] {
-	if (!todoSessions.has(sessionId)) {
-		todoSessions.set(sessionId, []);
-	}
-	return todoSessions.get(sessionId)!;
-}
-
-function setTodos(sessionId: string, todos: TodoItem[]): void {
-	todoSessions.set(sessionId, todos);
-}
+let currentTodos: TodoItem[] = [];
+let lastSessionId: string | null = null;
 
 function formatTodoList(todos: TodoItem[]): string {
 	if (todos.length === 0) {
@@ -38,7 +26,17 @@ function formatTodoList(todos: TodoItem[]): string {
 	return lines.join("\n");
 }
 
-// Schema for a single todo item in the write action
+async function ensureTodosLoaded(sessionId: string | null): Promise<void> {
+	if (sessionId === lastSessionId) return;
+
+	lastSessionId = sessionId;
+	if (sessionId) {
+		currentTodos = await loadLatestTodoList(sessionId);
+	} else {
+		currentTodos = [];
+	}
+}
+
 const todoItemSchema = z.object({
 	content: z.string().describe("The todo item description"),
 	status: z
@@ -65,30 +63,37 @@ Example write with status:
 			.enum(["pending", "in_progress", "completed", "cancelled"])
 			.optional()
 			.describe("New status for the todo (used with 'update')"),
-		sessionId: z.string().optional().describe("Session ID for isolation. Defaults to 'default'."),
 	}),
-	execute: async ({ action, todos: newTodos, index, status, sessionId }) => {
-		const session = sessionId || DEFAULT_SESSION;
+	execute: async ({ action, todos: newTodos, index, status }) => {
+		const context = getRuntimeContext();
+
+		if (!context.sessionId) {
+			return {
+				success: false,
+				error: "No active session for todos",
+			};
+		}
+
+		await ensureTodosLoaded(context.sessionId);
 
 		switch (action) {
 			case "write": {
 				if (!newTodos || newTodos.length === 0) {
-					setTodos(session, []);
+					currentTodos = [];
+					await saveTodoList(context.sessionId, currentTodos);
 					return {
 						success: true,
-						message: "Cleared all todos",
-						list: "No todos.",
+						todos: formatTodoList(currentTodos),
 					};
 				}
-				const items: TodoItem[] = newTodos.map((t) => ({
+				currentTodos = newTodos.map((t) => ({
 					content: t.content,
 					status: t.status || "pending",
 				}));
-				setTodos(session, items);
+				await saveTodoList(context.sessionId, currentTodos);
 				return {
 					success: true,
-					message: `Set ${items.length} todos`,
-					list: formatTodoList(items),
+					todos: formatTodoList(currentTodos),
 				};
 			}
 
@@ -99,34 +104,28 @@ Example write with status:
 						error: "Index is required for 'update'",
 					};
 				}
-				const todos = getTodos(session);
-				const idx = index - 1; // Convert to 0-based
-				if (idx < 0 || idx >= todos.length) {
+				const idx = index - 1;
+				if (idx < 0 || idx >= currentTodos.length) {
 					return {
 						success: false,
-						error: `Invalid index ${index}. Valid range: 1-${todos.length}`,
+						error: `Invalid index ${index}. Valid range: 1-${currentTodos.length}`,
 					};
 				}
-				const todo = todos[idx]!;
+				const todo = currentTodos[idx]!;
 				if (status) {
 					todo.status = status;
 				}
+				await saveTodoList(context.sessionId, currentTodos);
 				return {
 					success: true,
-					message: `Updated #${index}: ${todo.content} -> ${todo.status}`,
-					list: formatTodoList(todos),
+					todos: formatTodoList(currentTodos),
 				};
 			}
 
 			case "list": {
-				const todos = getTodos(session);
 				return {
 					success: true,
-					count: todos.length,
-					pending: todos.filter((t) => t.status === "pending").length,
-					inProgress: todos.filter((t) => t.status === "in_progress").length,
-					completed: todos.filter((t) => t.status === "completed").length,
-					list: formatTodoList(todos),
+					todos: formatTodoList(currentTodos),
 				};
 			}
 
@@ -139,12 +138,11 @@ Example write with status:
 	},
 });
 
-// Export a function to clear all sessions (useful for testing)
-export function clearAllTodoSessions(): void {
-	todoSessions.clear();
+export function clearAllTodos(): void {
+	currentTodos = [];
+	lastSessionId = null;
 }
 
-// Export function to get current todos for UI display
-export function getCurrentTodos(sessionId: string = DEFAULT_SESSION): TodoItem[] {
-	return [...getTodos(sessionId)];
+export function getCurrentTodos(): TodoItem[] {
+	return [...currentTodos];
 }

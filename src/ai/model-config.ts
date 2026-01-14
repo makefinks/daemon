@@ -20,7 +20,7 @@ export const AVAILABLE_MODELS: ModelOption[] = [
 ];
 
 // Default model ID
-export const DEFAULT_MODEL_ID = "google/gemini-3-flash-preview";
+export const DEFAULT_MODEL_ID = "z-ai/glm-4.7";
 
 // Current selected model (mutable)
 let currentModelId = DEFAULT_MODEL_ID;
