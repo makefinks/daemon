@@ -1,7 +1,8 @@
 # DAEMON
 **DAEMON** (pronounced "day-mon") is an opinionated **terminal-based AI agent** with distinct sci-fi theming,
-delivered through a well-thought-out TUI powered by [OpenTUI](https://github.com/anomalyco/opentui).
-It supports **text and voice interaction** and can be fully controlled through **hotkeys**.
+delivered through a highly performant TUI powered by [OpenTUI](https://github.com/anomalyco/opentui).
+
+It supports **text and voice interaction**, can be fully controlled through **hotkeys** and offers **vim-like controls**.
 
 DAEMON is focused on **information-gathering workflows** that benefit from **grounded responses**
 but can also interact with and **control** your system through the terminal with scoped permissions.
@@ -36,7 +37,7 @@ See full installation details below for configuration and system dependencies.
 At the core of the TUI is DAEMON's **animated avatar**, reacting to what it's doing in real time:
 listening to audio input, reasoning about questions, calling tools, and generating an answer.
 
-The avatar was deliberately designed to feel slightly ominous and alien-like playing into
+The avatar was deliberately designed to feel slightly ominous and alien-like playing into sci-fi depictions.
 
 ### 🧠 LLMs
 DAEMON can be powered by **any** model available on [OpenRouter](https://openrouter.ai/models).
@@ -55,8 +56,22 @@ It features a large vocabulary and can transcribe multilingual inputs with compl
 
 OpenAI's TTS model `gpt-4o-mini-tts-2025-03-20` is used to generate voice output with as little latency as possible.
 
-### 🔎 Web Search
-DAEMON uses the [Exa](https://exa.ai/) search and fetch API for retrieving accurate and up-to-date information.
+### 🔎 Web Search with Grounding
+DAEMON uses the [Exa](https://exa.ai/) search and fetch API for retrieving **accurate** and **up-to-date information**.
+
+After fetching relevant information, DAEMON has the ability to **ground** statements with **source links** that contain **highlightable fragments**.
+The TUI comes with a menu for reading, verifying and opening sources for the current session.
+
+![grounding-menu](img/grounding-menu.png)
+For most statements, pressing Enter opens the source in your browser and **highlights the passage that supports the claim**.
+
+<p align="center">
+  <img src="img/grounding-highlight.png" alt="grounding-highlight" width="320" />
+  <img src="img/grounding-highlight-2.png" alt="grounding-highlight" width="320" />
+</p>
+While DAEMON is encouraged to always cite sources you can always prompt to get groundings:
+
+> "Use the grounding tool" / "Ground your answers"
 
 ### 💾 Session Persistence
 DAEMON stores chat sessions locally (SQLite) and lets you resume past conversations.
@@ -105,7 +120,7 @@ Configuration is done via environment variables (or the onboarding UI):
 
 ## 🛠️ System dependencies
 
-Voice input requires `sox` and platform-specific audio libraries:
+Voice input requires `sox` or other platform-specific audio libraries:
 
 ### macOS
 ```bash
