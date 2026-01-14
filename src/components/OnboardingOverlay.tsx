@@ -204,7 +204,6 @@ export function OnboardingOverlay({
 						<box justifyContent="center">
 							<text>
 								<span fg={COLORS.DAEMON_LABEL}>Press ENTER to begin</span>
-								<span fg={COLORS.REASONING_DIM}> · ESC to skip</span>
 							</text>
 						</box>
 					</>

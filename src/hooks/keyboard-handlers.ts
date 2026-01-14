@@ -1,19 +1,19 @@
 import type { KeyEvent } from "@opentui/core";
+import { setResponseModel } from "../ai/model-config";
 import type {
+	AppPreferences,
 	AudioDevice,
+	BashApprovalLevel,
 	ModelOption,
 	OnboardingStep,
-	SpeechSpeed,
 	ReasoningEffort,
-	BashApprovalLevel,
+	SpeechSpeed,
 	VoiceInteractionType,
-	AppPreferences,
 } from "../types";
-import { REASONING_EFFORT_LEVELS, BASH_APPROVAL_LEVELS } from "../types";
-import { setAudioDevice } from "../voice/audio-recorder";
-import { setResponseModel } from "../ai/model-config";
+import { BASH_APPROVAL_LEVELS, REASONING_EFFORT_LEVELS } from "../types";
 import { openUrlInBrowser } from "../utils/preferences";
-import { isNavigateUpKey, isNavigateDownKey } from "./menu-navigation";
+import { setAudioDevice } from "../voice/audio-recorder";
+import { isNavigateDownKey, isNavigateUpKey } from "./menu-navigation";
 
 export type KeyHandler = (key: KeyEvent) => boolean;
 
@@ -103,12 +103,7 @@ export function determineNextStep(
 type EscapeHandler = (ctx: OnboardingContext) => void;
 
 const ESCAPE_HANDLERS: Partial<Record<OnboardingStep, EscapeHandler>> = {
-	intro: (ctx) => {
-		if (process.env.OPENROUTER_API_KEY) {
-			ctx.persistPreferences({ onboardingCompleted: true });
-			ctx.completeOnboarding();
-		}
-	},
+	intro: () => {},
 	openrouter_key: () => {},
 	openai_key: (ctx) => {
 		const nextStep = determineNextStep("openai_key", ctx.preferences);
