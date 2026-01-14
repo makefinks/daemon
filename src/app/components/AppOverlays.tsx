@@ -114,6 +114,8 @@ function AppOverlaysImpl() {
 					models={model.curatedModels}
 					currentModelId={model.currentModelId}
 					deviceLoadTimedOut={device.deviceLoadTimedOut}
+					soxAvailable={device.soxAvailable}
+					soxInstallHint={device.soxInstallHint}
 					setCurrentDevice={device.setCurrentDevice}
 					setCurrentOutputDevice={device.setCurrentOutputDevice}
 					setCurrentModelId={model.setCurrentModelId}

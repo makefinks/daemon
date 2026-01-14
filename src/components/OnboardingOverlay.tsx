@@ -2,11 +2,11 @@ import type { KeyEvent, TextareaRenderable } from "@opentui/core";
 import { useKeyboard } from "@opentui/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { RefObject } from "react";
-import type { AppPreferences, AudioDevice, ModelOption, OnboardingStep } from "../types";
-import { ApiKeyStep } from "./ApiKeyStep";
 import { handleOnboardingKey } from "../hooks/keyboard-handlers";
+import type { AppPreferences, AudioDevice, ModelOption, OnboardingStep } from "../types";
 import { COLORS } from "../ui/constants";
 import { formatContextWindowK, formatPrice } from "../utils/formatters";
+import { ApiKeyStep } from "./ApiKeyStep";
 
 const MODEL_COL_WIDTH = {
 	CTX: 6,
@@ -53,6 +53,8 @@ interface OnboardingOverlayProps {
 	models: ModelOption[];
 	currentModelId: string;
 	deviceLoadTimedOut?: boolean;
+	soxAvailable: boolean;
+	soxInstallHint: string;
 	setCurrentDevice: (deviceName: string | undefined) => void;
 	setCurrentOutputDevice: (deviceName: string | undefined) => void;
 	setCurrentModelId: (modelId: string) => void;
@@ -74,6 +76,8 @@ export function OnboardingOverlay({
 	models,
 	currentModelId,
 	deviceLoadTimedOut,
+	soxAvailable,
+	soxInstallHint,
 	setCurrentDevice,
 	setCurrentOutputDevice,
 	setCurrentModelId,
@@ -242,11 +246,29 @@ export function OnboardingOverlay({
 						</box>
 						<box marginBottom={1}>
 							<text>
-								<span fg={COLORS.USER_LABEL}>↑/↓ navigate, ENTER select</span>
-								<span fg={COLORS.REASONING_DIM}> · TAB continue · ESC skip</span>
+								<span fg={COLORS.USER_LABEL}>
+									{soxAvailable ? "↑/↓ navigate, ENTER select" : "ESC to skip"}
+								</span>
+								{soxAvailable && <span fg={COLORS.REASONING_DIM}> · TAB continue · ESC skip</span>}
 							</text>
 						</box>
-						{devices.length === 0 ? (
+						{!soxAvailable ? (
+							<box flexDirection="column" paddingTop={1}>
+								<text>
+									<span fg={COLORS.ERROR}>sox is not installed</span>
+								</text>
+								<box marginTop={1}>
+									<text>
+										<span fg={COLORS.USER_LABEL}>Voice input requires sox for audio capture.</span>
+									</text>
+								</box>
+								<box marginTop={1}>
+									<text>
+										<span fg={COLORS.MENU_TEXT}>{soxInstallHint}</span>
+									</text>
+								</box>
+							</box>
+						) : devices.length === 0 ? (
 							<box flexDirection="column">
 								<box>
 									<text>

@@ -81,8 +81,9 @@ extend({
 export function App() {
 	const renderer = useRenderer();
 
-	usePlaywrightNotification();
-	useVoiceDependenciesNotification();
+	const [onboardingActive, setOnboardingActive] = useState(false);
+	usePlaywrightNotification({ enabled: !onboardingActive });
+	useVoiceDependenciesNotification({ enabled: !onboardingActive });
 	const { handleCopyOnSelectMouseUp } = useCopyOnSelect();
 
 	const {
@@ -223,7 +224,6 @@ export function App() {
 	const { responseElapsedMs } = useResponseTimer({ daemonState });
 
 	const [loadedPreferences, setLoadedPreferences] = useState<AppPreferences | null>(null);
-	const [onboardingActive, setOnboardingActive] = useState(false);
 	const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>("intro");
 	const [devices, setDevices] = useState<AudioDevice[]>([]);
 	const [currentDevice, setCurrentDevice] = useState<string | undefined>(undefined);
