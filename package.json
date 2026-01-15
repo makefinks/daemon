@@ -54,12 +54,13 @@
 		"preview:avatar": "bun run src/avatar-preview.ts",
 		"preview:avatar:mp4": "bun run src/avatar-preview.ts --mp4 tmp/avatar-preview.mp4",
 		"setup:browsers": "bun run src/scripts/setup-browsers.ts",
+		"setup:hooks": "bash .githooks/setup.sh",
 		"test": "bun test",
 		"test:watch": "bun test --watch",
 		"prepublishOnly": "bun run build:cli",
-		"release:patch": "npm version patch && git push && git push --tags && npm publish",
-		"release:minor": "npm version minor && git push && git push --tags && npm publish",
-		"release:major": "npm version major && git push && git push --tags && npm publish"
+		"release:patch": "npm version patch && git push && git push --tags && gh release create v$(node -p \"require('./package.json').version\") --generate-notes && npm publish",
+		"release:minor": "npm version minor && git push && git push --tags && gh release create v$(node -p \"require('./package.json').version\") --generate-notes && npm publish",
+		"release:major": "npm version major && git push && git push --tags && gh release create v$(node -p \"require('./package.json').version\") --generate-notes && npm publish"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",

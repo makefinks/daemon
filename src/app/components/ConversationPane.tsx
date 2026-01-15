@@ -428,9 +428,11 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 							</box>
 						)}
 
-						{hasGrounding && groundingCount && daemonState === DaemonState.IDLE && (
-							<GroundingBadge count={groundingCount} />
-						)}
+						{hasGrounding &&
+							groundingCount &&
+							(daemonState === DaemonState.IDLE || daemonState === DaemonState.SPEAKING) && (
+								<GroundingBadge count={groundingCount} />
+							)}
 
 						{showWorkingSpinner && (
 							<InlineStatusIndicator
