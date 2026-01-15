@@ -131,6 +131,10 @@ function parseSessionUsage(raw: string): TokenUsage {
 			subagentPromptTokens: typeof parsed.subagentPromptTokens === "number" ? parsed.subagentPromptTokens : 0,
 			subagentCompletionTokens:
 				typeof parsed.subagentCompletionTokens === "number" ? parsed.subagentCompletionTokens : 0,
+			latestTurnPromptTokens:
+				typeof parsed.latestTurnPromptTokens === "number" ? parsed.latestTurnPromptTokens : undefined,
+			latestTurnCompletionTokens:
+				typeof parsed.latestTurnCompletionTokens === "number" ? parsed.latestTurnCompletionTokens : undefined,
 		};
 	} catch {
 		return { ...DEFAULT_SESSION_USAGE };

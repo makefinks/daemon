@@ -2,10 +2,10 @@
  * Component for displaying token usage statistics.
  */
 
+import type { TokenUsage } from "../types";
 import { COLORS } from "../ui/constants";
 import { formatTokenCount } from "../utils/formatters";
-import { calculateCost, formatCost, formatContextUsage, type ModelMetadata } from "../utils/model-metadata";
-import type { TokenUsage } from "../types";
+import { type ModelMetadata, calculateCost, formatContextUsage, formatCost } from "../utils/model-metadata";
 
 interface TokenUsageDisplayProps {
 	usage: TokenUsage;
@@ -15,7 +15,6 @@ interface TokenUsageDisplayProps {
 export function TokenUsageDisplay({ usage, modelMetadata }: TokenUsageDisplayProps) {
 	const mainPromptTokens = usage.promptTokens;
 	const mainCompletionTokens = usage.completionTokens;
-	const mainTotalTokens = mainPromptTokens + mainCompletionTokens;
 
 	// Calculate cost if we have pricing info
 	const cost =
@@ -30,11 +29,12 @@ export function TokenUsageDisplay({ usage, modelMetadata }: TokenUsageDisplayPro
 					)
 				: null;
 
-	// Calculate context usage percentage
-	const contextTotalTokens = mainTotalTokens;
-	const contextUsage = modelMetadata?.contextLength
-		? formatContextUsage(contextTotalTokens, modelMetadata.contextLength)
-		: null;
+	// Context % uses latest turn only (prompt already includes full history, completion is that turn's output)
+	const latestTurnTotal = (usage.latestTurnPromptTokens ?? 0) + (usage.latestTurnCompletionTokens ?? 0);
+	const contextUsage =
+		modelMetadata?.contextLength && latestTurnTotal > 0
+			? formatContextUsage(latestTurnTotal, modelMetadata.contextLength)
+			: null;
 
 	return (
 		<box
@@ -47,12 +47,12 @@ export function TokenUsageDisplay({ usage, modelMetadata }: TokenUsageDisplayPro
 		>
 			<text>
 				{/* Context usage: X/Y (Z%) */}
-				{modelMetadata?.contextLength && (
+				{contextUsage && (
 					<>
 						<span fg={COLORS.TOKEN_USAGE_LABEL}>Tokens: </span>
-						<span fg={COLORS.TOKEN_USAGE}>{formatTokenCount(contextTotalTokens)}</span>
+						<span fg={COLORS.TOKEN_USAGE}>{formatTokenCount(latestTurnTotal)}</span>
 						<span fg={COLORS.TOKEN_USAGE_LABEL}>/</span>
-						<span fg={COLORS.TOKEN_USAGE}>{formatTokenCount(modelMetadata.contextLength)}</span>
+						<span fg={COLORS.TOKEN_USAGE}>{formatTokenCount(modelMetadata!.contextLength)}</span>
 						<span fg={COLORS.REASONING_DIM}> ({contextUsage})</span>
 						<span fg={COLORS.TOKEN_USAGE_LABEL}> · </span>
 					</>

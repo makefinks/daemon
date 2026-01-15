@@ -725,6 +725,8 @@ function mergeTokenUsage(prev: TokenUsage, usage: TokenUsage, isSubagent: boolea
 		subagentTotalTokens: prev.subagentTotalTokens,
 		subagentPromptTokens: prev.subagentPromptTokens,
 		subagentCompletionTokens: prev.subagentCompletionTokens,
+		latestTurnPromptTokens: usage.promptTokens,
+		latestTurnCompletionTokens: usage.completionTokens,
 	};
 }
 

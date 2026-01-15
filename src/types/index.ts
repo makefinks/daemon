@@ -42,6 +42,10 @@ export interface TokenUsage {
 	subagentTotalTokens?: number;
 	subagentPromptTokens?: number;
 	subagentCompletionTokens?: number;
+	/** Latest turn's prompt tokens (for context window % calculation) */
+	latestTurnPromptTokens?: number;
+	/** Latest turn's completion tokens (for context window % calculation) */
+	latestTurnCompletionTokens?: number;
 }
 
 /**

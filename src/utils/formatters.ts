@@ -209,14 +209,8 @@ export function isTodoInput(input: unknown): input is TodoInput {
 	);
 }
 
-/**
- * Format token count with K suffix for thousands
- */
 export function formatTokenCount(count: number): string {
-	// if (count >= 1000) {
-	// 	return `${(count / 1000).toFixed(1)}k`;
-	// }
-	return String(count);
+	return count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
 export function formatContextWindowK(contextLength: number): string {
