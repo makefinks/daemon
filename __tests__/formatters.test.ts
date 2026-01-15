@@ -233,8 +233,8 @@ describe("isTodoInput", () => {
 describe("formatTokenCount", () => {
 	it("returns string representation", () => {
 		expect(formatTokenCount(100)).toBe("100");
-		expect(formatTokenCount(1000)).toBe("1000");
-		expect(formatTokenCount(10000)).toBe("10000");
+		expect(formatTokenCount(1000)).toBe("1.000");
+		expect(formatTokenCount(10000)).toBe("10.000");
 	});
 });
 
