@@ -24,6 +24,15 @@ import { REASONING_COLORS, STATE_COLORS } from "../types/theme";
 import { REASONING_ANIMATION } from "../ui/constants";
 import { debug } from "../utils/debug-logger";
 import { hasVisibleText } from "../utils/formatters";
+import {
+	INTERRUPTED_TOOL_RESULT,
+	buildInterruptedContentBlocks,
+	buildInterruptedModelMessages,
+	normalizeInterruptedToolBlockResult,
+	normalizeInterruptedToolResultOutput,
+} from "./daemon-event-handlers/interrupted-turn";
+
+export { buildInterruptedModelMessages };
 
 function getToolCategory(toolName: string): ToolCategory | "fast" | undefined {
 	if (toolName === "subagent") return "subagent";
@@ -39,163 +48,12 @@ function getToolCategory(toolName: string): ToolCategory | "fast" | undefined {
 	return undefined;
 }
 
-const INTERRUPTED_TOOL_RESULT = "Tool execution interrupted by user";
-
-function normalizeInterruptedToolBlockResult(result: unknown): unknown {
-	if (result !== undefined) return result;
-	return { success: false, error: INTERRUPTED_TOOL_RESULT };
-}
-
-function normalizeInterruptedToolResultOutput(result: unknown): ToolResultOutput {
-	if (result === undefined) {
-		return { type: "error-text", value: INTERRUPTED_TOOL_RESULT };
-	}
-
-	if (typeof result === "string") {
-		return { type: "text", value: result };
-	}
-
-	try {
-		JSON.stringify(result);
-		return { type: "json", value: result as ToolResultOutput["value"] };
-	} catch {
-		return { type: "text", value: String(result) };
-	}
-}
-
 function clearAvatarToolEffects(avatar: DaemonAvatarRenderable | null): void {
 	if (!avatar) return;
 	avatar.triggerToolComplete();
 	avatar.setToolActive(false);
 	avatar.setReasoningMode(false);
 	avatar.setTypingMode(false);
-}
-
-function buildInterruptedContentBlocks(contentBlocks: ContentBlock[]): ContentBlock[] {
-	return contentBlocks.map((block) => {
-		if (block.type !== "tool") return { ...block };
-
-		const call = { ...block.call };
-		if (call.status === "running") {
-			call.status = "failed";
-			call.error = INTERRUPTED_TOOL_RESULT;
-		}
-		if (call.subagentSteps) {
-			call.subagentSteps = call.subagentSteps.map((step) =>
-				step.status === "running" ? { ...step, status: "failed" } : step
-			);
-		}
-
-		return {
-			...block,
-			call,
-			result: normalizeInterruptedToolBlockResult(block.result),
-		};
-	});
-}
-
-export function buildInterruptedModelMessages(contentBlocks: ContentBlock[]): ModelMessage[] {
-	const messages: ModelMessage[] = [];
-
-	type AssistantPart =
-		| { type: "text"; text: string }
-		| { type: "reasoning"; text: string }
-		| { type: "tool-call"; toolCallId: string; toolName: string; input: unknown };
-
-	type ToolResultPart = {
-		type: "tool-result";
-		toolCallId: string;
-		toolName: string;
-		output: ToolResultOutput;
-	};
-
-	let assistantParts: AssistantPart[] = [];
-	let toolResults: ToolResultPart[] = [];
-
-	for (const block of contentBlocks) {
-		if (block.type === "reasoning" && block.content) {
-			// Tool results must be emitted before new assistant reasoning.
-			if (toolResults.length > 0) {
-				messages.push({
-					role: "tool",
-					content: [...toolResults],
-				} as unknown as ModelMessage);
-				toolResults = [];
-			}
-
-			assistantParts.push({ type: "reasoning", text: block.content });
-			continue;
-		}
-
-		if (block.type === "text" && block.content) {
-			// Tool results must be emitted before new assistant text.
-			if (toolResults.length > 0) {
-				messages.push({
-					role: "tool",
-					content: [...toolResults],
-				} as unknown as ModelMessage);
-				toolResults = [];
-			}
-
-			assistantParts.push({ type: "text", text: block.content });
-			continue;
-		}
-
-		if (block.type === "tool") {
-			// Tool results must be emitted before a new tool call.
-			if (toolResults.length > 0) {
-				messages.push({
-					role: "tool",
-					content: [...toolResults],
-				} as unknown as ModelMessage);
-				toolResults = [];
-			}
-
-			const toolCallId = block.call.toolCallId;
-			if (!toolCallId) {
-				continue;
-			}
-
-			assistantParts.push({
-				type: "tool-call",
-				toolCallId,
-				toolName: block.call.name,
-				input: block.call.input ?? {},
-			});
-
-			// Tool calls must be emitted before their tool results.
-			if (assistantParts.length > 0) {
-				messages.push({
-					role: "assistant",
-					content: [...assistantParts],
-				} as unknown as ModelMessage);
-				assistantParts = [];
-			}
-
-			toolResults.push({
-				type: "tool-result",
-				toolCallId,
-				toolName: block.call.name,
-				output: normalizeInterruptedToolResultOutput(block.result),
-			});
-		}
-	}
-
-	if (assistantParts.length > 0) {
-		messages.push({
-			role: "assistant",
-			content: [...assistantParts],
-		} as unknown as ModelMessage);
-	}
-
-	if (toolResults.length > 0) {
-		messages.push({
-			role: "tool",
-			content: [...toolResults],
-		} as unknown as ModelMessage);
-	}
-
-	return messages;
 }
 
 function finalizePendingUserMessage(
