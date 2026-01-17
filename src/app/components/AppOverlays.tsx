@@ -7,11 +7,25 @@ import { OnboardingOverlay } from "../../components/OnboardingOverlay";
 import { ProviderMenu } from "../../components/ProviderMenu";
 import { SessionMenu } from "../../components/SessionMenu";
 import { SettingsMenu } from "../../components/SettingsMenu";
+import { UrlMenu } from "../../components/UrlMenu";
+import { useUrlMenuItems } from "../../hooks/use-url-menu-items";
 import { useAppContext } from "../../state/app-context";
+import type { ContentBlock, ConversationMessage } from "../../types";
 
-function AppOverlaysImpl() {
+interface AppOverlaysProps {
+	conversationHistory: ConversationMessage[];
+	currentContentBlocks: ContentBlock[];
+}
+
+function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverlaysProps) {
 	const ctx = useAppContext();
 	const { menus, device, settings, model, session, grounding, onboarding } = ctx;
+
+	const urlMenuItems = useUrlMenuItems({
+		conversationHistory,
+		currentContentBlocks,
+		latestGroundingMap: grounding.latestGroundingMap,
+	});
 	const {
 		deviceCallbacks,
 		settingsCallbacks,
@@ -103,6 +117,8 @@ function AppOverlaysImpl() {
 					onSelectedIndexChange={groundingCallbacks.onGroundingIndexChange}
 				/>
 			)}
+
+			{menus.showUrlMenu && <UrlMenu items={urlMenuItems} onClose={() => menus.setShowUrlMenu(false)} />}
 
 			{onboarding.onboardingActive && (
 				<OnboardingOverlay

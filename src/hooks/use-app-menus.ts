@@ -21,6 +21,9 @@ export interface UseAppMenusReturn {
 
 	showGroundingMenu: boolean;
 	setShowGroundingMenu: React.Dispatch<React.SetStateAction<boolean>>;
+
+	showUrlMenu: boolean;
+	setShowUrlMenu: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export function useAppMenus(): UseAppMenusReturn {
@@ -31,6 +34,7 @@ export function useAppMenus(): UseAppMenusReturn {
 	const [showSessionMenu, setShowSessionMenu] = useState(false);
 	const [showHotkeysPane, setShowHotkeysPane] = useState(false);
 	const [showGroundingMenu, setShowGroundingMenu] = useState(false);
+	const [showUrlMenu, setShowUrlMenu] = useState(false);
 
 	return {
 		showDeviceMenu,
@@ -47,5 +51,7 @@ export function useAppMenus(): UseAppMenusReturn {
 		setShowHotkeysPane,
 		showGroundingMenu,
 		setShowGroundingMenu,
+		showUrlMenu,
+		setShowUrlMenu,
 	};
 }

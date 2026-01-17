@@ -29,6 +29,8 @@ export interface MenuState {
 	setShowHotkeysPane: React.Dispatch<React.SetStateAction<boolean>>;
 	showGroundingMenu: boolean;
 	setShowGroundingMenu: React.Dispatch<React.SetStateAction<boolean>>;
+	showUrlMenu: boolean;
+	setShowUrlMenu: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export interface DeviceState {

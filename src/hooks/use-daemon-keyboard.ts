@@ -1,15 +1,11 @@
-/**
- * Hook for handling keyboard input across all application states.
- */
-
-import { useCallback } from "react";
-import type { KeyEvent } from "@opentui/core";
-import { useKeyboard } from "@opentui/react";
 import { toast } from "@opentui-ui/toast/react";
-import { COLORS } from "../ui/constants";
-import { getDaemonManager } from "../state/daemon-state";
-import { DaemonState, type AppPreferences } from "../types";
+import type { KeyEvent } from "@opentui/core";
 import type { ScrollBoxRenderable } from "@opentui/core";
+import { useKeyboard } from "@opentui/react";
+import { useCallback } from "react";
+import { getDaemonManager } from "../state/daemon-state";
+import { type AppPreferences, DaemonState } from "../types";
+import { COLORS } from "../ui/constants";
 export interface KeyboardHandlerState {
 	isOverlayOpen: boolean;
 	escPendingCancel: boolean;
@@ -27,6 +23,7 @@ export interface KeyboardHandlerActions {
 	setShowSessionMenu: (show: boolean) => void;
 	setShowHotkeysPane: (show: boolean) => void;
 	setShowGroundingMenu: (show: boolean) => void;
+	setShowUrlMenu: (show: boolean) => void;
 	setTypingInput: (input: string | ((prev: string) => string)) => void;
 	setCurrentTranscription: (text: string) => void;
 	setCurrentResponse: (text: string) => void;
@@ -45,6 +42,17 @@ export interface KeyboardHandlerActions {
 export function useDaemonKeyboard(state: KeyboardHandlerState, actions: KeyboardHandlerActions) {
 	const manager = getDaemonManager();
 	const { isOverlayOpen, escPendingCancel, hasInteracted, hasGrounding } = state;
+
+	const closeAllMenus = useCallback(() => {
+		actions.setShowDeviceMenu(false);
+		actions.setShowSettingsMenu(false);
+		actions.setShowModelMenu(false);
+		actions.setShowProviderMenu(false);
+		actions.setShowSessionMenu(false);
+		actions.setShowHotkeysPane(false);
+		actions.setShowGroundingMenu(false);
+		actions.setShowUrlMenu(false);
+	}, [actions]);
 
 	const handleKeyPress = useCallback(
 		(key: KeyEvent) => {
@@ -97,12 +105,7 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 				currentState === DaemonState.IDLE &&
 				!hasInteracted
 			) {
-				actions.setShowModelMenu(false);
-				actions.setShowProviderMenu(false);
-				actions.setShowSessionMenu(false);
-				actions.setShowSettingsMenu(false);
-				actions.setShowGroundingMenu(false);
-				actions.setShowHotkeysPane(false);
+				closeAllMenus();
 				actions.setShowDeviceMenu(true);
 				key.preventDefault();
 				return;
@@ -114,12 +117,7 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 				key.eventType === "press" &&
 				(currentState === DaemonState.IDLE || currentState === DaemonState.SPEAKING)
 			) {
-				actions.setShowDeviceMenu(false);
-				actions.setShowSettingsMenu(false);
-				actions.setShowModelMenu(false);
-				actions.setShowProviderMenu(false);
-				actions.setShowGroundingMenu(false);
-				actions.setShowHotkeysPane(false);
+				closeAllMenus();
 				actions.setShowSessionMenu(true);
 				key.preventDefault();
 				return;
@@ -133,12 +131,7 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 					currentState === DaemonState.SPEAKING ||
 					currentState === DaemonState.RESPONDING)
 			) {
-				actions.setShowDeviceMenu(false);
-				actions.setShowModelMenu(false);
-				actions.setShowProviderMenu(false);
-				actions.setShowSessionMenu(false);
-				actions.setShowGroundingMenu(false);
-				actions.setShowHotkeysPane(false);
+				closeAllMenus();
 				actions.setShowSettingsMenu(true);
 				key.preventDefault();
 				return;
@@ -152,12 +145,7 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 					currentState === DaemonState.SPEAKING ||
 					currentState === DaemonState.RESPONDING)
 			) {
-				actions.setShowDeviceMenu(false);
-				actions.setShowSettingsMenu(false);
-				actions.setShowProviderMenu(false);
-				actions.setShowSessionMenu(false);
-				actions.setShowGroundingMenu(false);
-				actions.setShowHotkeysPane(false);
+				closeAllMenus();
 				actions.setShowModelMenu(true);
 				key.preventDefault();
 				return;
@@ -169,12 +157,7 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 				key.eventType === "press" &&
 				(currentState === DaemonState.IDLE || currentState === DaemonState.SPEAKING)
 			) {
-				actions.setShowDeviceMenu(false);
-				actions.setShowSettingsMenu(false);
-				actions.setShowModelMenu(false);
-				actions.setShowSessionMenu(false);
-				actions.setShowGroundingMenu(false);
-				actions.setShowHotkeysPane(false);
+				closeAllMenus();
 				actions.setShowProviderMenu(true);
 				key.preventDefault();
 				return;
@@ -187,13 +170,21 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 				(currentState === DaemonState.IDLE || currentState === DaemonState.SPEAKING) &&
 				hasGrounding
 			) {
-				actions.setShowDeviceMenu(false);
-				actions.setShowSettingsMenu(false);
-				actions.setShowModelMenu(false);
-				actions.setShowProviderMenu(false);
-				actions.setShowSessionMenu(false);
-				actions.setShowHotkeysPane(false);
+				closeAllMenus();
 				actions.setShowGroundingMenu(true);
+				key.preventDefault();
+				return;
+			}
+
+			// 'U' key to open URL menu (in IDLE or SPEAKING state when hasInteracted)
+			if (
+				(key.sequence === "u" || key.sequence === "U") &&
+				key.eventType === "press" &&
+				(currentState === DaemonState.IDLE || currentState === DaemonState.SPEAKING) &&
+				hasInteracted
+			) {
+				closeAllMenus();
+				actions.setShowUrlMenu(true);
 				key.preventDefault();
 				return;
 			}
@@ -267,12 +258,7 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 
 			// '?' key to show hotkeys pane
 			if (key.sequence === "?" && key.eventType === "press" && currentState !== DaemonState.TYPING) {
-				actions.setShowDeviceMenu(false);
-				actions.setShowSettingsMenu(false);
-				actions.setShowModelMenu(false);
-				actions.setShowProviderMenu(false);
-				actions.setShowSessionMenu(false);
-				actions.setShowGroundingMenu(false);
+				closeAllMenus();
 				actions.setShowHotkeysPane(true);
 				key.preventDefault();
 				return;

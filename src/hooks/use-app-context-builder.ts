@@ -39,6 +39,8 @@ export interface UseAppContextBuilderParams {
 		setShowHotkeysPane: React.Dispatch<React.SetStateAction<boolean>>;
 		showGroundingMenu: boolean;
 		setShowGroundingMenu: React.Dispatch<React.SetStateAction<boolean>>;
+		showUrlMenu: boolean;
+		setShowUrlMenu: React.Dispatch<React.SetStateAction<boolean>>;
 	};
 
 	device: {

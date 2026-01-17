@@ -40,6 +40,7 @@ export function HotkeysPane({ onClose }: HotkeysPaneProps) {
 				{ key: "O", label: "Toggle tool output previews" },
 				{ key: "N", label: "New session" },
 				{ key: "G", label: "Open Grounding Menu" },
+				{ key: "U", label: "Open URL Menu" },
 				{ key: "CTRL+X", label: "Undo last message" },
 			],
 		},

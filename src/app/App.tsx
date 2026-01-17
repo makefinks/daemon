@@ -19,7 +19,9 @@ import { useCopyOnSelect } from "../hooks/use-copy-on-select";
 import { useDaemonEvents } from "../hooks/use-daemon-events";
 import { useDaemonKeyboard } from "../hooks/use-daemon-keyboard";
 import { useGrounding } from "../hooks/use-grounding";
+import { useGroundingMenuController } from "../hooks/use-grounding-menu-controller";
 import { useInputHistory } from "../hooks/use-input-history";
+import { useOverlayController } from "../hooks/use-overlay-controller";
 import { usePlaywrightNotification } from "../hooks/use-playwright-notification";
 import { useReasoningAnimation } from "../hooks/use-reasoning-animation";
 import { useResponseTimer } from "../hooks/use-response-timer";
@@ -30,11 +32,9 @@ import { AppProvider } from "../state/app-context";
 import { daemonEvents } from "../state/daemon-events";
 import { getDaemonManager } from "../state/daemon-state";
 import { deleteSession } from "../state/session-store";
-import { DaemonState } from "../types";
 import type { AppPreferences, AudioDevice, OnboardingStep } from "../types";
+import { DaemonState } from "../types";
 import { COLORS } from "../ui/constants";
-import { openUrlInBrowser } from "../utils/preferences";
-import { buildTextFragmentUrl } from "../utils/text-fragment";
 import { getSoxInstallHint, isSoxAvailable, setAudioDevice } from "../voice/audio-recorder";
 import { AppOverlays } from "./components/AppOverlays";
 import { AvatarLayer } from "./components/AvatarLayer";
@@ -115,6 +115,8 @@ export function App() {
 		setShowHotkeysPane,
 		showGroundingMenu,
 		setShowGroundingMenu,
+		showUrlMenu,
+		setShowUrlMenu,
 	} = menus;
 
 	const {
@@ -128,7 +130,13 @@ export function App() {
 	} = useAppSessions({ showSessionMenu });
 
 	const { latestGroundingMap, hasGrounding } = useGrounding(currentSessionId);
-	const [groundingSelectedIndex, setGroundingSelectedIndex] = useState(0);
+	const {
+		groundingInitialIndex,
+		groundingSelectedIndex,
+		setGroundingSelectedIndex,
+		onGroundingSelect,
+		onGroundingIndexChange,
+	} = useGroundingMenuController({ sessionId: currentSessionId, latestGroundingMap });
 
 	const appSettings = useAppSettings();
 	const {
@@ -379,6 +387,7 @@ export function App() {
 			setShowSessionMenu,
 			setShowHotkeysPane,
 			setShowGroundingMenu,
+			setShowUrlMenu,
 			setTypingInput,
 			setCurrentTranscription,
 			setCurrentResponse,
@@ -401,6 +410,7 @@ export function App() {
 			setShowSessionMenu,
 			setShowHotkeysPane,
 			setShowGroundingMenu,
+			setShowUrlMenu,
 			setTypingInput,
 			setCurrentTranscription,
 			setCurrentResponse,
@@ -420,17 +430,33 @@ export function App() {
 	const hasInteracted =
 		conversationHistory.length > 0 || currentTranscription.length > 0 || currentContentBlocks.length > 0;
 
+	const { isOverlayOpen } = useOverlayController(
+		{
+			showDeviceMenu,
+			showSettingsMenu,
+			showModelMenu,
+			showProviderMenu,
+			showSessionMenu,
+			showHotkeysPane,
+			showGroundingMenu,
+			showUrlMenu,
+			onboardingActive,
+		},
+		{
+			setShowDeviceMenu,
+			setShowSettingsMenu,
+			setShowModelMenu,
+			setShowProviderMenu,
+			setShowSessionMenu,
+			setShowHotkeysPane,
+			setShowGroundingMenu,
+			setShowUrlMenu,
+		}
+	);
+
 	useDaemonKeyboard(
 		{
-			isOverlayOpen:
-				showDeviceMenu ||
-				showSettingsMenu ||
-				showModelMenu ||
-				showProviderMenu ||
-				showSessionMenu ||
-				showHotkeysPane ||
-				showGroundingMenu ||
-				onboardingActive,
+			isOverlayOpen,
 			escPendingCancel,
 			hasInteracted,
 			hasGrounding,
@@ -480,24 +506,6 @@ export function App() {
 			setEscPendingCancel(false);
 		}
 	}, [daemonState]);
-
-	const openGroundingSource = useCallback(
-		(idx: number) => {
-			if (!latestGroundingMap) return;
-			const item = latestGroundingMap.items[idx];
-			if (!item) return;
-			const { source } = item;
-			const url = source.textFragment
-				? buildTextFragmentUrl(source.url, { fragmentText: source.textFragment })
-				: source.url;
-			openUrlInBrowser(url);
-		},
-		[latestGroundingMap]
-	);
-
-	const groundingInitialIndex = latestGroundingMap
-		? Math.min(groundingSelectedIndex, Math.max(0, latestGroundingMap.items.length - 1))
-		: 0;
 
 	const conversationDisplayState: ConversationDisplayState = {
 		conversationHistory,
@@ -556,6 +564,8 @@ export function App() {
 			setShowHotkeysPane,
 			showGroundingMenu,
 			setShowGroundingMenu,
+			showUrlMenu,
+			setShowUrlMenu,
 		},
 		device: {
 			devices,
@@ -630,11 +640,8 @@ export function App() {
 			onSessionDelete: handleSessionDelete,
 		},
 		groundingCallbacks: {
-			onGroundingSelect: (index: number) => {
-				setGroundingSelectedIndex(index);
-				openGroundingSource(index);
-			},
-			onGroundingIndexChange: setGroundingSelectedIndex,
+			onGroundingSelect,
+			onGroundingIndexChange,
 		},
 		onboardingCallbacks: {
 			onKeySubmit: handleApiKeySubmit,
@@ -702,7 +709,10 @@ export function App() {
 					</box>
 
 					<AppProvider value={appContextValue}>
-						<AppOverlays />
+						<AppOverlays
+							conversationHistory={conversationHistory}
+							currentContentBlocks={currentContentBlocks}
+						/>
 					</AppProvider>
 				</>
 			</box>
