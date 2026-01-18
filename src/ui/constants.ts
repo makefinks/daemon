@@ -2,7 +2,7 @@
  * UI constants including colors, status text, and markdown syntax styles.
  */
 
-import { SyntaxStyle, RGBA } from "@opentui/core";
+import { RGBA, SyntaxStyle } from "@opentui/core";
 import { DaemonState } from "../types";
 
 // Status text displayed for each daemon state
@@ -27,9 +27,11 @@ export const STATE_COLOR_HEX: Record<DaemonState, string> = {
 
 // Animation settings for reasoning text ticker
 export const REASONING_ANIMATION = {
-	LINE_WIDTH: 120,
+	LINE_WIDTH: 200,
 	CHARS_PER_TICK: 6,
-	TICK_INTERVAL_MS: 16,
+	TICK_INTERVAL_MS: 12,
+	SEGMENT_LENGTH: 3,
+	PREFIX_COLOR: "#7a7a7a",
 	INTENSITY: 0.5,
 } as const;
 

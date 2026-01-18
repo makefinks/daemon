@@ -2,11 +2,12 @@
  * Component for rendering a single content block (reasoning, tool, or text).
  */
 
+import type { ContentBlock } from "../types";
+import { COLORS, REASONING_MARKDOWN_STYLE } from "../ui/constants";
+import { renderReasoningTicker } from "../ui/reasoning-ticker";
+import { formatElapsedTime, hasVisibleText } from "../utils/formatters";
 import { DaemonText } from "./DaemonText";
 import { ToolCallView } from "./ToolCallView";
-import { COLORS, REASONING_MARKDOWN_STYLE } from "../ui/constants";
-import type { ContentBlock } from "../types";
-import { formatElapsedTime, hasVisibleText } from "../utils/formatters";
 
 interface ContentBlockViewProps {
 	block: ContentBlock;
@@ -64,14 +65,7 @@ export function ContentBlockView({
 
 		// For non-full-reasoning mode, show animated display only for the latest reasoning block
 		if (showReasoningTicker && isLastReasoningBlock && reasoningDisplay) {
-			return (
-				<text>
-					<span fg={COLORS.REASONING_DIM}>
-						{"// "}
-						{reasoningDisplay}
-					</span>
-				</text>
-			);
+			return renderReasoningTicker(reasoningDisplay);
 		}
 		const durationLabel =
 			block.durationMs !== undefined
