@@ -6,29 +6,30 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import {
+	type ModelMessage,
 	ToolLoopAgent,
 	generateText,
 	stepCountIs,
 	experimental_transcribe as transcribe,
-	type ModelMessage,
 } from "ai";
-import { getDaemonTools, isWebSearchAvailable } from "./tools/index";
-import { setSubagentProgressEmitter } from "./tools/subagents";
-import { buildDaemonSystemPrompt, type InteractionMode } from "./system-prompt";
-import { buildOpenRouterChatSettings, getResponseModel, TRANSCRIPTION_MODEL } from "./model-config";
-import { debug } from "../utils/debug-logger";
-import { getWorkspacePath } from "../utils/workspace-manager";
 import { getRuntimeContext } from "../state/runtime-context";
-import { getOpenRouterReportedCost } from "../utils/openrouter-reported-cost";
 import type {
-	TokenUsage,
-	TranscriptionResult,
-	StreamCallbacks,
 	ReasoningEffort,
+	StreamCallbacks,
+	TokenUsage,
 	ToolApprovalRequest,
 	ToolApprovalResponse,
+	TranscriptionResult,
 } from "../types";
+import { debug } from "../utils/debug-logger";
+import { getOpenRouterReportedCost } from "../utils/openrouter-reported-cost";
+import { getWorkspacePath } from "../utils/workspace-manager";
+import { TRANSCRIPTION_MODEL, buildOpenRouterChatSettings, getResponseModel } from "./model-config";
 import { sanitizeMessagesForInput } from "./sanitize-messages";
+import { type InteractionMode, buildDaemonSystemPrompt } from "./system-prompt";
+import { coordinateToolApprovals } from "./tool-approval-coordinator";
+import { getDaemonTools, isWebSearchAvailable } from "./tools/index";
+import { setSubagentProgressEmitter } from "./tools/subagents";
 
 // Re-export ModelMessage from AI SDK since it's commonly needed by consumers
 export type { ModelMessage } from "ai";
@@ -198,11 +199,9 @@ export async function generateResponse(
 		let currentMessages = messages;
 		let fullText = "";
 		let streamError: Error | null = null;
-		let costTotal = 0;
-		let hasCost = false;
 		let allResponseMessages: ModelMessage[] = [];
 
-		const processStream = async (): Promise<void> => {
+		while (true) {
 			const stream = await agent.stream({
 				messages: currentMessages,
 			});
@@ -250,10 +249,7 @@ export async function generateResponse(
 					if (part.usage && callbacks.onStepUsage) {
 						const reportedCost = getOpenRouterReportedCost(part.providerMetadata);
 
-						if (reportedCost !== undefined) {
-							costTotal += reportedCost;
-							hasCost = true;
-						}
+						// reportedCost may be undefined when provider doesn't supply it
 
 						callbacks.onStepUsage({
 							promptTokens: part.usage.inputTokens ?? 0,
@@ -277,75 +273,20 @@ export async function generateResponse(
 			currentMessages = [...currentMessages, ...responseMessages];
 
 			if (pendingApprovals.length > 0 && callbacks.onAwaitingApprovals) {
-				return new Promise<void>((resolve) => {
-					callbacks.onAwaitingApprovals!(pendingApprovals, async (responses) => {
-						debug.info("tool-approval-responses", { responses, pendingApprovals });
-						const approvalMap = new Map(pendingApprovals.map((p) => [p.approvalId, p]));
-
-						const approvedResponses: Array<{
-							type: "tool-approval-response";
-							approvalId: string;
-							approved: true;
-						}> = [];
-						const deniedResults: Array<{
-							type: "tool-result";
-							toolCallId: string;
-							toolName: string;
-							output: { type: "text"; value: string };
-						}> = [];
-
-						for (const r of responses) {
-							const originalRequest = approvalMap.get(r.approvalId);
-							if (!originalRequest) continue;
-
-							if (r.approved) {
-								approvedResponses.push({
-									type: "tool-approval-response" as const,
-									approvalId: r.approvalId,
-									approved: true,
-								});
-							} else {
-								// OpenRouter provider doesn't handle execution-denied type properly,
-								// so we send a text output that the model can understand
-								const denialMessage =
-									r.reason ?? "Tool execution was denied by the user. Do not retry this command.";
-								deniedResults.push({
-									type: "tool-result" as const,
-									toolCallId: originalRequest.toolCallId,
-									toolName: originalRequest.toolName,
-									output: {
-										type: "text" as const,
-										value: `[DENIED] ${denialMessage}`,
-									},
-								});
-							}
-						}
-
-						// Combine approved and denied into a single tool message so the SDK
-						// can execute approved tools and the model sees all results together
-						const combinedContent: Array<
-							| { type: "tool-approval-response"; approvalId: string; approved: true }
-							| {
-									type: "tool-result";
-									toolCallId: string;
-									toolName: string;
-									output: { type: "text"; value: string };
-							  }
-						> = [...approvedResponses, ...deniedResults];
-
-						if (combinedContent.length > 0) {
-							debug.info("tool-approval-combined", { combinedContent });
-							currentMessages = [...currentMessages, { role: "tool" as const, content: combinedContent }];
-						}
-
-						await processStream();
-						resolve();
-					});
+				const { toolMessage } = await coordinateToolApprovals({
+					pendingApprovals,
+					requestApprovals: callbacks.onAwaitingApprovals,
 				});
-			}
-		};
 
-		await processStream();
+				if (toolMessage) {
+					currentMessages = [...currentMessages, toolMessage];
+				}
+
+				continue;
+			}
+
+			break;
+		}
 
 		if (streamError) {
 			return;
