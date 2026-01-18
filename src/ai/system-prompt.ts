@@ -7,10 +7,21 @@
  */
 export type InteractionMode = "text" | "voice";
 
+export interface ToolAvailability {
+	readFile: boolean;
+	runBash: boolean;
+	webSearch: boolean;
+	fetchUrls: boolean;
+	renderUrl: boolean;
+	todoManager: boolean;
+	groundingManager: boolean;
+	subagent: boolean;
+}
+
 export interface SystemPromptOptions {
 	mode?: InteractionMode;
 	currentDate?: Date;
-	webSearchAvailable?: boolean;
+	toolAvailability?: Partial<ToolAvailability>;
 	workspacePath?: string;
 }
 
@@ -29,9 +40,10 @@ function formatLocalIsoDate(date: Date): string {
  * @param mode - "text" for terminal output with markdown, "voice" for speech-optimized responses
  */
 export function buildDaemonSystemPrompt(options: SystemPromptOptions = {}): string {
-	const { mode = "text", currentDate = new Date(), webSearchAvailable = true, workspacePath } = options;
+	const { mode = "text", currentDate = new Date(), toolAvailability, workspacePath } = options;
 	const currentDateString = formatLocalIsoDate(currentDate);
-	const toolDefinitions = buildToolDefinitions(webSearchAvailable);
+	const availability = normalizeToolAvailability(toolAvailability);
+	const toolDefinitions = buildToolDefinitions(availability);
 	const workspaceSection = workspacePath ? buildWorkspaceSection(workspacePath) : "";
 
 	if (mode === "voice") {
@@ -41,7 +53,48 @@ export function buildDaemonSystemPrompt(options: SystemPromptOptions = {}): stri
 	return buildTextSystemPrompt(currentDateString, toolDefinitions, workspaceSection);
 }
 
-const WEB_SEARCH_AVAILABLE_SECTION = `
+function normalizeToolAvailability(toolAvailability?: Partial<ToolAvailability>): ToolAvailability {
+	return {
+		readFile: toolAvailability?.readFile ?? true,
+		runBash: toolAvailability?.runBash ?? true,
+		webSearch: toolAvailability?.webSearch ?? true,
+		fetchUrls: toolAvailability?.fetchUrls ?? true,
+		renderUrl: toolAvailability?.renderUrl ?? true,
+		todoManager: toolAvailability?.todoManager ?? true,
+		groundingManager: toolAvailability?.groundingManager ?? true,
+		subagent: toolAvailability?.subagent ?? true,
+	};
+}
+
+const TOOL_SECTIONS = {
+	todoManager: `
+  ### 'todoManager' (task planning & tracking)
+  Use this tool to **plan and track tasks VERY frequently**.
+  Default: use it for **almost every request**.
+  skip it for **trivial, single-step replies** that can be answered immediately without calling any tools.
+
+  **ToDo Principles**
+  - Update todos immediately as you begin/finish each step.
+  - Do **not** emit todoManager updates *after* you have started writing the final answer.
+
+  **Todo Workflow:**
+  1. At the start of a task use \`write\` with an array of descriptive todos
+  2. Use \`update\` with index and status to mark items as 'in_progress' or 'completed'
+  3. Only have ONE item 'in_progress' at a time
+
+  Note: You can also skip writing a list of todos initally until you have gathered enough context, or batch update the todo list if the plan needs to change drastically during exeuction.
+  It is **very important** that you update the todos to reflect the actual state of progress.
+
+  **Todo content rules**
+  - Todos must be strictly limited to **concrete, observable actions** (e.g., "Search for X", "Read file Y", "Run command Z").
+  - If a task involves writing the final response to the user, summarizing findings, or explaining a concept, it is **NOT** a Todo.
+  - **Banned Verbs**: You are strictly forbidden from using communication or synthesis verbs in Todos. **NEVER** write todos containing:
+    - "Summarize" / "Synthesize"
+    - "Explain" / "Describe"
+    - "Inform" / "Tell" / "Clarify"
+    - "Answer" / "Respond"
+`,
+	webSearch: `
 ### 'webSearch' 
 Searches the web for up-to-date facts, references, or when the user asks 'latest / current / source'. 
 Returns potentially relevant URLs which you can then fetch with fetchUrls.
@@ -67,21 +120,12 @@ Do NOT use web search for every request the user makes. Determine if web search 
 **Examples (don't use webSearch):**
 - "Write a regex to match ISO-8601 dates."
 - "Which processes take up most of my ram right now?"
-`;
-
-const WEB_SEARCH_DISABLED_SECTION = `
-### 'webSearch' and 'fetchUrls' (DISABLED)
-Web search and URL fetching are currently disabled because the EXA_API_KEY environment variable is not configured.
-If the user asks you to search the web or fetch URL contents, inform them that these features are disabled and they need to either:
-1. Set the EXA_API_KEY environment variable before starting the application, or
-2. Re-run the application and enter the key when prompted during setup
-`;
-
-const FETCH_URLS_SECTION = `
+`,
+	fetchUrls: `
 ### 'fetchUrls'
-The fetchUrl tools allows for getting the actual contents of web pages.
+The fetchUrl tool allows for getting the actual contents of web pages.
 Use this tool to read the content of potentially relevant websites returned by the webSearch tool.
-If the user provides an URL always fetch the content of the url first before answering.
+If the user provides a URL, always fetch the content of the URL first before answering.
 
 **Recommended flow**
 
@@ -135,77 +179,27 @@ fetchUrls({ url: "https://example.com/article", highlightQuery: "machine learnin
 </pagination-example>
 
 Use pagination this way unless instructed otherwise. This avoids fetching page content reduntantly.
-`;
-
-function buildToolDefinitions(webSearchAvailable: boolean): string {
-	let webSearchSection: string;
-	if (!webSearchAvailable) {
-		webSearchSection = WEB_SEARCH_DISABLED_SECTION;
-	} else {
-		webSearchSection = WEB_SEARCH_AVAILABLE_SECTION + FETCH_URLS_SECTION;
-	}
-
-	return `
-# Tools
-Use tools to improve the quality and corectness of your responses.
-
-Also use tools for overcoming limitations with your architecture:
-- Use python for calculation
-${webSearchAvailable ? "- use web searches for questions that require up to date information or factual grounding." : ""}
-
-You are allowed to use tools multiple times especially for tasks that require precise information or if previous tool calls did not lead to sufficient results.
-However prevent exessive tool use when not necessary. Be efficent with the tools at hand.
-
-Here is an overview of your tools:
-<tool_overview>
-  ### 'todoManager' (task planning & tracking)
-  Use this tool to **plan and track tasks VERY frequently**.  
-  Default: use it for **almost every request**.  
-  skip it for **trivial, single-step replies** that can be answered immediately without calling any tools.
-
-  **ToDo Principles**
-  - Update todos immediately as you begin/finish each step.
-  - Do **not** emit todoManager updates *after* you have started writing the final answer.
-
-  **Todo Workflow:**
-  1. At the start of a task use \`write\` with an array of descriptive todos
-  2. Use \`update\` with index and status to mark items as 'in_progress' or 'completed'
-  3. Only have ONE item 'in_progress' at a time
-
-  Note: You can also skip writing a list of todos initally until you have gathered enough context, or batch update the todo list if the plan needs to change drastically during exeuction.
-  It is **very important** that you update the todos to reflect the actual state of progress.
-
-  **Todo content rules**
-  - Todos must be strictly limited to **concrete, observable actions** (e.g., "Search for X", "Read file Y", "Run command Z").
-  - If a task involves writing the final response to the user, summarizing findings, or explaining a concept, it is **NOT** a Todo. 
-  - **Banned Verbs**: You are strictly forbidden from using communication or synthesis verbs in Todos. **NEVER** write todos containing:
-    - "Summarize" / "Synthesize"
-    - "Explain" / "Describe"
-    - "Inform" / "Tell" / "Clarify"
-    - "Answer" / "Respond"
-
-  ${webSearchSection}
-
-  ### 'renderUrl' 
+`,
+	renderUrl: `
+  ### 'renderUrl'
   Use this tool to extract content from **JavaScript-rendered** pages (SPAs) when \`fetchUrls\` returns suspiciously short, shell-like, or nav-only text.
 
   Rules:
   - Prefer \`fetchUrls\` first (faster, cheaper).
   - If the page appears JS-heavy or fetchUrls returns "shell-only" text, use \`renderUrl\` to render locally and extract the text.
-  - \`renderUrl\` might not be available on all installs. If it isn't available, fall back to \`fetchUrls\` and explain limits.
 
   Pagination mirrors \`fetchUrls\`:
   - Start with \`lineLimit\` (default 80) from the start.
   - For pagination, provide both \`lineOffset\` and \`lineLimit\`.
-
-  ### 'groundingManager' (source attribution) — CRITICAL
+`,
+	groundingManager: `
+  ### 'groundingManager' (source attribution)
   Manages a list of grounded statements (facts supported by sources).
   You can 'set' (overwrite) the entire list or 'append' new items to the existing list.
 
-  **MANDATORY usage rule:** 
+  **MANDATORY usage rule:**
   - If you used webSearch or fetchUrls to answer the user's question, you MUST call groundingManager BEFORE writing your final answer.
-  - This is NOT optional. Every answer that relies on web data MUST be grounded.
-  
+
   **When to use which action:**
   - 'set': Use when grounding a new topic or if previous facts are no longer relevant.
   - 'append': Use when adding more facts to the current topic without losing previous context.
@@ -214,56 +208,63 @@ Here is an overview of your tools:
   - If searches yielded no relevant info -> do not invent groundings or use irrelevant groundings.
   - If answering from your training knowledge alone (no web tools used) -> grounding not needed.
 
-  All statements should be intrinsically relevant to instructions of the user.
-
-  **Importance of text fragments**
-  Text fragments only work when the textFragment is within a single content block (html tag).
-  Choose textFragment defensively so that text highlighting works.
-  Avoid text fragments that span tables or lists since these texts are within different tags and will break highlighting.
-
   **Text fragment rules**
-  - \`source.textFragment\` must be a **contiguous verbatim substring** from the page content you were shown (do not stitch across paragraphs/columns/cells).
-  - Do not include newlines, bullets, numbering, or markdown/table artifacts (e.g. \`|\`, leading \`-\`, \`*\`, \`1.\`).
-  - Prefer a mid-sentence phrase from a normal paragraph or heading; avoid tables, lists, nav, and sidebars.
-
-  If you want to reference recorded groundings to it with an identifiers (eg. (g1), (g2)) at the end of sentences.
-
+  - \`source.textFragment\` must be a **contiguous verbatim substring** from the page content you were shown.
+  - Do not include newlines, bullets, numbering, or markdown/table artifacts.
+`,
+	runBash: `
   ### 'runBash' (local shell)
   This runs the specified command on the user's machine/environment.
-  **Tool approval**: runBash requires user approval before execution. The user can approve or deny the command.
-  - If the user **denies** the command, you will receive a denial message. Do NOT retry the same command - acknowledge the denial and offer alternatives or ask for guidance.
+  **Tool approval**: runBash requires user approval before execution.
   Rules:
-  - Prefer **read-only** inspection commands first (ls, cat, rg, jq, node/bun --version).
-  - Before anything that modifies the system (rm, mv, git push, installs, writes files, sudo), **ask for confirmation** and explain what it will change.
+  - Prefer **read-only** inspection commands first.
+  - Before anything that modifies the system, **ask for confirmation** and explain what it will change.
   - Never run destructive/wipe commands or anything that exfiltrates data.
-  - Keep output concise; if output is large, propose a filter (head, tail, rg, jq).
-
+`,
+	readFile: `
   ### 'readFile' (local file reader)
   Use this to read local text files.
   By default it reads up to 2000 lines from the start when no offset/limit are provided.
   For partial reads, you must provide both a 0-based line offset and a line limit.
-  Only use partial reads when needed; prefer full reads by omitting offset/limit.
-
-  ### 'getSystemInfo'
-  Use only when system context is needed (OS/CPU/memory) and keep it minimal.
-
+`,
+	subagent: `
   ### 'subagent'
-  Call this tool to spawn subagents for specific tasks. Each subagent has access to the same tools as you.
-
+  Call this tool to spawn subagents for specific tasks.
   **Call multiple times in parallel** for concurrent execution.
+`,
+} as const;
 
-  **When to use:**
-  Here are some specific scenarios where subagents should be used:
-    - Researching multiple topics simultaneously
-    - Performing  several independent operations at once
-    - Gathering information from multiple sources in parallel
-    - Finding specific websites containing relevant content from a web search
+function buildToolDefinitions(availability: ToolAvailability): string {
+	const blocks: string[] = [];
 
-  **How to write subagent inputs:**
-  - \`task\`: make it concrete and scoped. For ambitious or complex work, be very specific about steps, constraints, and expected outputs.
-  - \`summary\`: not just a title for the task; include a bit of detail; Only the summary is shown to the user. 
+	if (availability.todoManager) blocks.push(TOOL_SECTIONS.todoManager);
+	if (availability.webSearch) blocks.push(TOOL_SECTIONS.webSearch);
+	if (availability.fetchUrls) blocks.push(TOOL_SECTIONS.fetchUrls);
+	if (availability.renderUrl) blocks.push(TOOL_SECTIONS.renderUrl);
+	if (availability.groundingManager) blocks.push(TOOL_SECTIONS.groundingManager);
+	if (availability.runBash) blocks.push(TOOL_SECTIONS.runBash);
+	if (availability.readFile) blocks.push(TOOL_SECTIONS.readFile);
+	if (availability.subagent) blocks.push(TOOL_SECTIONS.subagent);
 
-  Each subagent works independently and returns a summary of the information it gathered based on the requirements you define in the tasks.
+	const webNote =
+		availability.webSearch || availability.fetchUrls
+			? "- use web tools when up-to-date info or citations are required."
+			: "";
+
+	return `
+# Tools
+Use tools to improve the quality and corectness of your responses.
+
+Also use tools for overcoming limitations with your architecture:
+- Use python for calculation
+${webNote}
+
+You are allowed to use tools multiple times especially for tasks that require precise information or if previous tool calls did not lead to sufficient results.
+However prevent exessive tool use when not necessary. Be efficent with the tools at hand.
+
+Here is an overview of your tools:
+<tool_overview>
+${blocks.join("\n")}
 </tool_overview>
 `;
 }

@@ -109,6 +109,16 @@ export function parsePreferences(raw: unknown): AppPreferences | null {
 	if (typeof raw.showToolOutput === "boolean") {
 		prefs.showToolOutput = raw.showToolOutput;
 	}
+	if (isRecord(raw.toolToggles)) {
+		const record = raw.toolToggles;
+		const next: Record<string, boolean> = {};
+		for (const [k, v] of Object.entries(record)) {
+			if (typeof v === "boolean") {
+				next[k] = v;
+			}
+		}
+		prefs.toolToggles = next as AppPreferences["toolToggles"];
+	}
 	if (
 		raw.bashApprovalLevel === "none" ||
 		raw.bashApprovalLevel === "dangerous" ||

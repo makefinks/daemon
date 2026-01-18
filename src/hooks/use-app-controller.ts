@@ -73,6 +73,8 @@ export function useAppController({
 		setShowGroundingMenu,
 		showUrlMenu,
 		setShowUrlMenu,
+		showToolsMenu,
+		setShowToolsMenu,
 	} = menus;
 
 	const session = useSessionController({ showSessionMenu });
@@ -254,6 +256,7 @@ export function useAppController({
 			setShowHotkeysPane,
 			setShowGroundingMenu,
 			setShowUrlMenu,
+			setShowToolsMenu,
 			setTypingInput: daemon.typing.setTypingInput,
 			setCurrentTranscription: daemon.setCurrentTranscription,
 			setCurrentResponse: daemon.setCurrentResponse,
@@ -277,6 +280,7 @@ export function useAppController({
 			setShowHotkeysPane,
 			setShowGroundingMenu,
 			setShowUrlMenu,
+			setShowToolsMenu,
 			daemon.typing.setTypingInput,
 			daemon.setCurrentTranscription,
 			daemon.setCurrentResponse,
@@ -301,6 +305,7 @@ export function useAppController({
 			showHotkeysPane,
 			showGroundingMenu,
 			showUrlMenu,
+			showToolsMenu,
 			onboardingActive: bootstrap.onboardingActive,
 		},
 		{
@@ -312,6 +317,7 @@ export function useAppController({
 			setShowHotkeysPane,
 			setShowGroundingMenu,
 			setShowUrlMenu,
+			setShowToolsMenu,
 		}
 	);
 
@@ -385,6 +391,8 @@ export function useAppController({
 			setShowGroundingMenu,
 			showUrlMenu,
 			setShowUrlMenu,
+			showToolsMenu,
+			setShowToolsMenu,
 		},
 		device: {
 			devices: bootstrap.devices,

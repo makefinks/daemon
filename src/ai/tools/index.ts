@@ -1,24 +1,19 @@
 import type { ToolSet } from "ai";
-import { fetchUrls } from "./fetch-urls";
 
-import { readFile } from "./read-file";
-import { groundingManager } from "./grounding-manager";
-import { renderUrl } from "./render-url";
-import { runBash } from "./run-bash";
-import { todoManager } from "./todo-manager";
-import { subagent } from "./subagents";
-import { webSearch } from "./web-search";
-
-import { detectLocalPlaywrightChromium } from "../../utils/js-rendering";
+import { getDaemonManager } from "../../state/daemon-state";
+import type { ToolAvailabilityMap } from "./tool-registry";
+import { buildToolSet } from "./tool-registry";
 
 let cachedDaemonTools: Promise<ToolSet> | null = null;
-
-export function isWebSearchAvailable(): boolean {
-	return Boolean(process.env.EXA_API_KEY);
-}
+let cachedAvailability: ToolAvailabilityMap | null = null;
 
 export function invalidateDaemonToolsCache(): void {
 	cachedDaemonTools = null;
+	cachedAvailability = null;
+}
+
+export function getCachedToolAvailability(): ToolAvailabilityMap | null {
+	return cachedAvailability;
 }
 
 export async function getDaemonTools(): Promise<ToolSet> {
@@ -27,24 +22,9 @@ export async function getDaemonTools(): Promise<ToolSet> {
 	}
 
 	cachedDaemonTools = (async () => {
-		const tools: ToolSet = {
-			readFile,
-			groundingManager,
-			runBash,
-			todoManager,
-			subagent,
-		};
-
-		if (isWebSearchAvailable()) {
-			(tools as ToolSet & { webSearch: typeof webSearch }).webSearch = webSearch;
-			(tools as ToolSet & { fetchUrls: typeof fetchUrls }).fetchUrls = fetchUrls;
-		}
-
-		const jsRendering = await detectLocalPlaywrightChromium();
-		if (jsRendering.available) {
-			return { ...tools, renderUrl };
-		}
-
+		const toggles = getDaemonManager().toolToggles;
+		const { tools, availability } = await buildToolSet(toggles);
+		cachedAvailability = availability;
 		return tools;
 	})();
 

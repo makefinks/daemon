@@ -3,23 +3,16 @@
  * DAEMON can call this tool multiple times in parallel to spawn concurrent subagents.
  */
 
-import { tool } from "ai";
-import { z } from "zod";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { tool } from "ai";
 import { ToolLoopAgent, stepCountIs } from "ai";
-import { fetchUrls } from "./fetch-urls";
-import { renderUrl } from "./render-url";
-import { webSearch } from "./web-search";
-
-import { readFile } from "./read-file";
-import { runBash } from "./run-bash";
-import { todoManager } from "./todo-manager";
-import { buildOpenRouterChatSettings, getSubagentModel } from "../model-config";
-import { isWebSearchAvailable } from "./index";
 import type { ToolSet } from "ai";
+import { z } from "zod";
+import { getDaemonManager } from "../../state/daemon-state";
 import type { SubagentProgressEmitter } from "../../types";
-import { detectLocalPlaywrightChromium } from "../../utils/js-rendering";
 import { getOpenRouterReportedCost } from "../../utils/openrouter-reported-cost";
+import { buildOpenRouterChatSettings, getSubagentModel } from "../model-config";
+import { buildToolSet } from "./tool-registry";
 
 // OpenRouter client for subagents
 const openrouter = createOpenRouter();
@@ -29,27 +22,19 @@ const MAX_SUBAGENT_STEPS = 30;
 
 let cachedSubagentTools: Promise<ToolSet> | null = null;
 
+export function invalidateSubagentToolsCache(): void {
+	cachedSubagentTools = null;
+}
+
 // Subagent tools (all tools except subagent itself to prevent recursion)
 async function getSubagentTools(): Promise<ToolSet> {
 	if (cachedSubagentTools) return cachedSubagentTools;
 
 	cachedSubagentTools = (async () => {
-		const tools: ToolSet = {
-			readFile,
-			runBash,
-			todoManager,
-		};
-
-		if (isWebSearchAvailable()) {
-			(tools as ToolSet & { webSearch: typeof webSearch }).webSearch = webSearch;
-			(tools as ToolSet & { fetchUrls: typeof fetchUrls }).fetchUrls = fetchUrls;
-		}
-
-		const jsRendering = await detectLocalPlaywrightChromium();
-		if (jsRendering.available) {
-			return { ...tools, renderUrl };
-		}
-
+		const toggles = getDaemonManager().toolToggles;
+		const { tools } = await buildToolSet(toggles, {
+			omit: ["groundingManager", "subagent"],
+		});
 		return tools;
 	})();
 
@@ -113,12 +98,13 @@ Provide a concise summary for display and a very specific task description (espe
 	execute: async ({ summary, task }, { toolCallId }) => {
 		try {
 			const tools = await getSubagentTools();
-			const webSearchAvailable = isWebSearchAvailable();
+			const webSearchAvailable = Boolean((tools as Record<string, unknown>).webSearch);
+			const fetchUrlsAvailable = Boolean((tools as Record<string, unknown>).fetchUrls);
 
 			// Create ephemeral subagent
 			const subagent = new ToolLoopAgent({
 				model: openrouter.chat(getSubagentModel(), buildOpenRouterChatSettings()),
-				instructions: buildSubagentSystemPrompt(webSearchAvailable),
+				instructions: buildSubagentSystemPrompt(webSearchAvailable || fetchUrlsAvailable),
 				tools,
 				stopWhen: stepCountIs(MAX_SUBAGENT_STEPS),
 			});

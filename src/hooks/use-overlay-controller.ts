@@ -9,6 +9,7 @@ export interface OverlayControllerState {
 	showHotkeysPane: boolean;
 	showGroundingMenu: boolean;
 	showUrlMenu: boolean;
+	showToolsMenu: boolean;
 	onboardingActive: boolean;
 }
 
@@ -21,6 +22,7 @@ export interface OverlayControllerActions {
 	setShowHotkeysPane: (show: boolean) => void;
 	setShowGroundingMenu: (show: boolean) => void;
 	setShowUrlMenu: (show: boolean) => void;
+	setShowToolsMenu: (show: boolean) => void;
 }
 
 export function useOverlayController(state: OverlayControllerState, actions: OverlayControllerActions) {
@@ -33,6 +35,7 @@ export function useOverlayController(state: OverlayControllerState, actions: Ove
 		showHotkeysPane,
 		showGroundingMenu,
 		showUrlMenu,
+		showToolsMenu,
 		onboardingActive,
 	} = state;
 
@@ -46,6 +49,7 @@ export function useOverlayController(state: OverlayControllerState, actions: Ove
 			showHotkeysPane ||
 			showGroundingMenu ||
 			showUrlMenu ||
+			showToolsMenu ||
 			onboardingActive
 		);
 	}, [
@@ -57,6 +61,7 @@ export function useOverlayController(state: OverlayControllerState, actions: Ove
 		showHotkeysPane,
 		showGroundingMenu,
 		showUrlMenu,
+		showToolsMenu,
 		onboardingActive,
 	]);
 
@@ -69,6 +74,7 @@ export function useOverlayController(state: OverlayControllerState, actions: Ove
 		actions.setShowHotkeysPane(false);
 		actions.setShowGroundingMenu(false);
 		actions.setShowUrlMenu(false);
+		actions.setShowToolsMenu(false);
 	}, [actions]);
 
 	return {

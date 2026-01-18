@@ -12,6 +12,7 @@ import {
 	stepCountIs,
 	experimental_transcribe as transcribe,
 } from "ai";
+import { getDaemonManager } from "../state/daemon-state";
 import { getRuntimeContext } from "../state/runtime-context";
 import type {
 	ReasoningEffort,
@@ -28,8 +29,9 @@ import { TRANSCRIPTION_MODEL, buildOpenRouterChatSettings, getResponseModel } fr
 import { sanitizeMessagesForInput } from "./sanitize-messages";
 import { type InteractionMode, buildDaemonSystemPrompt } from "./system-prompt";
 import { coordinateToolApprovals } from "./tool-approval-coordinator";
-import { getDaemonTools, isWebSearchAvailable } from "./tools/index";
+import { getCachedToolAvailability, getDaemonTools } from "./tools/index";
 import { setSubagentProgressEmitter } from "./tools/subagents";
+import { createToolAvailabilitySnapshot, resolveToolAvailability } from "./tools/tool-registry";
 
 // Re-export ModelMessage from AI SDK since it's commonly needed by consumers
 export type { ModelMessage } from "ai";
@@ -103,6 +105,8 @@ async function createDaemonAgent(
 
 	const { sessionId } = getRuntimeContext();
 	const tools = await getDaemonTools();
+	const toolAvailability =
+		getCachedToolAvailability() ?? (await resolveToolAvailability(getDaemonManager().toolToggles));
 
 	const workspacePath = sessionId ? getWorkspacePath(sessionId) : undefined;
 
@@ -110,7 +114,7 @@ async function createDaemonAgent(
 		model: openrouter.chat(getResponseModel(), modelConfig),
 		instructions: buildDaemonSystemPrompt({
 			mode: interactionMode,
-			webSearchAvailable: isWebSearchAvailable(),
+			toolAvailability: createToolAvailabilitySnapshot(toolAvailability),
 			workspacePath,
 		}),
 		tools,

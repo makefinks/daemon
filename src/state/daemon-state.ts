@@ -5,19 +5,21 @@
 
 import { AgentTurnRunner } from "../ai/agent-turn-runner";
 import { transcribeAudio } from "../ai/daemon-ai";
+import type {
+	BashApprovalLevel,
+	InteractionMode,
+	ModelMessage,
+	ReasoningEffort,
+	SpeechSpeed,
+	ToolToggles,
+	VoiceInteractionType,
+} from "../types";
+import { DEFAULT_TOOL_TOGGLES } from "../types";
+import { DaemonState } from "../types";
 import { debug } from "../utils/debug-logger";
 import { SpeechController } from "../voice/tts/speech-controller";
 import { VoiceInputController } from "../voice/voice-input-controller";
-import type {
-	ModelMessage,
-	InteractionMode,
-	VoiceInteractionType,
-	SpeechSpeed,
-	ReasoningEffort,
-	BashApprovalLevel,
-} from "../types";
-import { DaemonState } from "../types";
-import { daemonEvents, type DaemonStateEvents } from "./daemon-events";
+import { type DaemonStateEvents, daemonEvents } from "./daemon-events";
 import { ModelHistoryStore } from "./model-history-store";
 
 /**
@@ -39,6 +41,7 @@ class DaemonStateManager {
 	private _speechSpeed: SpeechSpeed = 1.25;
 	private _reasoningEffort: ReasoningEffort = "medium";
 	private _bashApprovalLevel: BashApprovalLevel = "dangerous";
+	private _toolToggles: ToolToggles = { ...DEFAULT_TOOL_TOGGLES };
 	private _outputDeviceName: string | undefined = undefined;
 	private _turnId = 0;
 	private speechRunId = 0;
@@ -134,6 +137,14 @@ class DaemonStateManager {
 
 	set bashApprovalLevel(level: BashApprovalLevel) {
 		this._bashApprovalLevel = level;
+	}
+
+	get toolToggles(): ToolToggles {
+		return this._toolToggles;
+	}
+
+	set toolToggles(toggles: ToolToggles) {
+		this._toolToggles = toggles;
 	}
 
 	get outputDeviceName(): string | undefined {

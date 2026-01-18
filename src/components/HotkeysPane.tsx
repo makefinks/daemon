@@ -36,7 +36,7 @@ export function HotkeysPane({ onClose }: HotkeysPaneProps) {
 		{
 			title: "SESSION",
 			items: [
-				{ key: "T", label: "Toggle full reasoning previews" },
+				{ key: "R", label: "Toggle full reasoning previews" },
 				{ key: "O", label: "Toggle tool output previews" },
 				{ key: "N", label: "New session" },
 				{ key: "G", label: "Open Grounding Menu" },
@@ -51,6 +51,7 @@ export function HotkeysPane({ onClose }: HotkeysPaneProps) {
 				{ key: "M", label: "Models" },
 				{ key: "P", label: "Providers" },
 				{ key: "L", label: "Sessions" },
+				{ key: "T", label: "Tools" },
 				{ key: "S", label: "Settings" },
 			],
 		},

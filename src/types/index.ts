@@ -259,6 +259,29 @@ export type OnboardingStep =
 
 export type VoiceInteractionType = "direct" | "review";
 
+export type ToolToggleId =
+	| "readFile"
+	| "runBash"
+	| "webSearch"
+	| "fetchUrls"
+	| "renderUrl"
+	| "todoManager"
+	| "groundingManager"
+	| "subagent";
+
+export type ToolToggles = Record<ToolToggleId, boolean>;
+
+export const DEFAULT_TOOL_TOGGLES: ToolToggles = {
+	readFile: true,
+	runBash: true,
+	webSearch: true,
+	fetchUrls: true,
+	renderUrl: true,
+	todoManager: true,
+	groundingManager: true,
+	subagent: true,
+};
+
 /**
  * Persisted user preferences.
  */
@@ -291,6 +314,8 @@ export interface AppPreferences {
 	showToolOutput?: boolean;
 	/** Bash command approval level */
 	bashApprovalLevel?: BashApprovalLevel;
+	/** Tool toggles (on/off) */
+	toolToggles?: ToolToggles;
 	/** Recent user inputs for up/down history navigation (max 20) */
 	inputHistory?: string[];
 }

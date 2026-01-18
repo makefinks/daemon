@@ -7,6 +7,7 @@ import { OnboardingOverlay } from "../../components/OnboardingOverlay";
 import { ProviderMenu } from "../../components/ProviderMenu";
 import { SessionMenu } from "../../components/SessionMenu";
 import { SettingsMenu } from "../../components/SettingsMenu";
+import { ToolsMenu } from "../../components/ToolsMenu";
 import { UrlMenu } from "../../components/UrlMenu";
 import { useUrlMenuItems } from "../../hooks/use-url-menu-items";
 import { useAppContext } from "../../state/app-context";
@@ -119,6 +120,13 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 			)}
 
 			{menus.showUrlMenu && <UrlMenu items={urlMenuItems} onClose={() => menus.setShowUrlMenu(false)} />}
+
+			{menus.showToolsMenu && (
+				<ToolsMenu
+					onClose={() => menus.setShowToolsMenu(false)}
+					persistPreferences={(updates) => settings.persistPreferences(updates)}
+				/>
+			)}
 
 			{onboarding.onboardingActive && (
 				<OnboardingOverlay

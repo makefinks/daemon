@@ -41,6 +41,8 @@ export interface UseAppContextBuilderParams {
 		setShowGroundingMenu: React.Dispatch<React.SetStateAction<boolean>>;
 		showUrlMenu: boolean;
 		setShowUrlMenu: React.Dispatch<React.SetStateAction<boolean>>;
+		showToolsMenu: boolean;
+		setShowToolsMenu: React.Dispatch<React.SetStateAction<boolean>>;
 	};
 
 	device: {

@@ -24,6 +24,7 @@ export interface KeyboardHandlerActions {
 	setShowHotkeysPane: (show: boolean) => void;
 	setShowGroundingMenu: (show: boolean) => void;
 	setShowUrlMenu: (show: boolean) => void;
+	setShowToolsMenu: (show: boolean) => void;
 	setTypingInput: (input: string | ((prev: string) => string)) => void;
 	setCurrentTranscription: (text: string) => void;
 	setCurrentResponse: (text: string) => void;
@@ -41,7 +42,7 @@ export interface KeyboardHandlerActions {
 
 export function useDaemonKeyboard(state: KeyboardHandlerState, actions: KeyboardHandlerActions) {
 	const manager = getDaemonManager();
-	const { isOverlayOpen, escPendingCancel, hasInteracted, hasGrounding } = state;
+	const { isOverlayOpen, escPendingCancel, hasInteracted, hasGrounding, showFullReasoning } = state;
 
 	const closeAllMenus = useCallback(() => {
 		actions.setShowDeviceMenu(false);
@@ -52,6 +53,7 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 		actions.setShowHotkeysPane(false);
 		actions.setShowGroundingMenu(false);
 		actions.setShowUrlMenu(false);
+		actions.setShowToolsMenu(false);
 	}, [actions]);
 
 	const handleKeyPress = useCallback(
@@ -212,7 +214,7 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 				return;
 			}
 
-			// 'T' key to toggle full reasoning display (in IDLE, SPEAKING, or RESPONDING state)
+			// 'T' key to open tools menu (in IDLE, SPEAKING, or RESPONDING state)
 			if (
 				(key.sequence === "t" || key.sequence === "T") &&
 				key.eventType === "press" &&
@@ -220,7 +222,21 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 					currentState === DaemonState.SPEAKING ||
 					currentState === DaemonState.RESPONDING)
 			) {
-				const next = !state.showFullReasoning;
+				closeAllMenus();
+				actions.setShowToolsMenu(true);
+				key.preventDefault();
+				return;
+			}
+
+			// 'R' key to toggle full reasoning display (in IDLE, SPEAKING, or RESPONDING state)
+			if (
+				(key.sequence === "r" || key.sequence === "R") &&
+				key.eventType === "press" &&
+				(currentState === DaemonState.IDLE ||
+					currentState === DaemonState.SPEAKING ||
+					currentState === DaemonState.RESPONDING)
+			) {
+				const next = !showFullReasoning;
 				actions.setShowFullReasoning(next);
 				actions.persistPreferences({ showFullReasoning: next });
 				toast.info(`FULL PREVIEWS: ${next ? "ON" : "OFF"}`, {
@@ -373,7 +389,7 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 			escPendingCancel,
 			hasInteracted,
 			hasGrounding,
-			state.showFullReasoning,
+			showFullReasoning,
 			state.showToolOutput,
 			actions,
 		]

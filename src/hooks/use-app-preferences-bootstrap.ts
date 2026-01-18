@@ -6,8 +6,10 @@ import type {
 	OnboardingStep,
 	ReasoningEffort,
 	SpeechSpeed,
+	ToolToggles,
 	VoiceInteractionType,
 } from "../types";
+import { DEFAULT_TOOL_TOGGLES } from "../types";
 import { loadPreferences, updatePreferences } from "../utils/preferences";
 import { setAudioDevice } from "../voice/audio-recorder";
 
@@ -18,6 +20,7 @@ export interface UseAppPreferencesBootstrapParams {
 		speechSpeed: SpeechSpeed;
 		reasoningEffort: ReasoningEffort;
 		bashApprovalLevel: BashApprovalLevel;
+		toolToggles?: ToolToggles;
 		audioDeviceName?: string;
 		outputDeviceName?: string;
 	};
@@ -140,6 +143,12 @@ export function useAppPreferencesBootstrap(
 			if (prefs?.bashApprovalLevel) {
 				manager.bashApprovalLevel = prefs.bashApprovalLevel;
 				setBashApprovalLevel(prefs.bashApprovalLevel);
+			}
+
+			if (prefs?.toolToggles) {
+				manager.toolToggles = { ...DEFAULT_TOOL_TOGGLES, ...prefs.toolToggles };
+			} else {
+				manager.toolToggles = { ...DEFAULT_TOOL_TOGGLES };
 			}
 
 			if (prefs?.showFullReasoning !== undefined) {
