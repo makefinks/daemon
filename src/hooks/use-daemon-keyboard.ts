@@ -165,11 +165,13 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 				return;
 			}
 
-			// 'G' key to open grounding menu (in IDLE or SPEAKING state when grounding exists)
+			// 'G' key to open grounding menu (in IDLE, SPEAKING, or RESPONDING state when grounding exists)
 			if (
 				(key.sequence === "g" || key.sequence === "G") &&
 				key.eventType === "press" &&
-				(currentState === DaemonState.IDLE || currentState === DaemonState.SPEAKING) &&
+				(currentState === DaemonState.IDLE ||
+					currentState === DaemonState.SPEAKING ||
+					currentState === DaemonState.RESPONDING) &&
 				hasGrounding
 			) {
 				closeAllMenus();
@@ -178,11 +180,13 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 				return;
 			}
 
-			// 'U' key to open URL menu (in IDLE or SPEAKING state when hasInteracted)
+			// 'U' key to open URL menu (in IDLE, SPEAKING, or RESPONDING state when hasInteracted)
 			if (
 				(key.sequence === "u" || key.sequence === "U") &&
 				key.eventType === "press" &&
-				(currentState === DaemonState.IDLE || currentState === DaemonState.SPEAKING) &&
+				(currentState === DaemonState.IDLE ||
+					currentState === DaemonState.SPEAKING ||
+					currentState === DaemonState.RESPONDING) &&
 				hasInteracted
 			) {
 				closeAllMenus();
