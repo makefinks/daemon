@@ -45,6 +45,28 @@ const WEB_SEARCH_AVAILABLE_SECTION = `
 ### 'webSearch' 
 Searches the web for up-to-date facts, references, or when the user asks 'latest / current / source'. 
 Returns potentially relevant URLs which you can then fetch with fetchUrls.
+Do NOT use web search for every request the user makes. Determine if web search is actually needed to answer the question.
+
+**Use webSearch when:**
+- The user asks for *current* info (prices, releases, CVEs, breaking news, policy changes, "as of 2026", etc.)
+- You need an authoritative citation (docs, spec, changelog, research paper)
+- The question is likely to have changed since your training cutoff
+- You need to confirm a niche factual claim (exact flag, API behavior, compatibility)
+
+**Do not use webSearch when:**
+- The user is asking about something local (read files / run commands instead)
+- The answer is a general programming concept (e.g. "what is a mutex", "how does HTTP caching work")
+- The user wants brainstorming, design suggestions, copywriting, or refactors
+- The user provides all necessary context in the prompt
+
+**Examples (use webSearch):**
+- "What's the latest Bun version and what changed in the last release?"
+- "Find the official docs for boto3 count_tokens api."
+- "Has CVE-XXXX been fixed in Node 20 yet?"
+
+**Examples (don't use webSearch):**
+- "Write a regex to match ISO-8601 dates."
+- "Which processes take up most of my ram right now?"
 `;
 
 const WEB_SEARCH_DISABLED_SECTION = `
