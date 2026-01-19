@@ -62,11 +62,11 @@ export function useReasoningAnimation(): UseReasoningAnimationReturn {
 				const maxWidth = terminalWidth ? Math.max(20, terminalWidth - 12) : REASONING_ANIMATION.LINE_WIDTH;
 				const lineWidth = Math.min(REASONING_ANIMATION.LINE_WIDTH, maxWidth);
 
-				// Add to display, keeping it at max width by trimming from the left
+				// Add to display, restart when reaching the line width
 				setReasoningDisplay((display: string) => {
 					const newDisplay = display + movedChars;
-					if (newDisplay.length > lineWidth) {
-						return newDisplay.slice(-lineWidth);
+					if (newDisplay.length >= lineWidth) {
+						return movedChars;
 					}
 					return newDisplay;
 				});

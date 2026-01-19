@@ -1,3 +1,4 @@
+import { TextAttributes } from "@opentui/core";
 import { COLORS, REASONING_ANIMATION } from "./constants";
 
 export function renderReasoningTicker(reasoningDisplay: string) {
@@ -29,7 +30,7 @@ export function renderReasoningTicker(reasoningDisplay: string) {
 		<text>
 			<span fg={REASONING_ANIMATION.PREFIX_COLOR}>{"// "}</span>
 			{segments.map((segment, index) => (
-				<span fg={segment.color} key={`reasoning-seg-${index}`}>
+				<span fg={segment.color} key={`reasoning-seg-${index}`} attributes={TextAttributes.ITALIC}>
 					{segment.text}
 				</span>
 			))}
