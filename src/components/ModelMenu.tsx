@@ -1,8 +1,8 @@
 import type { ScrollBoxRenderable, TextareaRenderable } from "@opentui/core";
 import { useKeyboard } from "@opentui/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ModelOption } from "../types";
 import { useMenuKeyboard } from "../hooks/use-menu-keyboard";
+import type { ModelOption } from "../types";
 import { COLORS } from "../ui/constants";
 import { formatContextWindowK, formatPrice } from "../utils/formatters";
 
@@ -58,15 +58,26 @@ export function ModelMenu({
 
 	const curatedIdSet = useMemo(() => new Set(sortedCurated.map((model) => model.id)), [sortedCurated]);
 
+	const savedModel = useMemo(() => {
+		if (!currentModelId) return null;
+		if (curatedIdSet.has(currentModelId)) return null;
+		const match = allModels.find((model) => model.id === currentModelId);
+		return match ?? { id: currentModelId, name: currentModelId };
+	}, [allModels, curatedIdSet, currentModelId]);
+
+	const savedModels = useMemo(() => (savedModel ? [savedModel] : []), [savedModel]);
+
 	const allModelsWithFallback = useMemo(() => {
 		if (!currentModelId) return allModels;
 		if (curatedIdSet.has(currentModelId)) return allModels;
-		if (allModels.some((model) => model.id === currentModelId)) return allModels;
+		if (savedModel) return allModels;
 		return [...allModels, { id: currentModelId, name: currentModelId }];
-	}, [allModels, curatedIdSet, currentModelId]);
+	}, [allModels, curatedIdSet, currentModelId, savedModel]);
 
 	const filteredAllModels = useMemo(() => {
-		const filtered = allModelsWithFallback.filter((model) => !curatedIdSet.has(model.id));
+		const filtered = allModelsWithFallback.filter(
+			(model) => !curatedIdSet.has(model.id) && model.id !== savedModel?.id
+		);
 		const query = searchQuery.trim().toLowerCase();
 		if (query.length < MIN_ALL_MODEL_QUERY_LENGTH) {
 			return [];
@@ -78,28 +89,44 @@ export function ModelMenu({
 			: filtered;
 
 		return matching.sort((a, b) => a.name.localeCompare(b.name));
-	}, [allModelsWithFallback, curatedIdSet, searchQuery]);
+	}, [allModelsWithFallback, curatedIdSet, savedModel?.id, searchQuery]);
 
-	const totalItems = sortedCurated.length + filteredAllModels.length;
+	const totalItems = sortedCurated.length + savedModels.length + filteredAllModels.length;
 
 	const initialIndex = useMemo(() => {
 		if (totalItems === 0) return 0;
 		const curatedIdx = sortedCurated.findIndex((model) => model.id === currentModelId);
 		if (curatedIdx >= 0) return curatedIdx;
+		const savedIdx = savedModels.findIndex((model) => model.id === currentModelId);
+		if (savedIdx >= 0) return sortedCurated.length + savedIdx;
 		const allIdx = filteredAllModels.findIndex((model) => model.id === currentModelId);
-		if (allIdx >= 0) return sortedCurated.length + allIdx;
+		if (allIdx >= 0) return sortedCurated.length + savedModels.length + allIdx;
 		return 0;
-	}, [sortedCurated, filteredAllModels, currentModelId, totalItems]);
+	}, [sortedCurated, savedModels, filteredAllModels, currentModelId, totalItems]);
 
 	const { selectedIndex } = useMenuKeyboard({
 		itemCount: totalItems,
 		initialIndex,
 		onClose,
 		onSelect: (selectedIdx) => {
-			const isCurated = selectedIdx < sortedCurated.length;
-			const model = isCurated
-				? sortedCurated[selectedIdx]
-				: filteredAllModels[selectedIdx - sortedCurated.length];
+			if (selectedIdx < sortedCurated.length) {
+				const model = sortedCurated[selectedIdx];
+				if (model) {
+					onSelect(model);
+				}
+				return;
+			}
+
+			const afterCurated = selectedIdx - sortedCurated.length;
+			if (afterCurated < savedModels.length) {
+				const model = savedModels[afterCurated];
+				if (model) {
+					onSelect(model);
+				}
+				return;
+			}
+
+			const model = filteredAllModels[afterCurated - savedModels.length];
 			if (model) {
 				onSelect(model);
 			}
@@ -124,7 +151,7 @@ export function ModelMenu({
 		}
 	});
 
-	const allSelectedIndex = selectedIndex - sortedCurated.length;
+	const allSelectedIndex = selectedIndex - sortedCurated.length - savedModels.length;
 	const isAllSectionSelected = allSelectedIndex >= 0;
 
 	const scrollRef = useRef<ScrollBoxRenderable | null>(null);
@@ -344,6 +371,25 @@ export function ModelMenu({
 						</box>
 					</>
 				)}
+
+				{savedModels.length > 0 ? (
+					<>
+						<box marginBottom={1} marginTop={1}>
+							<text>
+								<span fg={COLORS.DAEMON_LABEL}>[ SAVED ]</span>
+							</text>
+						</box>
+						<box flexDirection="column">
+							{savedModels.map((model, idx) =>
+								renderModelRow(
+									model,
+									sortedCurated.length + idx === selectedIndex,
+									model.id === currentModelId
+								)
+							)}
+						</box>
+					</>
+				) : null}
 
 				<box marginBottom={1} marginTop={1}>
 					<text>

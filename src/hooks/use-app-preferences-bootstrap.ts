@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { AVAILABLE_MODELS, setOpenRouterProviderTag, setResponseModel } from "../ai/model-config";
+import { setOpenRouterProviderTag, setResponseModel } from "../ai/model-config";
 import type {
 	AppPreferences,
 	BashApprovalLevel,
@@ -94,11 +94,8 @@ export function useAppPreferencesBootstrap(
 			}
 
 			if (prefs?.modelId) {
-				const modelIdx = AVAILABLE_MODELS.findIndex((m) => m.id === prefs.modelId);
-				if (modelIdx >= 0) {
-					setResponseModel(prefs.modelId);
-					setCurrentModelId(prefs.modelId);
-				}
+				setResponseModel(prefs.modelId);
+				setCurrentModelId(prefs.modelId);
 			}
 
 			if (prefs?.openRouterProviderTag) {
