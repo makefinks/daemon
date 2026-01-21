@@ -41,6 +41,10 @@ export function ContentBlockView({
 
 		// Show full reasoning if enabled
 		if (showFullReasoning) {
+			const durationLabel =
+				block.durationMs !== undefined
+					? ` · ${formatElapsedTime(block.durationMs, { style: "detailed" })}`
+					: "";
 			return (
 				<box
 					flexDirection="column"
@@ -51,6 +55,7 @@ export function ContentBlockView({
 				>
 					<text>
 						<span fg={COLORS.REASONING}>{"REASONING"}</span>
+						<span fg={COLORS.REASONING_DIM}>{durationLabel}</span>
 					</text>
 					<code
 						content={cleanedContent}
@@ -74,7 +79,7 @@ export function ContentBlockView({
 		return (
 			<text>
 				<span fg={COLORS.REASONING_DIM}>
-					{"// REASONING"}
+					{"REASONING"}
 					{durationLabel}
 				</span>
 			</text>

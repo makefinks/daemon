@@ -16,6 +16,8 @@ import { TypingInputBar } from "../../components/TypingInputBar";
 import type { ContentBlock, ConversationMessage, TokenUsage } from "../../types";
 import { DaemonState } from "../../types";
 import { COLORS, REASONING_MARKDOWN_STYLE } from "../../ui/constants";
+import { renderReasoningTicker } from "../../ui/reasoning-ticker";
+import { formatElapsedTime } from "../../utils/formatters";
 import type { ModelMetadata } from "../../utils/model-metadata";
 
 export interface ConversationDisplayState {
@@ -175,6 +177,8 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 	const isReasoning =
 		daemonState === DaemonState.RESPONDING &&
 		(!conversation.currentResponse || !!reasoningDisplay || !!reasoningQueue);
+	const fullReasoningDurationLabel =
+		responseElapsedMs > 0 ? ` · ${formatElapsedTime(responseElapsedMs, { style: "detailed" })}` : "";
 
 	return (
 		<>
@@ -408,6 +412,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 									>
 										<text>
 											<span fg={COLORS.REASONING}>{"REASONING"}</span>
+											<span fg={COLORS.REASONING_DIM}>{fullReasoningDurationLabel}</span>
 										</text>
 										<code
 											content={fullReasoning}
@@ -418,12 +423,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 										/>
 									</box>
 								) : reasoningDisplay ? (
-									<text>
-										<span fg={COLORS.REASONING_DIM}>
-											{"⟡ "}
-											{reasoningDisplay}
-										</span>
-									</text>
+									renderReasoningTicker(reasoningDisplay)
 								) : null}
 							</box>
 						)}

@@ -28,7 +28,10 @@ export function renderReasoningTicker(reasoningDisplay: string) {
 
 	return (
 		<text>
-			<span fg={REASONING_ANIMATION.PREFIX_COLOR}>{"// "}</span>
+			<span fg={COLORS.REASONING_DIM} attributes={TextAttributes.BOLD}>
+				{"REASONING"}
+			</span>
+			<span fg={REASONING_ANIMATION.PREFIX_COLOR}>{" | "}</span>
 			{segments.map((segment, index) => (
 				<span fg={segment.color} key={`reasoning-seg-${index}`} attributes={TextAttributes.ITALIC}>
 					{segment.text}
