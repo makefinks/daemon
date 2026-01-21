@@ -1,18 +1,18 @@
 import { useMemo } from "react";
-import { COLORS } from "../ui/constants";
+import { useToolApprovalForCall } from "../hooks/use-tool-approval";
 import type { ToolCall } from "../types";
+import { COLORS } from "../ui/constants";
+import { ApprovalPicker } from "./ApprovalPicker";
 import {
-	getToolLayout,
+	ErrorPreviewView,
+	ResultPreviewView,
+	ToolBodyView,
+	ToolHeaderView,
 	defaultToolLayout,
 	getDefaultAbbreviation,
-	ToolHeaderView,
-	ToolBodyView,
-	ResultPreviewView,
-	ErrorPreviewView,
 	getStatusBorderColor,
+	getToolLayout,
 } from "./tool-layouts";
-import { ApprovalPicker } from "./ApprovalPicker";
-import { useToolApprovalForCall } from "../hooks/use-tool-approval";
 
 interface ToolCallViewProps {
 	call: ToolCall;
@@ -68,10 +68,7 @@ export function ToolCallView({ call, result, showOutput = true }: ToolCallViewPr
 	const toolName = layout.abbreviation ?? getDefaultAbbreviation(call.name);
 	const borderColor = getStatusBorderColor(call.status);
 
-	const customBody = useMemo(() => {
-		if (!layout.renderBody) return null;
-		return layout.renderBody({ call, result, showOutput });
-	}, [layout, call, result, showOutput]);
+	const customBody = layout.renderBody ? layout.renderBody({ call, result, showOutput }) : null;
 
 	return (
 		<box

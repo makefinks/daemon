@@ -5,12 +5,13 @@
 
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { tool } from "ai";
-import { ToolLoopAgent, stepCountIs } from "ai";
+import { type ModelMessage, ToolLoopAgent, stepCountIs } from "ai";
 import type { ToolSet } from "ai";
 import { z } from "zod";
 import { getDaemonManager } from "../../state/daemon-state";
 import type { SubagentProgressEmitter } from "../../types";
 import { getOpenRouterReportedCost } from "../../utils/openrouter-reported-cost";
+import { extractFinalAssistantText } from "../message-utils";
 import { buildOpenRouterChatSettings, getSubagentModel } from "../model-config";
 import { buildToolSet } from "./tool-registry";
 
@@ -60,7 +61,7 @@ RULES:
 - The final summary needs to be self contained and needs to provide enough information to the main agent so it is clear what you have done and what the results are.
 
 Today's date: ${new Date().toISOString().split("T")[0]}
-`;
+	`;
 }
 
 // Global emitter that will be set by the daemon-ai module
@@ -109,7 +110,6 @@ Provide a concise summary for display and a very specific task description (espe
 				stopWhen: stepCountIs(MAX_SUBAGENT_STEPS),
 			});
 
-			let responseText = "";
 			let costTotal = 0;
 			let hasCost = false;
 
@@ -119,9 +119,7 @@ Provide a concise summary for display and a very specific task description (espe
 			});
 
 			for await (const part of stream.fullStream) {
-				if (part.type === "text-delta") {
-					responseText += part.text;
-				} else if (part.type === "finish-step") {
+				if (part.type === "finish-step") {
 					const reportedCost = getOpenRouterReportedCost(part.providerMetadata);
 					if (reportedCost !== undefined) {
 						costTotal += reportedCost;
@@ -145,6 +143,9 @@ Provide a concise summary for display and a very specific task description (espe
 				}
 			}
 
+			const responseMessages = await stream.response.then((response) => response.messages);
+			const finalResponse = extractFinalAssistantText(responseMessages);
+
 			const streamUsage = await stream.usage;
 			if (streamUsage) {
 				progressEmitter?.onSubagentUsage({
@@ -163,7 +164,7 @@ Provide a concise summary for display and a very specific task description (espe
 			return {
 				success: true,
 				summary,
-				response: responseText || "Task completed but no text response generated.",
+				response: finalResponse || "Task completed but no text response generated.",
 			};
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);

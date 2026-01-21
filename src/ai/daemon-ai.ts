@@ -25,6 +25,7 @@ import type {
 import { debug, toolDebug } from "../utils/debug-logger";
 import { getOpenRouterReportedCost } from "../utils/openrouter-reported-cost";
 import { getWorkspacePath } from "../utils/workspace-manager";
+import { extractFinalAssistantText } from "./message-utils";
 import { TRANSCRIPTION_MODEL, buildOpenRouterChatSettings, getResponseModel } from "./model-config";
 import { sanitizeMessagesForInput } from "./sanitize-messages";
 import { type InteractionMode, buildDaemonSystemPrompt } from "./system-prompt";
@@ -52,40 +53,6 @@ function normalizeStreamError(error: unknown): Error {
 		if (typeof message === "string") return new Error(message);
 	}
 	return new Error(String(error));
-}
-
-/**
- * Extract the final text content from the last assistant message.
- * In multi-step agent loops, we only want to speak the final response, not intermediate text.
- */
-function extractFinalAssistantText(messages: ModelMessage[]): string {
-	// Find the last assistant message
-	for (let i = messages.length - 1; i >= 0; i--) {
-		const msg = messages[i];
-		if (msg?.role === "assistant") {
-			const content = msg.content;
-			if (Array.isArray(content)) {
-				// Find the last text part. In some models/providers, intermediate
-				// "thoughts" might be included as separate text blocks before the final answer.
-				// We prioritize the last text block in the message for the final response.
-				for (let j = content.length - 1; j >= 0; j--) {
-					const part = content[j];
-					if (
-						part &&
-						typeof part === "object" &&
-						"type" in part &&
-						part.type === "text" &&
-						"text" in part &&
-						typeof part.text === "string"
-					) {
-						return part.text;
-					}
-				}
-				// If this assistant message had no text parts, continue searching previous messages
-			}
-		}
-	}
-	return "";
 }
 
 /**

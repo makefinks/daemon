@@ -1,7 +1,7 @@
 import { TextAttributes } from "@opentui/core";
-import { COLORS } from "../../ui/constants";
-import type { ToolHeader, ToolBody, ToolBodyLine } from "./types";
 import type { ToolCallStatus } from "../../types";
+import { COLORS } from "../../ui/constants";
+import type { ToolBody, ToolBodyLine, ToolHeader } from "./types";
 
 interface ToolHeaderViewProps {
 	toolName: string;
@@ -11,11 +11,12 @@ interface ToolHeaderViewProps {
 }
 
 export function ToolHeaderView({ toolName, header, isRunning, toolColor }: ToolHeaderViewProps) {
+	const displayName = toolName.toUpperCase();
 	return (
 		<box flexDirection="row" alignItems="center" justifyContent="space-between" width="100%">
 			<text>
 				<span fg={toolColor}>{"↯ "}</span>
-				<span fg={toolColor}>{toolName}</span>
+				<span fg={toolColor}>{displayName}</span>
 				{header?.primary && <span fg={COLORS.TOOL_INPUT_TEXT}>{` ${header.primary}`}</span>}
 				{header?.secondary && (
 					<span
