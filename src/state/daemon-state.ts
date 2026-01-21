@@ -16,7 +16,7 @@ import type {
 } from "../types";
 import { DEFAULT_TOOL_TOGGLES } from "../types";
 import { DaemonState } from "../types";
-import { debug } from "../utils/debug-logger";
+import { debug, messageDebug } from "../utils/debug-logger";
 import { SpeechController } from "../voice/tts/speech-controller";
 import { VoiceInputController } from "../voice/voice-input-controller";
 import { type DaemonStateEvents, daemonEvents } from "./daemon-events";
@@ -272,7 +272,7 @@ class DaemonStateManager {
 		this.setState(DaemonState.RESPONDING);
 		this._response = "";
 		const turnId = ++this._turnId;
-		debug.info("agent-turn-start", {
+		messageDebug.info("agent-turn-start", {
 			turnId,
 			text,
 			mode: this._interactionMode,
@@ -319,7 +319,7 @@ class DaemonStateManager {
 				return;
 			}
 
-			debug.info("agent-turn-complete", {
+			messageDebug.info("agent-turn-complete", {
 				turnId,
 				fullText: result.fullText,
 				finalText: result.finalText,

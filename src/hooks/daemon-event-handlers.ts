@@ -22,7 +22,7 @@ import type {
 import { DaemonState } from "../types";
 import { REASONING_COLORS, STATE_COLORS } from "../types/theme";
 import { REASONING_ANIMATION } from "../ui/constants";
-import { debug } from "../utils/debug-logger";
+import { debug, messageDebug } from "../utils/debug-logger";
 import { hasVisibleText } from "../utils/formatters";
 import {
 	INTERRUPTED_TOOL_RESULT,
@@ -736,7 +736,7 @@ export function createCancelledHandler(
 		const hasBlocks = refs.contentBlocksRef.current.length > 0;
 		const contentBlocks = hasBlocks ? buildInterruptedContentBlocks(refs.contentBlocksRef.current) : [];
 
-		debug.info("agent-turn-incomplete", {
+		messageDebug.info("agent-turn-incomplete", {
 			userText,
 			contentBlocks,
 		});
@@ -753,7 +753,7 @@ export function createCancelledHandler(
 					}
 				: null;
 
-			debug.info("agent-turn-incomplete-messages", {
+			messageDebug.info("agent-turn-incomplete-messages", {
 				responseMessages,
 			});
 

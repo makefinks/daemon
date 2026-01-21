@@ -22,7 +22,7 @@ import type {
 	ToolApprovalResponse,
 	TranscriptionResult,
 } from "../types";
-import { debug } from "../utils/debug-logger";
+import { debug, toolDebug } from "../utils/debug-logger";
 import { getOpenRouterReportedCost } from "../utils/openrouter-reported-cost";
 import { getWorkspacePath } from "../utils/workspace-manager";
 import { TRANSCRIPTION_MODEL, buildOpenRouterChatSettings, getResponseModel } from "./model-config";
@@ -239,6 +239,12 @@ export async function generateResponse(
 				} else if (part.type === "tool-result") {
 					callbacks.onToolResult?.(part.toolName, part.output, part.toolCallId);
 				} else if (part.type === "tool-error") {
+					toolDebug.error("tool-error", {
+						toolName: part.toolName,
+						toolCallId: part.toolCallId,
+						input: part.input,
+						error: part.error,
+					});
 					callbacks.onToolResult?.(part.toolName, { error: part.error, input: part.input }, part.toolCallId);
 				} else if (part.type === "tool-approval-request") {
 					const approvalRequest: ToolApprovalRequest = {

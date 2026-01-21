@@ -6,19 +6,24 @@
  *   import { debug } from "../utils/debug-logger";
  *   debug.log("message", someObject);
  *
- * Then run `tail -f debug.log` in a separate terminal.
+ * Then run `tail -f ~/.config/daemon/logs/debug.log` in a separate terminal.
+ * Tool-specific logging uses `~/.config/daemon/logs/tools.log`.
+ * Message logging uses `~/.config/daemon/logs/messages.log`.
  */
 
 import fs from "node:fs";
 import path from "node:path";
 import { getAppConfigDir } from "./preferences";
 
-const LOG_FILE = path.join(getAppConfigDir(), "debug.log");
+const LOG_DIR = path.join(getAppConfigDir(), "logs");
+const LOG_FILE = path.join(LOG_DIR, "debug.log");
+const TOOLS_LOG_FILE = path.join(LOG_DIR, "tools.log");
+const MESSAGES_LOG_FILE = path.join(LOG_DIR, "messages.log");
 const ENABLED = process.env.DEBUG_LOG === "1" || process.env.DEBUG_LOG === "true";
 
-function ensureLogDir(): void {
+function ensureLogDir(logDir: string): void {
 	try {
-		fs.mkdirSync(getAppConfigDir(), { recursive: true });
+		fs.mkdirSync(logDir, { recursive: true });
 	} catch {
 		// Silently fail if we can't create the directory
 	}
@@ -35,7 +40,7 @@ function formatValue(value: unknown): string {
 	}
 }
 
-function writeLog(level: string, args: unknown[]): void {
+function writeLog(logFile: string, level: string, args: unknown[]): void {
 	if (!ENABLED) return;
 
 	const timestamp = new Date().toISOString();
@@ -43,27 +48,33 @@ function writeLog(level: string, args: unknown[]): void {
 	const line = `[${timestamp}] [${level}] ${formatted}\n`;
 
 	try {
-		ensureLogDir();
-		fs.appendFileSync(LOG_FILE, line);
+		ensureLogDir(LOG_DIR);
+		fs.appendFileSync(logFile, line);
 	} catch {
 		// Silently fail if we can't write
 	}
 }
 
-export const debug = {
-	log: (...args: unknown[]) => writeLog("LOG", args),
-	info: (...args: unknown[]) => writeLog("INFO", args),
-	warn: (...args: unknown[]) => writeLog("WARN", args),
-	error: (...args: unknown[]) => writeLog("ERROR", args),
+function createDebugLogger(logFile: string) {
+	return {
+		log: (...args: unknown[]) => writeLog(logFile, "LOG", args),
+		info: (...args: unknown[]) => writeLog(logFile, "INFO", args),
+		warn: (...args: unknown[]) => writeLog(logFile, "WARN", args),
+		error: (...args: unknown[]) => writeLog(logFile, "ERROR", args),
 
-	/** Clear the log file */
-	clear: () => {
-		if (!ENABLED) return;
-		try {
-			ensureLogDir();
-			fs.writeFileSync(LOG_FILE, "");
-		} catch {
-			// Silently fail
-		}
-	},
-};
+		/** Clear the log file */
+		clear: () => {
+			if (!ENABLED) return;
+			try {
+				ensureLogDir(LOG_DIR);
+				fs.writeFileSync(logFile, "");
+			} catch {
+				// Silently fail
+			}
+		},
+	};
+}
+
+export const debug = createDebugLogger(LOG_FILE);
+export const toolDebug = createDebugLogger(TOOLS_LOG_FILE);
+export const messageDebug = createDebugLogger(MESSAGES_LOG_FILE);
