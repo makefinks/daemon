@@ -1,4 +1,4 @@
-import { useRenderer } from "@opentui/react";
+import { useOnResize, useRenderer } from "@opentui/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { ConversationPaneProps } from "../app/components/ConversationPane";
@@ -21,6 +21,7 @@ import { useSessionController } from "./use-session-controller";
 import { getDaemonManager } from "../state/daemon-state";
 import { deleteSession } from "../state/session-store";
 import { DaemonState } from "../types";
+import { STARTUP_BANNER_DURATION_MS, STARTUP_IDLE_CHROME_LEAD_MS } from "../ui/startup";
 
 export interface AppControllerResult {
 	handleCopyOnSelectMouseUp: () => void;
@@ -31,6 +32,8 @@ export interface AppControllerResult {
 		width: number;
 		height: number;
 		zIndex: number;
+		showBanner: boolean;
+		animateBanner: boolean;
 	};
 	isListeningDim: boolean;
 	listeningDimTop: number;
@@ -54,6 +57,25 @@ export function useAppController({
 	const { handleCopyOnSelectMouseUp } = useCopyOnSelect();
 
 	const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+	const [terminalSize, setTerminalSize] = useState({
+		width: renderer.terminalWidth,
+		height: renderer.terminalHeight,
+	});
+	// Track if this is initial app load for startup animation
+	const [isInitialLoad, setIsInitialLoad] = useState(true);
+	const [startupIntroDone, setStartupIntroDone] = useState(false);
+
+	useEffect(() => {
+		// Delay idle UI chrome (status/hotkeys) so the banner can resolve first.
+		const delayMs = Math.max(0, STARTUP_BANNER_DURATION_MS - STARTUP_IDLE_CHROME_LEAD_MS);
+		const t = setTimeout(() => setStartupIntroDone(true), delayMs);
+		return () => clearTimeout(t);
+	}, []);
+
+	// Update terminal size state on resize to trigger re-render
+	useOnResize((width, height) => {
+		setTerminalSize({ width, height });
+	});
 
 	const menus = useAppMenus();
 	const {
@@ -373,6 +395,19 @@ export function useAppController({
 		}
 	}, [daemon.daemonState]);
 
+	// Turn off initial load state once user interacts (banner animation is one-time only)
+	useEffect(() => {
+		if (daemon.hasInteracted && isInitialLoad) {
+			setIsInitialLoad(false);
+		}
+	}, [daemon.hasInteracted, isInitialLoad]);
+
+	useEffect(() => {
+		if (daemon.hasInteracted && !startupIntroDone) {
+			setStartupIntroDone(true);
+		}
+	}, [daemon.hasInteracted, startupIntroDone]);
+
 	const appContextValue = useAppContextBuilder({
 		menus: {
 			showDeviceMenu,
@@ -485,6 +520,11 @@ export function useAppController({
 			width: avatarWidth,
 			height: avatarHeight,
 			zIndex: isListening && daemon.hasInteracted ? 2 : 0,
+			// Show banner only when idle, not interacted, and terminal is large enough
+			// Banner is 8 lines tall and ~94 chars wide
+			showBanner: !daemon.hasInteracted && terminalSize.height >= 30 && terminalSize.width >= 100,
+			// Animate banner with glitch effect on initial app load
+			animateBanner: isInitialLoad,
 		},
 		isListeningDim,
 		listeningDimTop: statusBarHeight,
@@ -536,6 +576,7 @@ export function useAppController({
 			modelName: modelName ?? "",
 			sessionTitle: sessionTitle ?? "",
 			isVoiceOutputEnabled: interactionMode === "voice",
+			startupIntroDone,
 		},
 		appContextValue,
 		overlaysProps: {

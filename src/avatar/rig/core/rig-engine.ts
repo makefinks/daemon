@@ -14,6 +14,7 @@ import { updateMainAnchor } from "../update/update-main-anchor";
 import { updateParticles } from "../update/update-particles";
 import { updateRings } from "../update/update-rings";
 import { updateSigils } from "../update/update-sigils";
+import { advanceSpawn, applySpawn } from "../update/update-spawn";
 import { clamp01 } from "../utils/math";
 import type { RigEngineOptions, RigEvent } from "./rig-types";
 
@@ -55,9 +56,16 @@ export class RigEngine {
 		const dt = Math.min(0.1, deltaS);
 		this.state.glitch.timer += dt;
 
+		const spawnProgress = advanceSpawn(this.state, dt);
+		const isSpawning = spawnProgress < 1;
+
 		const intensity = updateIntensityAndAudio(this.state, dt);
 		const isIdle = intensity < 0.1;
-		const allowGlitch = intensity > 0.4 && !this.state.reasoning.active;
+
+		// Allow glitch during spawn for effect, or during high intensity
+		const allowGlitch =
+			(intensity > 0.4 && !this.state.reasoning.active) ||
+			(isSpawning && this.state.spawn.glitchIntensity > 0.3);
 
 		updateMainAnchor(this.elements, this.state, dt, intensity);
 		updateCore(this.elements, this.state, dt, intensity);
@@ -69,6 +77,7 @@ export class RigEngine {
 		updateGlitchBehavior(this.elements, this.state, dt, intensity, allowGlitch);
 		updateIdleAmbience(this.elements, this.state, dt, isIdle);
 		updateThemeColors(this.elements, this.state, dt);
+		applySpawn(this.elements, this.state);
 	}
 
 	public handle(event: RigEvent): void {
@@ -167,6 +176,16 @@ export class RigEngine {
 	public triggerTypingPulse(): void {
 		this.state.typing.pulse = Math.min(1.0, this.state.typing.pulse + 0.3);
 		this.state.intensity.spinBoost = Math.max(this.state.intensity.spinBoost, 1.5);
+	}
+
+	/** Returns the current spawn progress (0-1, where 1 = fully spawned) */
+	public getSpawnProgress(): number {
+		return this.state.spawn.progress;
+	}
+
+	/** Returns true if spawn animation is complete */
+	public isSpawnComplete(): boolean {
+		return this.state.spawn.complete;
 	}
 
 	public dispose(): void {

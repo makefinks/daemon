@@ -7,7 +7,6 @@ import {
 	isLastTextBlockInList,
 	shouldHideContentBlock,
 } from "../../components/ContentBlockView";
-import { DaemonText } from "../../components/DaemonText";
 import { GroundingBadge } from "../../components/GroundingBadge";
 import { InlineStatusIndicator } from "../../components/InlineStatusIndicator";
 import { StatusBar } from "../../components/StatusBar";
@@ -78,6 +77,7 @@ export interface ConversationPaneProps {
 	modelName?: string;
 	sessionTitle?: string;
 	isVoiceOutputEnabled?: boolean;
+	startupIntroDone?: boolean;
 }
 
 function ConversationPaneImpl(props: ConversationPaneProps) {
@@ -98,6 +98,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 		modelName,
 		sessionTitle,
 		isVoiceOutputEnabled,
+		startupIntroDone = true,
 	} = props;
 
 	const { conversationHistory, currentTranscription, currentContentBlocks } = conversation;
@@ -193,7 +194,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 				/>
 			)}
 
-			{!hasInteracted && (
+			{!hasInteracted && startupIntroDone && (
 				<box
 					position="absolute"
 					left={0}

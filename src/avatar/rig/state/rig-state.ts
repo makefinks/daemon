@@ -77,6 +77,13 @@ export interface CoreDriftState {
 	phaseZ: number;
 }
 
+export interface SpawnState {
+	progress: number;
+	elapsed: number;
+	complete: boolean;
+	glitchIntensity: number;
+}
+
 export interface ThemeState {
 	current: AvatarColorTheme;
 	target: AvatarColorTheme;
@@ -94,6 +101,7 @@ export interface RigState {
 	eyeDrift: EyeDriftState;
 	particlePulse: ParticlePulseState;
 	coreDrift: CoreDriftState;
+	spawn: SpawnState;
 	theme: ThemeState;
 }
 
@@ -170,6 +178,12 @@ export function createInitialState(): RigState {
 			phaseX: Math.random() * Math.PI * 2,
 			phaseY: Math.random() * Math.PI * 2,
 			phaseZ: Math.random() * Math.PI * 2,
+		},
+		spawn: {
+			progress: 0,
+			elapsed: 0,
+			complete: false,
+			glitchIntensity: 1,
 		},
 		theme: {
 			current: { ...DEFAULT_THEME },
