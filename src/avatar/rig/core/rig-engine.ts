@@ -14,7 +14,7 @@ import { updateMainAnchor } from "../update/update-main-anchor";
 import { updateParticles } from "../update/update-particles";
 import { updateRings } from "../update/update-rings";
 import { updateSigils } from "../update/update-sigils";
-import { advanceSpawn, applySpawn } from "../update/update-spawn";
+import { advanceSpawn, applySpawn, resetSpawnState, skipSpawnAnimation } from "../update/update-spawn";
 import { clamp01 } from "../utils/math";
 import type { RigEngineOptions, RigEvent } from "./rig-types";
 
@@ -176,6 +176,14 @@ export class RigEngine {
 	public triggerTypingPulse(): void {
 		this.state.typing.pulse = Math.min(1.0, this.state.typing.pulse + 0.3);
 		this.state.intensity.spinBoost = Math.max(this.state.intensity.spinBoost, 1.5);
+	}
+
+	public resetSpawn(): void {
+		resetSpawnState(this.state);
+	}
+
+	public skipSpawn(): void {
+		skipSpawnAnimation(this.state);
 	}
 
 	/** Returns the current spawn progress (0-1, where 1 = fully spawned) */

@@ -72,6 +72,7 @@ export function App() {
 						zIndex={controller.avatarLayerProps.zIndex}
 						showBanner={controller.avatarLayerProps.showBanner}
 						animateBanner={controller.avatarLayerProps.animateBanner}
+						startupAnimationActive={controller.avatarLayerProps.startupAnimationActive}
 					/>
 
 					{controller.isListeningDim ? (

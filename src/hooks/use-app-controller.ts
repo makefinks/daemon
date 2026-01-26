@@ -34,6 +34,7 @@ export interface AppControllerResult {
 		zIndex: number;
 		showBanner: boolean;
 		animateBanner: boolean;
+		startupAnimationActive: boolean;
 	};
 	isListeningDim: boolean;
 	listeningDimTop: number;
@@ -64,13 +65,6 @@ export function useAppController({
 	// Track if this is initial app load for startup animation
 	const [isInitialLoad, setIsInitialLoad] = useState(true);
 	const [startupIntroDone, setStartupIntroDone] = useState(false);
-
-	useEffect(() => {
-		// Delay idle UI chrome (status/hotkeys) so the banner can resolve first.
-		const delayMs = Math.max(0, STARTUP_BANNER_DURATION_MS - STARTUP_IDLE_CHROME_LEAD_MS);
-		const t = setTimeout(() => setStartupIntroDone(true), delayMs);
-		return () => clearTimeout(t);
-	}, []);
 
 	// Update terminal size state on resize to trigger re-render
 	useOnResize((width, height) => {
@@ -141,6 +135,19 @@ export function useAppController({
 		preferencesLoaded,
 		showDeviceMenu,
 	});
+	const onboardingComplete = preferencesLoaded && !bootstrap.onboardingActive;
+
+	useEffect(() => {
+		if (!onboardingComplete) {
+			setStartupIntroDone(false);
+			return;
+		}
+		// Delay idle UI chrome (status/hotkeys) so the banner can resolve first.
+		const delayMs = Math.max(0, STARTUP_BANNER_DURATION_MS - STARTUP_IDLE_CHROME_LEAD_MS);
+		setStartupIntroDone(false);
+		const t = setTimeout(() => setStartupIntroDone(true), delayMs);
+		return () => clearTimeout(t);
+	}, [onboardingComplete]);
 
 	const daemon = useDaemonRuntimeController({
 		currentModelId,
@@ -408,6 +415,8 @@ export function useAppController({
 		}
 	}, [daemon.hasInteracted, startupIntroDone]);
 
+	const startupAnimationActive = onboardingComplete && isInitialLoad;
+
 	const appContextValue = useAppContextBuilder({
 		menus: {
 			showDeviceMenu,
@@ -521,10 +530,10 @@ export function useAppController({
 			height: avatarHeight,
 			zIndex: isListening && daemon.hasInteracted ? 2 : 0,
 			// Show banner only when idle, not interacted, and terminal is large enough
-			// Banner is 8 lines tall and ~94 chars wide
-			showBanner: !daemon.hasInteracted && terminalSize.height >= 30 && terminalSize.width >= 100,
-			// Animate banner with glitch effect on initial app load
-			animateBanner: isInitialLoad,
+			showBanner:
+				onboardingComplete && !daemon.hasInteracted && terminalSize.height >= 30 && terminalSize.width >= 100,
+			animateBanner: startupAnimationActive,
+			startupAnimationActive,
 		},
 		isListeningDim,
 		listeningDimTop: statusBarHeight,

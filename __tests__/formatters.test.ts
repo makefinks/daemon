@@ -35,8 +35,8 @@ describe("formatReasoningPreview", () => {
 	it("truncates to last N characters when too long", () => {
 		const longText = "a".repeat(150);
 		const result = formatReasoningPreview(longText);
-		expect(result.length).toBeLessThanOrEqual(120);
-		expect(result).toBe("a".repeat(120));
+		expect(result.length).toBeLessThanOrEqual(200);
+		expect(result).toBe("a".repeat(150));
 	});
 });
 

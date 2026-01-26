@@ -1,16 +1,16 @@
 import {
+	type CliRenderer,
 	FrameBufferRenderable,
+	OptimizedBuffer,
 	RGBA,
 	TextAttributes,
-	OptimizedBuffer,
-	type CliRenderer,
 } from "@opentui/core";
 import { SuperSampleType, ThreeCliRenderer } from "@opentui/core/3d";
 import {
-	createDaemonRig,
 	type DaemonColorTheme,
 	type DaemonRig,
 	type ToolCategory,
+	createDaemonRig,
 } from "./daemon-avatar-rig";
 
 export type { ToolCategory } from "./daemon-avatar-rig";
@@ -30,6 +30,7 @@ export class DaemonAvatarRenderable extends FrameBufferRenderable {
 	private pendingTheme: DaemonColorTheme | null = null;
 	private pendingIntensity: { value: number; immediate: boolean } | null = null;
 	private pendingAudioLevel: { value: number; immediate: boolean } | null = null;
+	private pendingSpawnAction: "reset" | "skip" | null = null;
 
 	private getDesiredAspectRatio(width: number, height: number): number {
 		if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return 1;
@@ -137,6 +138,14 @@ export class DaemonAvatarRenderable extends FrameBufferRenderable {
 		}
 		if (this.pendingAudioLevel) {
 			this.rig.setAudioLevel(this.pendingAudioLevel.value, { immediate: this.pendingAudioLevel.immediate });
+		}
+		if (this.pendingSpawnAction) {
+			if (this.pendingSpawnAction === "reset") {
+				this.rig.resetSpawn();
+			} else {
+				this.rig.skipSpawn();
+			}
+			this.pendingSpawnAction = null;
 		}
 		this.renderBuffer = OptimizedBuffer.create(
 			this.frameBuffer.width,
@@ -338,6 +347,20 @@ export class DaemonAvatarRenderable extends FrameBufferRenderable {
 	public triggerTypingPulse(): void {
 		if (this.rig) {
 			this.rig.triggerTypingPulse();
+		}
+	}
+
+	public resetSpawn(): void {
+		this.pendingSpawnAction = "reset";
+		if (this.rig) {
+			this.rig.resetSpawn();
+		}
+	}
+
+	public skipSpawn(): void {
+		this.pendingSpawnAction = "skip";
+		if (this.rig) {
+			this.rig.skipSpawn();
 		}
 	}
 }
