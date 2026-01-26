@@ -241,28 +241,6 @@ export class DaemonAvatarRenderable extends FrameBufferRenderable {
 			const w = fb.width;
 			const h = fb.height;
 			fb.clear(RGBA.fromValues(0, 0, 0, 0));
-
-			const glyph = w >= 18 ? "⟡  SUMMONING  ⟡" : "SUMMONING";
-			const gx = Math.max(0, Math.floor(w / 2) - Math.floor(glyph.length / 2));
-			const gy = Math.floor(h / 2);
-			fb.drawText(
-				glyph,
-				gx,
-				Math.max(0, Math.min(h - 1, gy)),
-				RGBA.fromInts(180, 255, 245, 230),
-				RGBA.fromInts(0, 0, 0, 0),
-				TextAttributes.DIM
-			);
-			if (h >= 2) {
-				fb.drawText(
-					"DAEMON",
-					Math.max(0, Math.floor(w / 2) - 3),
-					Math.max(0, Math.min(h - 1, gy + 1)),
-					RGBA.fromInts(130, 190, 255, 200),
-					RGBA.fromInts(0, 0, 0, 0),
-					TextAttributes.BOLD
-				);
-			}
 		} else {
 			this.kickRenderFrame();
 		}
