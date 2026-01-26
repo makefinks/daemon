@@ -183,8 +183,16 @@ class DaemonStateManager {
 	 * Start listening for voice input (called when space is pressed)
 	 */
 	startListening(): void {
-		if (this._state !== DaemonState.IDLE && this._state !== DaemonState.TYPING) {
+		if (
+			this._state !== DaemonState.IDLE &&
+			this._state !== DaemonState.TYPING &&
+			this._state !== DaemonState.SPEAKING
+		) {
 			return;
+		}
+
+		if (this._state === DaemonState.SPEAKING) {
+			this.stopSpeaking();
 		}
 
 		this._transcription = "";

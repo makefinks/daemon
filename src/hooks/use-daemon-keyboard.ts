@@ -293,7 +293,7 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 				!key.meta &&
 				currentState !== DaemonState.TYPING
 			) {
-				if (currentState === DaemonState.IDLE) {
+				if (currentState === DaemonState.IDLE || currentState === DaemonState.SPEAKING) {
 					// Check for OpenRouter API key first (needed for any AI response)
 					if (!process.env.OPENROUTER_API_KEY) {
 						actions.setApiKeyMissingError(
