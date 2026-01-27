@@ -11,8 +11,6 @@ import { getAppConfigDir } from "../../utils/preferences";
 import { getMemoryModel } from "../model-config";
 
 const MEMORY_USER_ID = "daemon_global";
-const MEMORY_DB_FILE = "memory.db";
-
 /** Raw memory entry from mem0 API */
 interface Mem0RawEntry {
 	id: string;
@@ -103,7 +101,6 @@ class MemoryManager {
 
 		try {
 			const configDir = getAppConfigDir();
-			const historyDbPath = path.join(configDir, MEMORY_DB_FILE);
 			const vectorDbPath = path.join(configDir, "vector_store.db");
 			const llmModel = getMemoryModel();
 
@@ -124,12 +121,7 @@ class MemoryManager {
 						dbPath: vectorDbPath,
 					},
 				},
-				historyStore: {
-					provider: "sqlite",
-					config: {
-						historyDbPath,
-					},
-				},
+				disableHistory: true,
 				llm: {
 					provider: "openai",
 					config: {
@@ -138,13 +130,11 @@ class MemoryManager {
 						baseURL: "https://openrouter.ai/api/v1",
 					},
 				},
-				historyDbPath,
 			});
 
 			this._isAvailable = true;
 			debug.info("memory-init", {
 				message: `Memory system initialized`,
-				historyDbPath,
 				vectorDbPath,
 				llmModel,
 			});
