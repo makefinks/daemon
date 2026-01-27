@@ -11,12 +11,12 @@ but can also interact with and **control** your system through the terminal with
 
 ## Installation
 
-```bash
-# npm (might throw warnings)
-npm i -g @makefinks/daemon
+DAEMON requires Bun at runtime, but global installation is currently documented via npm because some Bun global setups can fail on native `sqlite3` bindings pulled in by the optional memory feature.
 
-# bun (recommended)
-bun add -g @makefinks/daemon
+```bash
+# npm (recommended)
+# Note: you may see deprecation warnings from transitive dependencies.
+npm i -g @makefinks/daemon
 
 # additional installs (macOS)
 brew install sox # For Audio Input / Output
@@ -95,7 +95,7 @@ DAEMON can persist user-specific facts across sessions using [mem0](https://gith
 | Bash Execution | Bash integration with approval scoping for potentially dangerous commands. |
 | JS Page Rendering | Optional Playwright renderer for SPA content. |
 
-## 📦 Install (npm/bun)
+## 📦 Install (npm)
 
 DAEMON is published as a CLI package. It **requires Bun** at runtime, even if you install via npm.
 
@@ -107,8 +107,6 @@ Then install DAEMON:
 ```bash
 # Global npm install
 npm i -g @makefinks/daemon
-# or via bun
-bun add -g @makefinks/daemon
 
 # Then run
 daemon
@@ -155,8 +153,6 @@ This feature is **optional** and intentionally not installed by default (browser
 ```bash
 # 1) Install Playwright globally
 npm i -g playwright
-# or
-bun add -g playwright
 
 # 2) Install Chromium browser binaries
 npx playwright install chromium

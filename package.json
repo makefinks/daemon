@@ -35,13 +35,7 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"files": [
-		"dist",
-		"src",
-		"LICENSE",
-		"README.md",
-		"package.json"
-	],
+	"files": ["dist", "src", "LICENSE", "README.md", "package.json"],
 	"scripts": {
 		"build:cli": "bun build src/cli.ts --outdir dist --target node",
 		"dev": "bun run --watch src/index.tsx",
@@ -74,7 +68,7 @@
 	},
 	"dependencies": {
 		"@ai-sdk/openai": "^3.0.0",
-		"@openrouter/ai-sdk-provider": "1.5.4",
+		"@openrouter/ai-sdk-provider": "^2.1.0",
 		"@opentui-ui/toast": "^0.0.3",
 		"@opentui/core": "^0.1.63",
 		"@opentui/react": "^0.1.63",
