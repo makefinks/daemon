@@ -76,6 +76,9 @@ While DAEMON is encouraged to always cite sources you can always prompt to get g
 ### 💾 Session Persistence
 DAEMON stores chat sessions locally (SQLite) and lets you resume past conversations.
 
+### 🧠 Memory (mem0)
+DAEMON can persist user-specific facts across sessions using [mem0](https://github.com/mem0ai/mem0). Memory extraction runs automatically on user messages and relevant memories are injected into the conversation when helpful. 
+
 ## ✨ Feature List
 
 | Feature | Description |
@@ -85,6 +88,7 @@ DAEMON stores chat sessions locally (SQLite) and lets you resume past conversati
 | Animated Avatar | Sci-fi avatar reacts to listening, tool use, and response generation. |
 | Multi-Model Support | Works with all OpenRouter models and includes a curated default list. |
 | Session Persistence | Preferences and chat sessions stored locally on disk. |
+| Memory  | Automatic persistance of user-specific facts with persistent recall using **mem0** |
 | Workspaces | On-disk workspaces for the agent to work in. |
 | Web Search | Exa-based search and fetch for grounded, up-to-date info. |
 | Grounding | Text-fragment grounding with a dedicated UI. |

@@ -2,6 +2,7 @@ import { memo } from "react";
 import { DeviceMenu } from "../../components/DeviceMenu";
 import { GroundingMenu } from "../../components/GroundingMenu";
 import { HotkeysPane } from "../../components/HotkeysPane";
+import { MemoryMenu } from "../../components/MemoryMenu";
 import { ModelMenu } from "../../components/ModelMenu";
 import { OnboardingOverlay } from "../../components/OnboardingOverlay";
 import { ProviderMenu } from "../../components/ProviderMenu";
@@ -127,6 +128,8 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 					persistPreferences={(updates) => settings.persistPreferences(updates)}
 				/>
 			)}
+
+			{menus.showMemoryMenu && <MemoryMenu onClose={() => menus.setShowMemoryMenu(false)} />}
 
 			{onboarding.onboardingActive && (
 				<OnboardingOverlay

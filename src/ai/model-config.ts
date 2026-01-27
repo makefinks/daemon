@@ -4,6 +4,7 @@
 
 import type { OpenRouterChatSettings } from "@openrouter/ai-sdk-provider";
 import type { ModelOption } from "../types";
+import { loadManualConfig } from "../utils/config";
 
 // Available models for selection (OpenRouter format)
 export const AVAILABLE_MODELS: ModelOption[] = [
@@ -97,3 +98,15 @@ export function buildOpenRouterChatSettings(
 
 // Transcription model (OpenAI)
 export const TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe-2025-12-15";
+
+// Default model for memory operations (cheap & fast)
+export const DEFAULT_MEMORY_MODEL = "deepseek/deepseek-v3.2";
+
+/**
+ * Get the model ID for memory operations (deduplication, extraction).
+ * Checks config.json for override, otherwise uses DEFAULT_MEMORY_MODEL.
+ */
+export function getMemoryModel(): string {
+	const config = loadManualConfig();
+	return config.memoryModel ?? DEFAULT_MEMORY_MODEL;
+}

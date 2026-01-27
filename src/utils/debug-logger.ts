@@ -9,6 +9,7 @@
  * Then run `tail -f ~/.config/daemon/logs/debug.log` in a separate terminal.
  * Tool-specific logging uses `~/.config/daemon/logs/tools.log`.
  * Message logging uses `~/.config/daemon/logs/messages.log`.
+ * Memory logging uses `~/.config/daemon/logs/memory.log`.
  */
 
 import fs from "node:fs";
@@ -19,6 +20,7 @@ const LOG_DIR = path.join(getAppConfigDir(), "logs");
 const LOG_FILE = path.join(LOG_DIR, "debug.log");
 const TOOLS_LOG_FILE = path.join(LOG_DIR, "tools.log");
 const MESSAGES_LOG_FILE = path.join(LOG_DIR, "messages.log");
+const MEMORY_LOG_FILE = path.join(LOG_DIR, "memory.log");
 const ENABLED = process.env.DEBUG_LOG === "1" || process.env.DEBUG_LOG === "true";
 
 function ensureLogDir(logDir: string): void {
@@ -78,3 +80,4 @@ function createDebugLogger(logFile: string) {
 export const debug = createDebugLogger(LOG_FILE);
 export const toolDebug = createDebugLogger(TOOLS_LOG_FILE);
 export const messageDebug = createDebugLogger(MESSAGES_LOG_FILE);
+export const memoryDebug = createDebugLogger(MEMORY_LOG_FILE);

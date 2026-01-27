@@ -33,6 +33,8 @@ export interface MenuState {
 	setShowUrlMenu: React.Dispatch<React.SetStateAction<boolean>>;
 	showToolsMenu: boolean;
 	setShowToolsMenu: React.Dispatch<React.SetStateAction<boolean>>;
+	showMemoryMenu: boolean;
+	setShowMemoryMenu: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export interface DeviceState {

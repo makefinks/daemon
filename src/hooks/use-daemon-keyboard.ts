@@ -25,6 +25,7 @@ export interface KeyboardHandlerActions {
 	setShowGroundingMenu: (show: boolean) => void;
 	setShowUrlMenu: (show: boolean) => void;
 	setShowToolsMenu: (show: boolean) => void;
+	setShowMemoryMenu: (show: boolean) => void;
 	setTypingInput: (input: string | ((prev: string) => string)) => void;
 	setCurrentTranscription: (text: string) => void;
 	setCurrentResponse: (text: string) => void;
@@ -54,6 +55,7 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 		actions.setShowGroundingMenu(false);
 		actions.setShowUrlMenu(false);
 		actions.setShowToolsMenu(false);
+		actions.setShowMemoryMenu(false);
 	}, [actions]);
 
 	const handleKeyPress = useCallback(
@@ -228,6 +230,20 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 			) {
 				closeAllMenus();
 				actions.setShowToolsMenu(true);
+				key.preventDefault();
+				return;
+			}
+
+			// 'B' key to open memory menu (in IDLE, SPEAKING, or RESPONDING state)
+			if (
+				(key.sequence === "b" || key.sequence === "B") &&
+				key.eventType === "press" &&
+				(currentState === DaemonState.IDLE ||
+					currentState === DaemonState.SPEAKING ||
+					currentState === DaemonState.RESPONDING)
+			) {
+				closeAllMenus();
+				actions.setShowMemoryMenu(true);
 				key.preventDefault();
 				return;
 			}

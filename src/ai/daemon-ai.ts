@@ -25,6 +25,7 @@ import type {
 import { debug, toolDebug } from "../utils/debug-logger";
 import { getOpenRouterReportedCost } from "../utils/openrouter-reported-cost";
 import { getWorkspacePath } from "../utils/workspace-manager";
+import { buildMemoryInjection, getMemoryManager, isMemoryAvailable } from "./memory";
 import { extractFinalAssistantText } from "./message-utils";
 import { TRANSCRIPTION_MODEL, buildOpenRouterChatSettings, getResponseModel } from "./model-config";
 import { sanitizeMessagesForInput } from "./sanitize-messages";
@@ -64,7 +65,8 @@ function normalizeStreamError(error: unknown): Error {
  */
 async function createDaemonAgent(
 	interactionMode: InteractionMode = "text",
-	reasoningEffort?: ReasoningEffort
+	reasoningEffort?: ReasoningEffort,
+	memoryInjection?: string
 ) {
 	const modelConfig = buildOpenRouterChatSettings(
 		reasoningEffort ? { reasoning: { effort: reasoningEffort } } : undefined
@@ -83,6 +85,7 @@ async function createDaemonAgent(
 			mode: interactionMode,
 			toolAvailability: createToolAvailabilitySnapshot(toolAvailability),
 			workspacePath,
+			memoryInjection,
 		}),
 		tools,
 		stopWhen: stepCountIs(MAX_AGENT_STEPS),
@@ -159,13 +162,45 @@ export async function generateResponse(
 
 	try {
 		// Build messages array with history and new user message
-		const messages: ModelMessage[] = [
-			...conversationHistory,
-			{ role: "user" as const, content: userMessage },
-		];
+		const messages: ModelMessage[] = [...conversationHistory];
+
+		// Include relevant memories in the system prompt if available
+		let memoryInjection: string | undefined;
+		if (isMemoryAvailable()) {
+			const injection = await buildMemoryInjection(userMessage);
+			if (injection) {
+				memoryInjection = injection;
+			}
+		}
+
+		// Add the user message
+		messages.push({ role: "user" as const, content: userMessage });
+
+		const userTextForMemory = userMessage.trim();
+		if (userTextForMemory) {
+			void (async () => {
+				if (!isMemoryAvailable()) return;
+				const memoryManager = getMemoryManager();
+				await memoryManager.initialize();
+				if (!memoryManager.isAvailable) return;
+				try {
+					await memoryManager.add(
+						[{ role: "user", content: userTextForMemory }],
+						{
+							timestamp: new Date().toISOString(),
+							source: "conversation",
+						},
+						true
+					);
+				} catch (error) {
+					const err = error instanceof Error ? error : new Error(String(error));
+					debug.error("memory-auto-add-failed", { message: err.message });
+				}
+			})();
+		}
 
 		// Stream response from the agent with mode-specific system prompt
-		const agent = await createDaemonAgent(interactionMode, reasoningEffort);
+		const agent = await createDaemonAgent(interactionMode, reasoningEffort, memoryInjection);
 
 		let currentMessages = messages;
 		let fullText = "";
@@ -206,13 +241,18 @@ export async function generateResponse(
 				} else if (part.type === "tool-result") {
 					callbacks.onToolResult?.(part.toolName, part.output, part.toolCallId);
 				} else if (part.type === "tool-error") {
+					const errorMessage = part.error instanceof Error ? part.error.message : String(part.error);
 					toolDebug.error("tool-error", {
 						toolName: part.toolName,
 						toolCallId: part.toolCallId,
 						input: part.input,
-						error: part.error,
+						error: errorMessage,
 					});
-					callbacks.onToolResult?.(part.toolName, { error: part.error, input: part.input }, part.toolCallId);
+					callbacks.onToolResult?.(
+						part.toolName,
+						{ error: errorMessage, input: part.input },
+						part.toolCallId
+					);
 				} else if (part.type === "tool-approval-request") {
 					const approvalRequest: ToolApprovalRequest = {
 						approvalId: part.approvalId,

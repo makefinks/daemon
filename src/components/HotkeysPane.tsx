@@ -47,6 +47,7 @@ export function HotkeysPane({ onClose }: HotkeysPaneProps) {
 		{
 			title: "MENUS",
 			items: [
+				{ key: "B", label: "Memories" },
 				{ key: "D", label: "Devices" },
 				{ key: "M", label: "Models" },
 				{ key: "P", label: "Providers" },

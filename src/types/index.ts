@@ -442,3 +442,39 @@ export interface UrlMenuItem {
 	error?: string;
 	lastSeenIndex: number;
 }
+
+// ============================================================
+// Memory Types
+// ============================================================
+
+/** A single memory entry returned from mem0 */
+export interface MemoryEntry {
+	id: string;
+	memory: string;
+	hash?: string;
+	metadata?: Record<string, unknown>;
+	score?: number;
+	createdAt?: string;
+	updatedAt?: string;
+}
+
+/** Result from memory search operations */
+export interface MemorySearchResult {
+	results: MemoryEntry[];
+}
+
+/** Result from memory add operations */
+export interface MemoryAddResult {
+	results: Array<{
+		id: string;
+		memory: string;
+		event: "ADD" | "UPDATE" | "DELETE" | "NONE";
+	}>;
+}
+
+/** Memory context injected into first message */
+export interface MemoryContext {
+	memories: MemoryEntry[];
+	retrievedAt: number;
+	query: string;
+}

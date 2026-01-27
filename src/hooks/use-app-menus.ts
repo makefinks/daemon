@@ -27,6 +27,9 @@ export interface UseAppMenusReturn {
 
 	showToolsMenu: boolean;
 	setShowToolsMenu: React.Dispatch<React.SetStateAction<boolean>>;
+
+	showMemoryMenu: boolean;
+	setShowMemoryMenu: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export function useAppMenus(): UseAppMenusReturn {
@@ -39,6 +42,7 @@ export function useAppMenus(): UseAppMenusReturn {
 	const [showGroundingMenu, setShowGroundingMenu] = useState(false);
 	const [showUrlMenu, setShowUrlMenu] = useState(false);
 	const [showToolsMenu, setShowToolsMenu] = useState(false);
+	const [showMemoryMenu, setShowMemoryMenu] = useState(false);
 
 	return {
 		showDeviceMenu,
@@ -59,5 +63,7 @@ export function useAppMenus(): UseAppMenusReturn {
 		setShowUrlMenu,
 		showToolsMenu,
 		setShowToolsMenu,
+		showMemoryMenu,
+		setShowMemoryMenu,
 	};
 }

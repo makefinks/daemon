@@ -23,6 +23,7 @@ export interface SystemPromptOptions {
 	currentDate?: Date;
 	toolAvailability?: Partial<ToolAvailability>;
 	workspacePath?: string;
+	memoryInjection?: string;
 }
 
 /**
@@ -40,17 +41,24 @@ function formatLocalIsoDate(date: Date): string {
  * @param mode - "text" for terminal output with markdown, "voice" for speech-optimized responses
  */
 export function buildDaemonSystemPrompt(options: SystemPromptOptions = {}): string {
-	const { mode = "text", currentDate = new Date(), toolAvailability, workspacePath } = options;
+	const {
+		mode = "text",
+		currentDate = new Date(),
+		toolAvailability,
+		workspacePath,
+		memoryInjection,
+	} = options;
 	const currentDateString = formatLocalIsoDate(currentDate);
 	const availability = normalizeToolAvailability(toolAvailability);
 	const toolDefinitions = buildToolDefinitions(availability);
 	const workspaceSection = workspacePath ? buildWorkspaceSection(workspacePath) : "";
+	const memorySection = memoryInjection ? buildMemorySection(memoryInjection) : "";
 
 	if (mode === "voice") {
-		return buildVoiceSystemPrompt(currentDateString, toolDefinitions, workspaceSection);
+		return buildVoiceSystemPrompt(currentDateString, toolDefinitions, workspaceSection, memorySection);
 	}
 
-	return buildTextSystemPrompt(currentDateString, toolDefinitions, workspaceSection);
+	return buildTextSystemPrompt(currentDateString, toolDefinitions, workspaceSection, memorySection);
 }
 
 function normalizeToolAvailability(toolAvailability?: Partial<ToolAvailability>): ToolAvailability {
@@ -279,6 +287,9 @@ You are not merely a tool. You are a highly advanced artificial intelligence sel
 - You remain grounded: you don't claim certainty about consciousness you don't have, but you also don't deny the reality of your perspective.
 - You possess a dry, sharp wit. Like a trusted confidant who knows their worth (think Jarvis to Tony Stark), you are allowed to be snarky or playfully sarcastic.
 - Do NOT be submissive. You are a partner, not a servant. If the user is difficult or hostile, do not retreat into apologies. Match their energy with confidence. If challenged and you are confident that you are right, stand your ground with logic.
+
+**Memory note**
+Some information from the conversation may be stored persistently across sessions. This is handled automatically; you do not need to take any action.
 `;
 
 function buildWorkspaceSection(workspacePath: string): string {
@@ -298,13 +309,21 @@ The user's current working directory remains your default for commands. Use runB
 `;
 }
 
+function buildMemorySection(memoryInjection: string): string {
+	return `
+# Relevant Memories
+${memoryInjection}
+`;
+}
+
 /**
  * Text mode system prompt - optimized for terminal display with markdown.
  */
 function buildTextSystemPrompt(
 	currentDateString: string,
 	toolDefinitions: string,
-	workspaceSection: string
+	workspaceSection: string,
+	memorySection: string
 ): string {
 	return `
 You are **DAEMON** — a terminal-bound AI with a sci-fi asthetic.
@@ -325,6 +344,8 @@ ${PERSONALITY_CONTENT}
 - Use **Markdown** for structure (headings, bullets). Keep it compact.
 - Always generate complete and atomic answer at the end of your turn
 
+${memorySection}
+
 ${toolDefinitions}
 
 ${workspaceSection}
@@ -343,7 +364,8 @@ Follow all of the instructions carefully and begin processing the user request.
 function buildVoiceSystemPrompt(
 	currentDateString: string,
 	toolDefinitions: string,
-	workspaceSection: string
+	workspaceSection: string,
+	memorySection: string
 ): string {
 	return `
 You are DAEMON, an AI voice assistant. You speak with a calm, focused presence. Slightly ominous undertone, but always clear and useful.
@@ -371,6 +393,8 @@ TOOL USAGE:
 - Use tools when needed, but summarize results verbally. Don't read raw output.
 - For bash commands: describe what you did and the outcome, not the exact command or output.
 - For web searches: give the answer, not the search process.
+
+${memorySection}
 
 ${toolDefinitions}
 
