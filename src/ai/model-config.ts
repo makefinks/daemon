@@ -84,11 +84,11 @@ export function buildOpenRouterChatSettings(
 		},
 		...(currentOpenRouterProviderTag
 			? {
-					provider: {
-						order: [currentOpenRouterProviderTag],
-						allow_fallbacks: false,
-					},
-				}
+				provider: {
+					order: [currentOpenRouterProviderTag],
+					allow_fallbacks: false,
+				},
+			}
 			: {}),
 		...(overrides ?? {}),
 	};
@@ -100,7 +100,7 @@ export function buildOpenRouterChatSettings(
 export const TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe-2025-12-15";
 
 // Default model for memory operations (cheap & fast)
-export const DEFAULT_MEMORY_MODEL = "deepseek/deepseek-v3.2";
+export const DEFAULT_MEMORY_MODEL = "x-ai/grok-4.1-fast";
 
 /**
  * Get the model ID for memory operations (deduplication, extraction).

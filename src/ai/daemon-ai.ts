@@ -21,6 +21,8 @@ import type {
 	ToolApprovalRequest,
 	ToolApprovalResponse,
 	TranscriptionResult,
+	MemoryToastPreview,
+	MemoryToastOperation,
 } from "../types";
 import { debug, toolDebug } from "../utils/debug-logger";
 import { getOpenRouterReportedCost } from "../utils/openrouter-reported-cost";
@@ -332,11 +334,12 @@ async function persistConversationMemory(
 	if (!memoryManager.isAvailable) return null;
 
 	try {
+		const memoryMessages = [
+			{ role: "user", content: `<user>${userTextForMemory}</user>` },
+			{ role: "assistant", content: `<assistant>${assistantTextForMemory}</assistant>` },
+		];
 		const result = await memoryManager.add(
-			[
-				{ role: "user", content: userTextForMemory },
-				{ role: "assistant", content: assistantTextForMemory },
-			],
+			memoryMessages,
 			{
 				timestamp: new Date().toISOString(),
 				source: "conversation",
@@ -353,20 +356,25 @@ async function persistConversationMemory(
 
 function buildMemoryToastPreview(
 	results: Array<{ memory: string; event: "ADD" | "UPDATE" | "DELETE" | "NONE" }>
-): string | null {
+): MemoryToastPreview | null {
 	if (results.length === 0) return null;
 
-	let saved = results.filter((entry) => entry.event === "ADD" || entry.event === "UPDATE");
-	if (saved.length === 0) {
-		saved = results.filter((entry) => entry.memory.trim().length > 0);
-		if (saved.length === 0) return null;
+	const saved = results.filter((entry) => entry.event === "ADD" || entry.event === "UPDATE");
+	if (saved.length === 0) return null;
+
+	const previewEntries = saved.length > 2 ? saved.slice(-2) : saved;
+	const lines = previewEntries.map((entry) => `• ${truncatePreview(entry.memory, 52)}`);
+	if (saved.length > previewEntries.length) {
+		lines.push(`• +${saved.length - previewEntries.length} more`);
 	}
 
-	const lines = saved.slice(0, 2).map((entry) => `• ${truncatePreview(entry.memory, 52)}`);
-	if (saved.length > 2) {
-		lines.push(`• +${saved.length - 2} more`);
-	}
-	return lines.join("\n");
+	const hasUpdate = saved.some((entry) => entry.event === "UPDATE");
+	const operation: MemoryToastOperation = hasUpdate ? "UPDATE" : "ADD";
+
+	return {
+		operation,
+		description: lines.join("\n"),
+	};
 }
 
 function truncatePreview(text: string, maxChars: number): string {

@@ -169,7 +169,7 @@ export interface StreamCallbacks {
 	onSubagentToolResult?: (toolCallId: string, toolName: string, success: boolean) => void;
 	onSubagentComplete?: (toolCallId: string, success: boolean) => void;
 	onStepUsage?: (usage: TokenUsage) => void;
-	onMemorySaved?: (preview: string) => void;
+	onMemorySaved?: (preview: MemoryToastPreview) => void;
 	onComplete?: (
 		fullText: string,
 		responseMessages: ModelMessage[],
@@ -178,6 +178,13 @@ export interface StreamCallbacks {
 		finalText?: string
 	) => void;
 	onError?: (error: Error) => void;
+}
+
+export type MemoryToastOperation = "ADD" | "UPDATE" | "ADD/UPDATE";
+
+export interface MemoryToastPreview {
+	operation: MemoryToastOperation;
+	description: string;
 }
 
 /**

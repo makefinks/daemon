@@ -1,6 +1,7 @@
 import { EventEmitter } from "node:events";
 
 import type {
+	MemoryToastPreview,
 	ModelMessage,
 	TokenUsage,
 	ToolCallStatus,
@@ -32,7 +33,7 @@ export type DaemonStateEvents = {
 	subagentComplete: (toolCallId: string, success: boolean) => void;
 	responseToken: (token: string) => void;
 	stepUsage: (usage: TokenUsage) => void;
-	memorySaved: (preview: string) => void;
+	memorySaved: (preview: MemoryToastPreview) => void;
 	responseComplete: (fullText: string, responseMessages: ModelMessage[], usage?: TokenUsage) => void;
 	userMessage: (text: string) => void;
 	speakingStart: () => void;

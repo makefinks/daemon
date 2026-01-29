@@ -12,6 +12,7 @@ import { saveSessionSnapshot } from "../state/session-store";
 import type {
 	ContentBlock,
 	ConversationMessage,
+	MemoryToastPreview,
 	ModelMessage,
 	SubagentStep,
 	TokenUsage,
@@ -57,9 +58,10 @@ function clearAvatarToolEffects(avatar: DaemonAvatarRenderable | null): void {
 }
 
 export function createMemorySavedHandler() {
-	return (preview: string) => {
-		if (!preview.trim()) return;
-		toast.success("Memory saved", { description: preview });
+	return (preview: MemoryToastPreview) => {
+		const description = preview.description?.trim();
+		if (!description) return;
+		toast.success(`Memory saved (${preview.operation})`, { description });
 	};
 }
 
