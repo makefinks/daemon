@@ -84,11 +84,11 @@ export function buildOpenRouterChatSettings(
 		},
 		...(currentOpenRouterProviderTag
 			? {
-				provider: {
-					order: [currentOpenRouterProviderTag],
-					allow_fallbacks: false,
-				},
-			}
+					provider: {
+						order: [currentOpenRouterProviderTag],
+						allow_fallbacks: false,
+					},
+				}
 			: {}),
 		...(overrides ?? {}),
 	};
