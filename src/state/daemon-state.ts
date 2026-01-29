@@ -42,6 +42,7 @@ class DaemonStateManager {
 	private _reasoningEffort: ReasoningEffort = "medium";
 	private _bashApprovalLevel: BashApprovalLevel = "dangerous";
 	private _toolToggles: ToolToggles = { ...DEFAULT_TOOL_TOGGLES };
+	private _memoryEnabled = true;
 	private _outputDeviceName: string | undefined = undefined;
 	private _turnId = 0;
 	private speechRunId = 0;
@@ -145,6 +146,14 @@ class DaemonStateManager {
 
 	set toolToggles(toggles: ToolToggles) {
 		this._toolToggles = toggles;
+	}
+
+	get memoryEnabled(): boolean {
+		return this._memoryEnabled;
+	}
+
+	set memoryEnabled(enabled: boolean) {
+		this._memoryEnabled = enabled;
 	}
 
 	get outputDeviceName(): string | undefined {
@@ -317,6 +326,7 @@ class DaemonStateManager {
 						this.emitEvent("responseToken", token);
 					},
 					onStepUsage: (usage) => this.emitEvent("stepUsage", usage),
+					onMemorySaved: (preview) => this.emitEvent("memorySaved", preview),
 				}
 			);
 

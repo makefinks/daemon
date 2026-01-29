@@ -20,6 +20,7 @@ import {
 	createCancelledHandler,
 	createCompleteHandler,
 	createErrorHandler,
+	createMemorySavedHandler,
 	createMicLevelHandler,
 	createReasoningTokenHandler,
 	createStateChangeHandler,
@@ -320,6 +321,7 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 		const handleToolResult = createToolResultHandler(refs, setters);
 		const handleComplete = createCompleteHandler(refs, setters, deps);
 		const handleCancelled = createCancelledHandler(refs, setters, deps);
+		const handleMemorySaved = createMemorySavedHandler();
 		const handleError = createErrorHandler(setters);
 
 		daemonEvents.on("stateChange", handleStateChange);
@@ -337,6 +339,7 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 		daemonEvents.on("subagentToolResult", handleSubagentToolResult);
 		daemonEvents.on("subagentComplete", handleSubagentComplete);
 		daemonEvents.on("stepUsage", handleStepUsage);
+		daemonEvents.on("memorySaved", handleMemorySaved);
 		daemonEvents.on("responseToken", handleToken);
 		daemonEvents.on("responseComplete", handleComplete);
 		daemonEvents.on("cancelled", handleCancelled);
@@ -364,6 +367,7 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 			daemonEvents.off("subagentToolResult", handleSubagentToolResult);
 			daemonEvents.off("subagentComplete", handleSubagentComplete);
 			daemonEvents.off("stepUsage", handleStepUsage);
+			daemonEvents.off("memorySaved", handleMemorySaved);
 			daemonEvents.off("responseToken", handleToken);
 			daemonEvents.off("responseComplete", handleComplete);
 			daemonEvents.off("cancelled", handleCancelled);

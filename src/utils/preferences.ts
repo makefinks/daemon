@@ -109,6 +109,9 @@ export function parsePreferences(raw: unknown): AppPreferences | null {
 	if (typeof raw.showToolOutput === "boolean") {
 		prefs.showToolOutput = raw.showToolOutput;
 	}
+	if (typeof raw.memoryEnabled === "boolean") {
+		prefs.memoryEnabled = raw.memoryEnabled;
+	}
 	if (isRecord(raw.toolToggles)) {
 		const record = raw.toolToggles;
 		const next: Record<string, boolean> = {};

@@ -11,6 +11,7 @@ import { getAppConfigDir } from "../../utils/preferences";
 import { getMemoryModel } from "../model-config";
 
 const MEMORY_USER_ID = "daemon_global";
+const MAX_MEMORY_INPUT_CHARS = 10_000;
 /** Raw memory entry from mem0 API */
 interface Mem0RawEntry {
 	id: string;
@@ -106,6 +107,17 @@ class MemoryManager {
 
 			this.memory = new Memory({
 				version: "v1.1",
+				customPrompt: `You are a minimal memory extractor. You will be given a user message and an assistant message. Only extract durable, user-specific facts that are worth remembering for future conversations and personalization.
+
+Rules:
+- Focus on stable preferences, long-term plans, personal details, or recurring constraints.
+- Ignore the assistant's suggestions, analysis, and any transient task details.
+- Do not store one-off requests, instructions about the current task, or tool/implementation details.
+- Do not store anything that is not explicitly stated by the user.
+- If nothing qualifies, return an empty list.
+- Output must be JSON: {"facts": ["..."]}
+
+Return only JSON with a facts array.`,
 				embedder: {
 					provider: "openai",
 					config: {
@@ -200,6 +212,28 @@ class MemoryManager {
 			throw new Error("Memory system not available");
 		}
 
+		const sanitizedMessages = messages.map((message) => {
+			if (message.role !== "user") return message;
+			if (message.content.length <= MAX_MEMORY_INPUT_CHARS) return message;
+			return {
+				...message,
+				content: message.content.slice(0, MAX_MEMORY_INPUT_CHARS),
+			};
+		});
+
+		if (sanitizedMessages !== messages) {
+			const truncated = sanitizedMessages.some((message, index) => {
+				return message.role === "user" && messages[index]?.content.length !== message.content.length;
+			});
+			if (truncated) {
+				memoryDebug.info("memory-add-truncate", {
+					maxChars: MAX_MEMORY_INPUT_CHARS,
+					originalLengths: messages.map((message) => message.content.length),
+					truncatedLengths: sanitizedMessages.map((message) => message.content.length),
+				});
+			}
+		}
+
 		const startTime = Date.now();
 		memoryDebug.info("memory-add-input", {
 			infer,
@@ -207,7 +241,7 @@ class MemoryManager {
 			messages,
 		});
 
-		const result = (await this.memory.add(messages, {
+		const result = (await this.memory.add(sanitizedMessages, {
 			userId: MEMORY_USER_ID,
 			metadata,
 			infer,
@@ -236,7 +270,7 @@ class MemoryManager {
 			rawResults: result.results,
 			durationMs,
 		});
-		return result;
+		return { results: extracted };
 	}
 
 	/** Get all memories */

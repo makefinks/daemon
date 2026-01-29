@@ -20,6 +20,7 @@ export interface UseAppPreferencesBootstrapParams {
 		speechSpeed: SpeechSpeed;
 		reasoningEffort: ReasoningEffort;
 		bashApprovalLevel: BashApprovalLevel;
+		memoryEnabled: boolean;
 		toolToggles?: ToolToggles;
 		audioDeviceName?: string;
 		outputDeviceName?: string;
@@ -35,6 +36,7 @@ export interface UseAppPreferencesBootstrapParams {
 	setBashApprovalLevel: (level: BashApprovalLevel) => void;
 	setShowFullReasoning: (show: boolean) => void;
 	setShowToolOutput: (show: boolean) => void;
+	setMemoryEnabled: (enabled: boolean) => void;
 	setLoadedPreferences: (prefs: AppPreferences | null) => void;
 	setOnboardingActive: (active: boolean) => void;
 	setOnboardingStep: (step: OnboardingStep) => void;
@@ -61,6 +63,7 @@ export function useAppPreferencesBootstrap(
 		setBashApprovalLevel,
 		setShowFullReasoning,
 		setShowToolOutput,
+		setMemoryEnabled,
 		setLoadedPreferences,
 		setOnboardingActive,
 		setOnboardingStep,
@@ -153,6 +156,10 @@ export function useAppPreferencesBootstrap(
 			}
 			if (prefs?.showToolOutput !== undefined) {
 				setShowToolOutput(prefs.showToolOutput);
+			}
+			if (prefs?.memoryEnabled !== undefined) {
+				manager.memoryEnabled = prefs.memoryEnabled;
+				setMemoryEnabled(prefs.memoryEnabled);
 			}
 
 			const hasOpenRouterKey = Boolean(process.env.OPENROUTER_API_KEY);

@@ -60,6 +60,8 @@ export interface SettingsState {
 	setShowFullReasoning: (show: boolean) => void;
 	showToolOutput: boolean;
 	setShowToolOutput: (show: boolean) => void;
+	memoryEnabled: boolean;
+	setMemoryEnabled: (enabled: boolean) => void;
 	setBashApprovalLevel: (level: BashApprovalLevel) => void;
 	persistPreferences: (updates: Partial<AppPreferences>) => void;
 }

@@ -169,6 +169,7 @@ export interface StreamCallbacks {
 	onSubagentToolResult?: (toolCallId: string, toolName: string, success: boolean) => void;
 	onSubagentComplete?: (toolCallId: string, success: boolean) => void;
 	onStepUsage?: (usage: TokenUsage) => void;
+	onMemorySaved?: (preview: string) => void;
 	onComplete?: (
 		fullText: string,
 		responseMessages: ModelMessage[],
@@ -312,6 +313,8 @@ export interface AppPreferences {
 	showFullReasoning?: boolean;
 	/** Show tool output previews */
 	showToolOutput?: boolean;
+	/** Enable memory injection + auto-write */
+	memoryEnabled?: boolean;
 	/** Bash command approval level */
 	bashApprovalLevel?: BashApprovalLevel;
 	/** Tool toggles (on/off) */

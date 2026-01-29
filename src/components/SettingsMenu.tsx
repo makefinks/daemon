@@ -35,6 +35,7 @@ interface SettingsMenuProps {
 	canEnableVoiceOutput: boolean;
 	showFullReasoning: boolean;
 	showToolOutput: boolean;
+	memoryEnabled: boolean;
 	onClose: () => void;
 	toggleInteractionMode: () => void;
 	setVoiceInteractionType: (type: VoiceInteractionType) => void;
@@ -43,6 +44,7 @@ interface SettingsMenuProps {
 	setBashApprovalLevel: (level: BashApprovalLevel) => void;
 	setShowFullReasoning: (show: boolean) => void;
 	setShowToolOutput: (show: boolean) => void;
+	setMemoryEnabled: (enabled: boolean) => void;
 	persistPreferences: (updates: Partial<AppPreferences>) => void;
 }
 
@@ -56,6 +58,7 @@ export function SettingsMenu({
 	canEnableVoiceOutput,
 	showFullReasoning,
 	showToolOutput,
+	memoryEnabled,
 	onClose,
 	toggleInteractionMode,
 	setVoiceInteractionType,
@@ -64,6 +67,7 @@ export function SettingsMenu({
 	setBashApprovalLevel,
 	setShowFullReasoning,
 	setShowToolOutput,
+	setMemoryEnabled,
 	persistPreferences,
 }: SettingsMenuProps) {
 	const [selectedIdx, setSelectedIdx] = useState(0);
@@ -114,6 +118,13 @@ export function SettingsMenu({
 			value: BASH_APPROVAL_LABELS[bashApprovalLevel],
 			description: "Require approval for bash commands (NONE / DANGEROUS / ALL)",
 			isCyclic: true,
+		},
+		{
+			id: "memory-enabled",
+			label: "Memory",
+			value: memoryEnabled ? "ON" : "OFF",
+			description: "Auto-save messages + inject relevant memories",
+			isToggle: true,
 		},
 	];
 
@@ -181,6 +192,7 @@ export function SettingsMenu({
 			canEnableVoiceOutput,
 			showFullReasoning,
 			showToolOutput,
+			memoryEnabled,
 			setSelectedIdx,
 			toggleInteractionMode,
 			setVoiceInteractionType,
@@ -189,6 +201,7 @@ export function SettingsMenu({
 			setBashApprovalLevel,
 			setShowFullReasoning,
 			setShowToolOutput,
+			setMemoryEnabled,
 			persistPreferences,
 			onClose,
 			manager,

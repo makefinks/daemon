@@ -56,6 +56,13 @@ function clearAvatarToolEffects(avatar: DaemonAvatarRenderable | null): void {
 	avatar.setTypingMode(false);
 }
 
+export function createMemorySavedHandler() {
+	return (preview: string) => {
+		if (!preview.trim()) return;
+		toast.success("Memory saved", { description: preview });
+	};
+}
+
 function finalizePendingUserMessage(
 	prev: ConversationMessage[],
 	userText: string,

@@ -256,6 +256,7 @@ interface SettingsMenuContext {
 	canEnableVoiceOutput: boolean;
 	showFullReasoning: boolean;
 	showToolOutput: boolean;
+	memoryEnabled: boolean;
 	setSelectedIdx: (fn: (prev: number) => number) => void;
 	toggleInteractionMode: () => void;
 	setVoiceInteractionType: (type: VoiceInteractionType) => void;
@@ -264,6 +265,7 @@ interface SettingsMenuContext {
 	setBashApprovalLevel: (level: BashApprovalLevel) => void;
 	setShowFullReasoning: (show: boolean) => void;
 	setShowToolOutput: (show: boolean) => void;
+	setMemoryEnabled: (enabled: boolean) => void;
 	persistPreferences: (updates: Partial<AppPreferences>) => void;
 	onClose: () => void;
 	manager: {
@@ -272,6 +274,7 @@ interface SettingsMenuContext {
 		speechSpeed: SpeechSpeed;
 		reasoningEffort: ReasoningEffort;
 		bashApprovalLevel: BashApprovalLevel;
+		memoryEnabled: boolean;
 	};
 }
 
@@ -354,6 +357,16 @@ export function handleSettingsMenuKey(key: KeyEvent, ctx: SettingsMenuContext): 
 
 		if (ctx.interactionMode === "voice") {
 			if (ctx.selectedIdx === settingIdx) {
+				const next = !ctx.manager.memoryEnabled;
+				ctx.manager.memoryEnabled = next;
+				ctx.setMemoryEnabled(next);
+				ctx.persistPreferences({ memoryEnabled: next });
+				key.preventDefault();
+				return true;
+			}
+			settingIdx++;
+
+			if (ctx.selectedIdx === settingIdx) {
 				const speeds: SpeechSpeed[] = [1.0, 1.25, 1.5, 1.75, 2.0];
 				const currentSpeed = ctx.manager.speechSpeed;
 				const currentIndex = speeds.indexOf(currentSpeed);
@@ -362,6 +375,17 @@ export function handleSettingsMenuKey(key: KeyEvent, ctx: SettingsMenuContext): 
 				ctx.manager.speechSpeed = nextSpeed;
 				ctx.setSpeechSpeed(nextSpeed);
 				ctx.persistPreferences({ speechSpeed: nextSpeed });
+				key.preventDefault();
+				return true;
+			}
+			settingIdx++;
+		}
+		if (ctx.interactionMode !== "voice") {
+			if (ctx.selectedIdx === settingIdx) {
+				const next = !ctx.manager.memoryEnabled;
+				ctx.manager.memoryEnabled = next;
+				ctx.setMemoryEnabled(next);
+				ctx.persistPreferences({ memoryEnabled: next });
 				key.preventDefault();
 				return true;
 			}

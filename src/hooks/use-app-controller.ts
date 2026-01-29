@@ -113,6 +113,8 @@ export function useAppController({
 		setShowFullReasoning,
 		showToolOutput,
 		setShowToolOutput,
+		memoryEnabled,
+		setMemoryEnabled,
 		canEnableVoiceOutput,
 	} = appSettings;
 
@@ -180,6 +182,7 @@ export function useAppController({
 		setBashApprovalLevel,
 		setShowFullReasoning,
 		setShowToolOutput,
+		setMemoryEnabled,
 		setLoadedPreferences: bootstrap.setLoadedPreferences,
 		setOnboardingActive: bootstrap.setOnboardingActive,
 		setOnboardingStep: bootstrap.setOnboardingStep,
@@ -468,6 +471,8 @@ export function useAppController({
 			setShowFullReasoning,
 			showToolOutput,
 			setShowToolOutput,
+			memoryEnabled,
+			setMemoryEnabled,
 			setBashApprovalLevel,
 			persistPreferences,
 		},

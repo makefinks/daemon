@@ -166,7 +166,7 @@ export async function generateResponse(
 
 		// Include relevant memories in the system prompt if available
 		let memoryInjection: string | undefined;
-		if (isMemoryAvailable()) {
+		if (getDaemonManager().memoryEnabled && isMemoryAvailable()) {
 			const injection = await buildMemoryInjection(userMessage);
 			if (injection) {
 				memoryInjection = injection;
@@ -175,29 +175,6 @@ export async function generateResponse(
 
 		// Add the user message
 		messages.push({ role: "user" as const, content: userMessage });
-
-		const userTextForMemory = userMessage.trim();
-		if (userTextForMemory) {
-			void (async () => {
-				if (!isMemoryAvailable()) return;
-				const memoryManager = getMemoryManager();
-				await memoryManager.initialize();
-				if (!memoryManager.isAvailable) return;
-				try {
-					await memoryManager.add(
-						[{ role: "user", content: userTextForMemory }],
-						{
-							timestamp: new Date().toISOString(),
-							source: "conversation",
-						},
-						true
-					);
-				} catch (error) {
-					const err = error instanceof Error ? error : new Error(String(error));
-					debug.error("memory-auto-add-failed", { message: err.message });
-				}
-			})();
-		}
 
 		// Stream response from the agent with mode-specific system prompt
 		const agent = await createDaemonAgent(interactionMode, reasoningEffort, memoryInjection);
@@ -317,6 +294,11 @@ export async function generateResponse(
 		}
 
 		callbacks.onComplete?.(fullText, allResponseMessages, undefined, finalText);
+
+		void persistConversationMemory(userMessage, finalText ?? fullText).then((preview) => {
+			if (!preview) return;
+			callbacks.onMemorySaved?.(preview);
+		});
 	} catch (error) {
 		// Check if this was an abort - don't treat as error
 		if (abortSignal?.aborted) {
@@ -332,6 +314,66 @@ export async function generateResponse(
 		// Clean up the subagent progress emitter
 		setSubagentProgressEmitter(null);
 	}
+}
+
+async function persistConversationMemory(
+	userMessage: string,
+	assistantMessage: string
+): Promise<string | null> {
+	const userTextForMemory = userMessage.trim();
+	const assistantTextForMemory = assistantMessage.trim();
+
+	if (!userTextForMemory || !assistantTextForMemory) return null;
+	if (!getDaemonManager().memoryEnabled) return null;
+	if (!isMemoryAvailable()) return null;
+
+	const memoryManager = getMemoryManager();
+	await memoryManager.initialize();
+	if (!memoryManager.isAvailable) return null;
+
+	try {
+		const result = await memoryManager.add(
+			[
+				{ role: "user", content: userTextForMemory },
+				{ role: "assistant", content: assistantTextForMemory },
+			],
+			{
+				timestamp: new Date().toISOString(),
+				source: "conversation",
+			},
+			true
+		);
+		return buildMemoryToastPreview(result.results);
+	} catch (error) {
+		const err = error instanceof Error ? error : new Error(String(error));
+		debug.error("memory-auto-add-failed", { message: err.message });
+		return null;
+	}
+}
+
+function buildMemoryToastPreview(
+	results: Array<{ memory: string; event: "ADD" | "UPDATE" | "DELETE" | "NONE" }>
+): string | null {
+	if (results.length === 0) return null;
+
+	let saved = results.filter((entry) => entry.event === "ADD" || entry.event === "UPDATE");
+	if (saved.length === 0) {
+		saved = results.filter((entry) => entry.memory.trim().length > 0);
+		if (saved.length === 0) return null;
+	}
+
+	const lines = saved.slice(0, 2).map((entry) => `• ${truncatePreview(entry.memory, 52)}`);
+	if (saved.length > 2) {
+		lines.push(`• +${saved.length - 2} more`);
+	}
+	return lines.join("\n");
+}
+
+function truncatePreview(text: string, maxChars: number): string {
+	const trimmed = text.trim();
+	if (trimmed.length <= maxChars) return trimmed;
+	if (maxChars <= 1) return "…";
+	return `${trimmed.slice(0, maxChars - 1)}…`;
 }
 
 /**

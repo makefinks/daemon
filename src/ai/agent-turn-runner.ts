@@ -40,6 +40,7 @@ export class AgentTurnRunner {
 		this.abortController = new AbortController();
 
 		const isActive = () => runId === this.activeRunId && this.abortController !== null;
+		const isCurrent = () => runId === this.activeRunId;
 
 		let result: AgentTurnResult | null = null;
 		let error: Error | null = null;
@@ -92,6 +93,10 @@ export class AgentTurnRunner {
 			onStepUsage: (usage) => {
 				if (!isActive()) return;
 				callbacks.onStepUsage?.(usage);
+			},
+			onMemorySaved: (preview) => {
+				if (!isCurrent()) return;
+				callbacks.onMemorySaved?.(preview);
 			},
 			onComplete: (fullText, responseMessages, usage, finalText) => {
 				if (!isActive()) return;
