@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { startMcpManager } from "../ai/mcp/mcp-manager";
 import { setOpenRouterProviderTag, setResponseModel } from "../ai/model-config";
 import type {
 	AppPreferences,
@@ -95,6 +96,9 @@ export function useAppPreferencesBootstrap(
 			if (prefs?.exaApiKey && !process.env.EXA_API_KEY) {
 				process.env.EXA_API_KEY = prefs.exaApiKey;
 			}
+
+			// Start MCP discovery in the background (non-blocking)
+			startMcpManager();
 
 			if (prefs?.modelId) {
 				setResponseModel(prefs.modelId);

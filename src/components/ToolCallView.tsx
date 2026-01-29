@@ -1,7 +1,10 @@
 import { useMemo } from "react";
+import { getMcpManager } from "../ai/mcp/mcp-manager";
 import { useToolApprovalForCall } from "../hooks/use-tool-approval";
 import type { ToolCall } from "../types";
 import { COLORS } from "../ui/constants";
+import { formatToolInputLines } from "../utils/formatters";
+import { formatGenericToolOutputPreview } from "../utils/tool-output-preview";
 import { ApprovalPicker } from "./ApprovalPicker";
 import {
 	ErrorPreviewView,
@@ -37,8 +40,19 @@ function ApprovalResultBadge({ result }: { result: "approved" | "denied" }) {
 	);
 }
 
+function ToolSectionDivider({ label }: { label: string }) {
+	return (
+		<box flexDirection="column" paddingLeft={2} marginTop={1}>
+			<text>
+				<span fg={COLORS.REASONING_DIM}>{`--- ${label} ---`}</span>
+			</text>
+		</box>
+	);
+}
+
 export function ToolCallView({ call, result, showOutput = true }: ToolCallViewProps) {
 	const layout = getToolLayout(call.name) ?? defaultToolLayout;
+	const mcpMeta = useMemo(() => getMcpManager().getToolMeta(call.name), [call.name]);
 	const isAwaitingApproval = call.status === "awaiting_approval";
 	const isRunning = call.status === "running" || call.status === "streaming";
 	const isFailed = call.status === "failed";
@@ -47,17 +61,42 @@ export function ToolCallView({ call, result, showOutput = true }: ToolCallViewPr
 		call.toolCallId
 	);
 
-	const header = useMemo(() => layout.getHeader?.(call.input, result) ?? null, [call.input, result, layout]);
+	const header = useMemo(() => {
+		const base = layout.getHeader?.(call.input, result) ?? null;
+		if (base) return base;
+		if (mcpMeta) {
+			return {
+				primary: mcpMeta.serverId,
+				secondary: mcpMeta.originalToolName,
+				secondaryStyle: "dim" as const,
+			};
+		}
+		return null;
+	}, [call.input, result, layout, mcpMeta]);
 
-	const body = useMemo(
-		() => layout.getBody?.(call.input, result, call) ?? null,
-		[call.input, result, call, layout]
-	);
+	const body = useMemo(() => {
+		const base = layout.getBody?.(call.input, result, call) ?? null;
+		if (base) return base;
+		if (!mcpMeta) return null;
+		const lines = formatToolInputLines(call.input);
+		const normalized = lines.length > 0 ? lines : ["(no input)"];
+		return {
+			lines: normalized.map((text) => ({
+				text,
+				color: COLORS.REASONING_DIM,
+			})),
+		};
+	}, [call.input, result, call, layout, mcpMeta]);
 
 	const resultPreviewLines = useMemo(() => {
 		if (!showOutput) return null;
-		return layout.formatResult?.(result) ?? null;
-	}, [result, showOutput, layout]);
+		const formatted = layout.formatResult?.(result) ?? null;
+		if (formatted) return formatted;
+		if (mcpMeta) return formatGenericToolOutputPreview(result);
+		return null;
+	}, [result, showOutput, layout, mcpMeta]);
+
+	const hasResultPreview = Boolean(showOutput && resultPreviewLines && resultPreviewLines.length > 0);
 
 	const toolColor =
 		call.status === "completed"
@@ -65,7 +104,7 @@ export function ToolCallView({ call, result, showOutput = true }: ToolCallViewPr
 			: isAwaitingApproval
 				? COLORS.STATUS_APPROVAL
 				: COLORS.TOOLS;
-	const toolName = layout.abbreviation ?? getDefaultAbbreviation(call.name);
+	const toolName = mcpMeta ? "mcp" : (layout.abbreviation ?? getDefaultAbbreviation(call.name));
 	const borderColor = getStatusBorderColor(call.status);
 
 	const customBody = layout.renderBody ? layout.renderBody({ call, result, showOutput }) : null;
@@ -98,10 +137,10 @@ export function ToolCallView({ call, result, showOutput = true }: ToolCallViewPr
 				/>
 			)}
 
-			{showOutput && resultPreviewLines && resultPreviewLines.length > 0 && (
-				<ResultPreviewView lines={resultPreviewLines} />
-			)}
+			{hasResultPreview && <ToolSectionDivider label="OUTPUT" />}
+			{hasResultPreview && <ResultPreviewView lines={resultPreviewLines ?? []} />}
 
+			{isFailed && call.error && <ToolSectionDivider label="ERROR" />}
 			{isFailed && call.error && <ErrorPreviewView error={call.error} />}
 
 			{call.approvalResult && <ApprovalResultBadge result={call.approvalResult} />}

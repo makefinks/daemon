@@ -5,6 +5,7 @@
 
 import { ConsolePosition, createCliRenderer } from "@opentui/core";
 import { createRoot } from "@opentui/react";
+import { destroyMcpManager } from "./ai/mcp/mcp-manager";
 import { App } from "./app/App";
 import { destroyDaemonManager } from "./state/daemon-state";
 import { COLORS } from "./ui/constants";
@@ -38,10 +39,12 @@ renderer.keyInput.on("paste", (event) => {
 // Cleanup on exit
 process.on("exit", () => {
 	destroyDaemonManager();
+	destroyMcpManager();
 });
 
 process.on("SIGINT", () => {
 	destroyDaemonManager();
+	destroyMcpManager();
 	process.exit(0);
 });
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { type McpServerStatus, getMcpManager } from "../ai/mcp/mcp-manager";
 import { invalidateDaemonToolsCache } from "../ai/tools/index";
 import { invalidateSubagentToolsCache } from "../ai/tools/subagents";
 import {
@@ -13,6 +14,7 @@ import { getDaemonManager } from "../state/daemon-state";
 import type { ToolToggleId, ToolToggles } from "../types";
 import { DEFAULT_TOOL_TOGGLES } from "../types";
 import { COLORS } from "../ui/constants";
+import { getManualConfigPath } from "../utils/config";
 
 interface ToolsMenuProps {
 	persistPreferences: (updates: Partial<{ toolToggles: ToolToggles }>) => void;
@@ -52,8 +54,20 @@ function getToolLabel(id: ToolToggleId): string {
 export function ToolsMenu({ persistPreferences, onClose }: ToolsMenuProps) {
 	const manager = getDaemonManager();
 	const [toggles, setToggles] = useState<ToolToggles>(manager.toolToggles ?? { ...DEFAULT_TOOL_TOGGLES });
+	const [mcpServers, setMcpServers] = useState<McpServerStatus[]>(() => getMcpManager().getServersSnapshot());
 
 	const [toolAvailability, setToolAvailability] = useState<Record<ToolToggleId, MenuToolItem> | null>(null);
+
+	useEffect(() => {
+		const mcp = getMcpManager();
+		const handleUpdate = () => {
+			setMcpServers(mcp.getServersSnapshot());
+		};
+		mcp.on("update", handleUpdate);
+		return () => {
+			mcp.off("update", handleUpdate);
+		};
+	}, []);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -134,11 +148,19 @@ export function ToolsMenu({ persistPreferences, onClose }: ToolsMenuProps) {
 	}, [items, showReasonColumn]);
 
 	const statusWidth = 8;
+	const mcpStatusWidth = 8;
 
 	function truncateText(text: string, maxLen: number): string {
 		if (text.length <= maxLen) return text;
 		return text.slice(0, Math.max(0, maxLen - 1)) + "…";
 	}
+
+	const mcpConfigPath = useMemo(() => getManualConfigPath(), []);
+
+	const mcpIdWidth = useMemo(() => {
+		const raw = mcpServers.reduce((max, server) => Math.max(max, server.id.length), 0);
+		return Math.min(Math.max(raw, 10), 28);
+	}, [mcpServers]);
 
 	return (
 		<box
@@ -176,15 +198,13 @@ export function ToolsMenu({ persistPreferences, onClose }: ToolsMenuProps) {
 					</text>
 				</box>
 
-				{showReasonColumn && (
-					<box marginBottom={1}>
-						<text>
-							<span fg={COLORS.REASONING_DIM}>
-								{"TOOL".padEnd(labelWidth)} {"STATUS".padEnd(statusWidth)} REASON
-							</span>
-						</text>
-					</box>
-				)}
+				<box marginBottom={1}>
+					<text>
+						<span fg={COLORS.REASONING_DIM}>
+							{`  ${"TOOL".padEnd(labelWidth)} ${"STATUS".padEnd(statusWidth)}${showReasonColumn ? " REASON" : ""}`}
+						</span>
+					</text>
+				</box>
 
 				<box flexDirection="column">
 					{items.map((item, idx) => {
@@ -218,7 +238,7 @@ export function ToolsMenu({ persistPreferences, onClose }: ToolsMenuProps) {
 									<span fg={labelColor}>{labelText}</span>
 									<span fg={COLORS.REASONING_DIM}> </span>
 									<span fg={statusColor}>{statusText}</span>
-									{showReasonColumn && reasonText ? (
+									{showReasonColumn ? (
 										<>
 											<span fg={COLORS.REASONING_DIM}> </span>
 											<span fg={reasonColor}>{reasonText}</span>
@@ -228,6 +248,57 @@ export function ToolsMenu({ persistPreferences, onClose }: ToolsMenuProps) {
 							</box>
 						);
 					})}
+				</box>
+
+				<box flexDirection="column" marginTop={1}>
+					<box marginBottom={1}>
+						<text>
+							<span fg={COLORS.DAEMON_LABEL}>[ MCP ]</span>
+							<span fg={COLORS.REASONING_DIM}>{` ${truncateText(mcpConfigPath, 80)}`}</span>
+						</text>
+					</box>
+
+					{mcpServers.length === 0 ? (
+						<text>
+							<span fg={COLORS.REASONING_DIM}>No MCP servers configured.</span>
+						</text>
+					) : (
+						<box flexDirection="column">
+							<box marginBottom={1}>
+								<text>
+									<span fg={COLORS.REASONING_DIM}>
+										{`SERVER`.padEnd(mcpIdWidth)} {`STATUS`.padEnd(mcpStatusWidth)} TOOLS
+									</span>
+								</text>
+							</box>
+							{mcpServers.map((server) => {
+								const statusLabel = server.status.toUpperCase();
+								const statusColor =
+									server.status === "ready"
+										? COLORS.STATUS_COMPLETED
+										: server.status === "loading"
+											? COLORS.STATUS_RUNNING
+											: server.status === "error"
+												? COLORS.STATUS_FAILED
+												: COLORS.REASONING_DIM;
+								const idText = truncateText(server.id, mcpIdWidth).padEnd(mcpIdWidth);
+								const toolsText = String(server.toolCount).padStart(4);
+								const errorText = server.error ? truncateText(server.error, 60) : "";
+
+								return (
+									<box key={server.id} flexDirection="column">
+										<text>
+											<span fg={COLORS.MENU_TEXT}>{idText}</span>
+											<span fg={COLORS.REASONING_DIM}> </span>
+											<span fg={statusColor}>{statusLabel.padEnd(mcpStatusWidth)}</span>
+											<span fg={COLORS.REASONING_DIM}> {toolsText}</span>
+											{errorText ? <span fg={COLORS.REASONING_DIM}>{`  ${errorText}`}</span> : null}
+										</text>
+									</box>
+								);
+							})}
+						</box>
+					)}
 				</box>
 			</box>
 		</box>

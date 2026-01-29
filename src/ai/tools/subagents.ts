@@ -11,6 +11,7 @@ import { z } from "zod";
 import { getDaemonManager } from "../../state/daemon-state";
 import type { SubagentProgressEmitter } from "../../types";
 import { getOpenRouterReportedCost } from "../../utils/openrouter-reported-cost";
+import { getMcpManager } from "../mcp/mcp-manager";
 import { extractFinalAssistantText } from "../message-utils";
 import { buildOpenRouterChatSettings, getSubagentModel } from "../model-config";
 import { buildToolSet } from "./tool-registry";
@@ -21,25 +22,28 @@ const openrouter = createOpenRouter();
 // Maximum steps for subagent loops
 const MAX_SUBAGENT_STEPS = 30;
 
-let cachedSubagentTools: Promise<ToolSet> | null = null;
+let cachedSubagentBaseTools: Promise<ToolSet> | null = null;
 
 export function invalidateSubagentToolsCache(): void {
-	cachedSubagentTools = null;
+	cachedSubagentBaseTools = null;
 }
 
 // Subagent tools (all tools except subagent itself to prevent recursion)
 async function getSubagentTools(): Promise<ToolSet> {
-	if (cachedSubagentTools) return cachedSubagentTools;
+	if (!cachedSubagentBaseTools) {
+		cachedSubagentBaseTools = (async () => {
+			const toggles = getDaemonManager().toolToggles;
+			const { tools } = await buildToolSet(toggles, {
+				omit: ["groundingManager", "subagent"],
+			});
+			return tools;
+		})();
+	}
 
-	cachedSubagentTools = (async () => {
-		const toggles = getDaemonManager().toolToggles;
-		const { tools } = await buildToolSet(toggles, {
-			omit: ["groundingManager", "subagent"],
-		});
-		return tools;
-	})();
-
-	return cachedSubagentTools;
+	const baseTools = await cachedSubagentBaseTools;
+	const mcpTools = getMcpManager().getToolsSnapshot();
+	if (Object.keys(mcpTools).length === 0) return baseTools;
+	return { ...baseTools, ...mcpTools };
 }
 
 // System prompt for subagents
