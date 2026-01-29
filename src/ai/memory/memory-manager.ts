@@ -107,13 +107,14 @@ class MemoryManager {
 
 			this.memory = new Memory({
 				version: "v1.1",
-				customPrompt: `You are a minimal memory extractor. You will be given a user message and an assistant message. Only extract durable, user-specific facts that are worth remembering for future conversations and personalization.
+				customPrompt: `You are a minimal memory extractor. You will be given a user message and an assistant message. Only extract durable, user-specific facts that remain true over time for personalization.
 
 Rules:
 - Focus on stable preferences, long-term plans, personal details, or recurring constraints.
 - Ignore the assistant's suggestions, analysis, and any transient task details.
 - Do not store one-off requests, instructions about the current task, or tool/implementation details.
 - Do not store anything that is not explicitly stated by the user.
+- Store memories in third person: "The user is.../The User has..."
 - If nothing qualifies, return an empty list.
 - Output must be JSON: {"facts": ["..."]}
 
