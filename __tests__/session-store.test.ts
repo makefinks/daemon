@@ -5,13 +5,15 @@ import os from "node:os";
 import path from "node:path";
 
 const SESSION_DB_PATH_ENV = "DAEMON_SESSIONS_DB_PATH";
+const CONFIG_DIR_ENV = "DAEMON_CONFIG_DIR";
 
 async function createTempDir(): Promise<string> {
 	return await fs.mkdtemp(path.join(os.tmpdir(), "daemon-session-store-"));
 }
 
-async function loadSessionStore(dbPath: string) {
+async function loadSessionStore(dbPath: string, configDir: string) {
 	process.env[SESSION_DB_PATH_ENV] = dbPath;
+	process.env[CONFIG_DIR_ENV] = configDir;
 	const mod = await import(`../src/state/session-store?test=${crypto.randomUUID()}`);
 	return mod;
 }
@@ -23,9 +25,10 @@ async function cleanupTempDir(dir: string): Promise<void> {
 describe("session-store", () => {
 	it("creates a session with a trimmed title and can list it", async () => {
 		const previousDbPath = process.env[SESSION_DB_PATH_ENV];
+		const previousConfigDir = process.env[CONFIG_DIR_ENV];
 		const tmpDir = await createTempDir();
 		const dbPath = path.join(tmpDir, "sessions.sqlite");
-		const store = await loadSessionStore(dbPath);
+		const store = await loadSessionStore(dbPath, tmpDir);
 
 		try {
 			const created = await store.createSession("  My Title  ");
@@ -45,15 +48,21 @@ describe("session-store", () => {
 			} else {
 				delete process.env[SESSION_DB_PATH_ENV];
 			}
+			if (typeof previousConfigDir === "string") {
+				process.env[CONFIG_DIR_ENV] = previousConfigDir;
+			} else {
+				delete process.env[CONFIG_DIR_ENV];
+			}
 			await cleanupTempDir(tmpDir);
 		}
 	});
 
 	it("sorts sessions by updatedAt descending", async () => {
 		const previousDbPath = process.env[SESSION_DB_PATH_ENV];
+		const previousConfigDir = process.env[CONFIG_DIR_ENV];
 		const tmpDir = await createTempDir();
 		const dbPath = path.join(tmpDir, "sessions.sqlite");
-		const store = await loadSessionStore(dbPath);
+		const store = await loadSessionStore(dbPath, tmpDir);
 
 		try {
 			const a = await store.createSession("A");
@@ -69,15 +78,21 @@ describe("session-store", () => {
 			} else {
 				delete process.env[SESSION_DB_PATH_ENV];
 			}
+			if (typeof previousConfigDir === "string") {
+				process.env[CONFIG_DIR_ENV] = previousConfigDir;
+			} else {
+				delete process.env[CONFIG_DIR_ENV];
+			}
 			await cleanupTempDir(tmpDir);
 		}
 	});
 
 	it("saves and loads snapshots, preserving createdAt across updates", async () => {
 		const previousDbPath = process.env[SESSION_DB_PATH_ENV];
+		const previousConfigDir = process.env[CONFIG_DIR_ENV];
 		const tmpDir = await createTempDir();
 		const dbPath = path.join(tmpDir, "sessions.sqlite");
-		const store = await loadSessionStore(dbPath);
+		const store = await loadSessionStore(dbPath, tmpDir);
 
 		try {
 			const session = await store.createSession("Snapshot Session");
@@ -124,15 +139,21 @@ describe("session-store", () => {
 			} else {
 				delete process.env[SESSION_DB_PATH_ENV];
 			}
+			if (typeof previousConfigDir === "string") {
+				process.env[CONFIG_DIR_ENV] = previousConfigDir;
+			} else {
+				delete process.env[CONFIG_DIR_ENV];
+			}
 			await cleanupTempDir(tmpDir);
 		}
 	});
 
 	it("updates titles and bumps updatedAt", async () => {
 		const previousDbPath = process.env[SESSION_DB_PATH_ENV];
+		const previousConfigDir = process.env[CONFIG_DIR_ENV];
 		const tmpDir = await createTempDir();
 		const dbPath = path.join(tmpDir, "sessions.sqlite");
-		const store = await loadSessionStore(dbPath);
+		const store = await loadSessionStore(dbPath, tmpDir);
 
 		try {
 			const session = await store.createSession("Initial");
@@ -150,15 +171,21 @@ describe("session-store", () => {
 			} else {
 				delete process.env[SESSION_DB_PATH_ENV];
 			}
+			if (typeof previousConfigDir === "string") {
+				process.env[CONFIG_DIR_ENV] = previousConfigDir;
+			} else {
+				delete process.env[CONFIG_DIR_ENV];
+			}
 			await cleanupTempDir(tmpDir);
 		}
 	});
 
 	it("falls back to a formatted title when the stored title is blank", async () => {
 		const previousDbPath = process.env[SESSION_DB_PATH_ENV];
+		const previousConfigDir = process.env[CONFIG_DIR_ENV];
 		const tmpDir = await createTempDir();
 		const dbPath = path.join(tmpDir, "sessions.sqlite");
-		const store = await loadSessionStore(dbPath);
+		const store = await loadSessionStore(dbPath, tmpDir);
 
 		try {
 			const session = await store.createSession("Will Clear");
@@ -174,15 +201,21 @@ describe("session-store", () => {
 			} else {
 				delete process.env[SESSION_DB_PATH_ENV];
 			}
+			if (typeof previousConfigDir === "string") {
+				process.env[CONFIG_DIR_ENV] = previousConfigDir;
+			} else {
+				delete process.env[CONFIG_DIR_ENV];
+			}
 			await cleanupTempDir(tmpDir);
 		}
 	});
 
 	it("returns null for missing sessions and deletes sessions on clear", async () => {
 		const previousDbPath = process.env[SESSION_DB_PATH_ENV];
+		const previousConfigDir = process.env[CONFIG_DIR_ENV];
 		const tmpDir = await createTempDir();
 		const dbPath = path.join(tmpDir, "sessions.sqlite");
-		const store = await loadSessionStore(dbPath);
+		const store = await loadSessionStore(dbPath, tmpDir);
 
 		try {
 			expect(await store.loadSessionSnapshot("missing")).toBeNull();
@@ -203,15 +236,21 @@ describe("session-store", () => {
 			} else {
 				delete process.env[SESSION_DB_PATH_ENV];
 			}
+			if (typeof previousConfigDir === "string") {
+				process.env[CONFIG_DIR_ENV] = previousConfigDir;
+			} else {
+				delete process.env[CONFIG_DIR_ENV];
+			}
 			await cleanupTempDir(tmpDir);
 		}
 	});
 
 	it("tolerates corrupted history_json and usage_json values", async () => {
 		const previousDbPath = process.env[SESSION_DB_PATH_ENV];
+		const previousConfigDir = process.env[CONFIG_DIR_ENV];
 		const tmpDir = await createTempDir();
 		const dbPath = path.join(tmpDir, "sessions.sqlite");
-		const store = await loadSessionStore(dbPath);
+		const store = await loadSessionStore(dbPath, tmpDir);
 
 		try {
 			const session = await store.createSession("Corrupt");
@@ -223,7 +262,7 @@ describe("session-store", () => {
 			database.close();
 
 			store.closeSessionStore();
-			const reopened = await loadSessionStore(dbPath);
+			const reopened = await loadSessionStore(dbPath, tmpDir);
 			const snapshot = await reopened.loadSessionSnapshot(session.id);
 			expect(snapshot).not.toBeNull();
 			expect(snapshot?.conversationHistory).toEqual([]);
@@ -236,15 +275,21 @@ describe("session-store", () => {
 			} else {
 				delete process.env[SESSION_DB_PATH_ENV];
 			}
+			if (typeof previousConfigDir === "string") {
+				process.env[CONFIG_DIR_ENV] = previousConfigDir;
+			} else {
+				delete process.env[CONFIG_DIR_ENV];
+			}
 			await cleanupTempDir(tmpDir);
 		}
 	});
 
 	it("flattens model messages from the conversation history", async () => {
 		const previousDbPath = process.env[SESSION_DB_PATH_ENV];
+		const previousConfigDir = process.env[CONFIG_DIR_ENV];
 		const tmpDir = await createTempDir();
 		const dbPath = path.join(tmpDir, "sessions.sqlite");
-		const store = await loadSessionStore(dbPath);
+		const store = await loadSessionStore(dbPath, tmpDir);
 
 		try {
 			const result = store.buildModelHistoryFromConversation([
@@ -272,15 +317,21 @@ describe("session-store", () => {
 			} else {
 				delete process.env[SESSION_DB_PATH_ENV];
 			}
+			if (typeof previousConfigDir === "string") {
+				process.env[CONFIG_DIR_ENV] = previousConfigDir;
+			} else {
+				delete process.env[CONFIG_DIR_ENV];
+			}
 			await cleanupTempDir(tmpDir);
 		}
 	});
 
 	it("saves and retrieves grounding maps", async () => {
 		const previousDbPath = process.env[SESSION_DB_PATH_ENV];
+		const previousConfigDir = process.env[CONFIG_DIR_ENV];
 		const tmpDir = await createTempDir();
 		const dbPath = path.join(tmpDir, "sessions.sqlite");
-		const store = await loadSessionStore(dbPath);
+		const store = await loadSessionStore(dbPath, tmpDir);
 
 		try {
 			const session = await store.createSession("Grounding Test");
@@ -317,15 +368,21 @@ describe("session-store", () => {
 			} else {
 				delete process.env[SESSION_DB_PATH_ENV];
 			}
+			if (typeof previousConfigDir === "string") {
+				process.env[CONFIG_DIR_ENV] = previousConfigDir;
+			} else {
+				delete process.env[CONFIG_DIR_ENV];
+			}
 			await cleanupTempDir(tmpDir);
 		}
 	});
 
 	it("lists grounding maps for a session in descending order", async () => {
 		const previousDbPath = process.env[SESSION_DB_PATH_ENV];
+		const previousConfigDir = process.env[CONFIG_DIR_ENV];
 		const tmpDir = await createTempDir();
 		const dbPath = path.join(tmpDir, "sessions.sqlite");
-		const store = await loadSessionStore(dbPath);
+		const store = await loadSessionStore(dbPath, tmpDir);
 
 		try {
 			const session = await store.createSession("Grounding List Test");
@@ -347,15 +404,21 @@ describe("session-store", () => {
 			} else {
 				delete process.env[SESSION_DB_PATH_ENV];
 			}
+			if (typeof previousConfigDir === "string") {
+				process.env[CONFIG_DIR_ENV] = previousConfigDir;
+			} else {
+				delete process.env[CONFIG_DIR_ENV];
+			}
 			await cleanupTempDir(tmpDir);
 		}
 	});
 
 	it("loads the latest grounding map for a session", async () => {
 		const previousDbPath = process.env[SESSION_DB_PATH_ENV];
+		const previousConfigDir = process.env[CONFIG_DIR_ENV];
 		const tmpDir = await createTempDir();
 		const dbPath = path.join(tmpDir, "sessions.sqlite");
-		const store = await loadSessionStore(dbPath);
+		const store = await loadSessionStore(dbPath, tmpDir);
 
 		try {
 			const session = await store.createSession("Latest Grounding Test");
@@ -377,15 +440,21 @@ describe("session-store", () => {
 			} else {
 				delete process.env[SESSION_DB_PATH_ENV];
 			}
+			if (typeof previousConfigDir === "string") {
+				process.env[CONFIG_DIR_ENV] = previousConfigDir;
+			} else {
+				delete process.env[CONFIG_DIR_ENV];
+			}
 			await cleanupTempDir(tmpDir);
 		}
 	});
 
 	it("returns null when no grounding maps exist for session", async () => {
 		const previousDbPath = process.env[SESSION_DB_PATH_ENV];
+		const previousConfigDir = process.env[CONFIG_DIR_ENV];
 		const tmpDir = await createTempDir();
 		const dbPath = path.join(tmpDir, "sessions.sqlite");
-		const store = await loadSessionStore(dbPath);
+		const store = await loadSessionStore(dbPath, tmpDir);
 
 		try {
 			const session = await store.createSession("Empty Grounding Test");
@@ -401,15 +470,21 @@ describe("session-store", () => {
 			} else {
 				delete process.env[SESSION_DB_PATH_ENV];
 			}
+			if (typeof previousConfigDir === "string") {
+				process.env[CONFIG_DIR_ENV] = previousConfigDir;
+			} else {
+				delete process.env[CONFIG_DIR_ENV];
+			}
 			await cleanupTempDir(tmpDir);
 		}
 	});
 
 	it("tolerates corrupted items_json in grounding maps", async () => {
 		const previousDbPath = process.env[SESSION_DB_PATH_ENV];
+		const previousConfigDir = process.env[CONFIG_DIR_ENV];
 		const tmpDir = await createTempDir();
 		const dbPath = path.join(tmpDir, "sessions.sqlite");
-		const store = await loadSessionStore(dbPath);
+		const store = await loadSessionStore(dbPath, tmpDir);
 
 		try {
 			const session = await store.createSession("Corrupt Grounding");
@@ -424,7 +499,7 @@ describe("session-store", () => {
 			database.close();
 
 			store.closeSessionStore();
-			const reopened = await loadSessionStore(dbPath);
+			const reopened = await loadSessionStore(dbPath, tmpDir);
 			const latest = await reopened.loadLatestGroundingMap(session.id);
 			expect(latest).not.toBeNull();
 			expect(latest?.items).toEqual([]);
@@ -435,6 +510,11 @@ describe("session-store", () => {
 				process.env[SESSION_DB_PATH_ENV] = previousDbPath;
 			} else {
 				delete process.env[SESSION_DB_PATH_ENV];
+			}
+			if (typeof previousConfigDir === "string") {
+				process.env[CONFIG_DIR_ENV] = previousConfigDir;
+			} else {
+				delete process.env[CONFIG_DIR_ENV];
 			}
 			await cleanupTempDir(tmpDir);
 		}

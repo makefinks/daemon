@@ -12,6 +12,7 @@ const PREFERENCES_VERSION = 1;
 const APP_DIR_NAME = "daemon";
 const PREFERENCES_FILE = "preferences.json";
 const CREDENTIALS_FILE = "credentials.json";
+const CONFIG_DIR_ENV = "DAEMON_CONFIG_DIR";
 
 /** Keys that belong in credentials.json (secrets) vs preferences.json (settings) */
 const CREDENTIAL_KEYS = ["openRouterApiKey", "openAiApiKey", "exaApiKey"] as const;
@@ -32,6 +33,8 @@ function getBaseConfigDir(): string {
 }
 
 export function getAppConfigDir(): string {
+	const override = process.env[CONFIG_DIR_ENV]?.trim();
+	if (override) return override;
 	return path.join(getBaseConfigDir(), APP_DIR_NAME);
 }
 

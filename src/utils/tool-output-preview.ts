@@ -110,7 +110,60 @@ function formatExaSearchResult(result: unknown): string | null {
 
 function formatExaFetchResult(result: unknown): string | null {
 	if (typeof result === "string") {
-		return result.trim().length > 0 ? result : null;
+		const trimmed = result.trim();
+		if (!trimmed) return null;
+		if (trimmed.startsWith("<fetchUrls") && trimmed.includes("error=") && !trimmed.includes("</fetchUrls>")) {
+			return trimmed;
+		}
+
+		const rawLines = trimmed
+			.split("\n")
+			.map((line) => line.trimEnd())
+			.filter((line) => line.trim().length > 0);
+		const hasFetchHeader = rawLines.some((line) => line.includes("<fetchUrls"));
+		if (!hasFetchHeader) return trimmed;
+
+		const headerLine = rawLines.find((line) => line.includes("<fetchUrls"));
+		const closingLine = rawLines.find((line) => line.includes("</fetchUrls>"));
+		const urlLines = rawLines.filter((line) => line.includes("<url"));
+		const errorLines = urlLines.filter((line) => line.includes("error="));
+		const normalLines = urlLines.filter((line) => !line.includes("error="));
+
+		let contentLine: string | undefined;
+		if (normalLines.length === 1) {
+			const firstUrlIdx = rawLines.findIndex((line) => line.includes("<url") && line.includes("href="));
+			if (firstUrlIdx >= 0) {
+				contentLine = rawLines
+					.slice(firstUrlIdx + 1)
+					.find(
+						(line) =>
+							!line.includes("</url>") &&
+							!line.includes("<url") &&
+							!line.includes("</fetchUrls>")
+					)
+					?.trim();
+			}
+		}
+
+		const lines: string[] = [];
+		if (headerLine) lines.push(headerLine);
+		if (normalLines[0]) lines.push(normalLines[0]);
+
+		if (errorLines.length > 0) {
+			lines.push(errorLines[0]);
+		} else if (contentLine) {
+			lines.push(contentLine);
+		}
+
+		if (contentLine && errorLines.length > 0 && lines.length < 4) {
+			lines.push(contentLine);
+		}
+
+		if (closingLine && lines.length < 4) {
+			lines.push(closingLine);
+		}
+
+		return lines.length > 0 ? lines.join("\n") : trimmed;
 	}
 	if (!isRecord(result)) return null;
 	if (result.success === false && typeof result.error === "string") {
