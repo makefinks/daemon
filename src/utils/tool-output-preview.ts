@@ -136,10 +136,7 @@ function formatExaFetchResult(result: unknown): string | null {
 				contentLine = rawLines
 					.slice(firstUrlIdx + 1)
 					.find(
-						(line) =>
-							!line.includes("</url>") &&
-							!line.includes("<url") &&
-							!line.includes("</fetchUrls>")
+						(line) => !line.includes("</url>") && !line.includes("<url") && !line.includes("</fetchUrls>")
 					)
 					?.trim();
 			}
