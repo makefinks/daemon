@@ -355,42 +355,33 @@ export function handleSettingsMenuKey(key: KeyEvent, ctx: SettingsMenuContext): 
 		}
 		settingIdx++;
 
-		if (ctx.interactionMode === "voice") {
-			if (ctx.selectedIdx === settingIdx) {
-				const next = !ctx.manager.memoryEnabled;
-				ctx.manager.memoryEnabled = next;
-				ctx.setMemoryEnabled(next);
-				ctx.persistPreferences({ memoryEnabled: next });
-				key.preventDefault();
-				return true;
-			}
-			settingIdx++;
+		if (ctx.selectedIdx === settingIdx) {
+			const next = !ctx.manager.memoryEnabled;
+			ctx.manager.memoryEnabled = next;
+			ctx.setMemoryEnabled(next);
+			ctx.persistPreferences({ memoryEnabled: next });
+			key.preventDefault();
+			return true;
+		}
+		settingIdx++;
 
-			if (ctx.selectedIdx === settingIdx) {
-				const speeds: SpeechSpeed[] = [1.0, 1.25, 1.5, 1.75, 2.0];
-				const currentSpeed = ctx.manager.speechSpeed;
-				const currentIndex = speeds.indexOf(currentSpeed);
-				const nextIndex = (currentIndex + 1) % speeds.length;
-				const nextSpeed = speeds[nextIndex] ?? 1.0;
-				ctx.manager.speechSpeed = nextSpeed;
-				ctx.setSpeechSpeed(nextSpeed);
-				ctx.persistPreferences({ speechSpeed: nextSpeed });
+		if (ctx.selectedIdx === settingIdx) {
+			if (ctx.interactionMode !== "voice") {
 				key.preventDefault();
 				return true;
 			}
-			settingIdx++;
+			const speeds: SpeechSpeed[] = [1.0, 1.25, 1.5, 1.75, 2.0];
+			const currentSpeed = ctx.manager.speechSpeed;
+			const currentIndex = speeds.indexOf(currentSpeed);
+			const nextIndex = (currentIndex + 1) % speeds.length;
+			const nextSpeed = speeds[nextIndex] ?? 1.0;
+			ctx.manager.speechSpeed = nextSpeed;
+			ctx.setSpeechSpeed(nextSpeed);
+			ctx.persistPreferences({ speechSpeed: nextSpeed });
+			key.preventDefault();
+			return true;
 		}
-		if (ctx.interactionMode !== "voice") {
-			if (ctx.selectedIdx === settingIdx) {
-				const next = !ctx.manager.memoryEnabled;
-				ctx.manager.memoryEnabled = next;
-				ctx.setMemoryEnabled(next);
-				ctx.persistPreferences({ memoryEnabled: next });
-				key.preventDefault();
-				return true;
-			}
-			settingIdx++;
-		}
+		settingIdx++;
 
 		if (ctx.selectedIdx === settingIdx) {
 			const next = !ctx.showFullReasoning;

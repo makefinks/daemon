@@ -128,22 +128,24 @@ export function SettingsMenu({
 		},
 	];
 
-	if (interactionMode === "voice") {
-		items.push(
-			{
-				id: "header-audio",
-				label: "AUDIO PARAMETERS",
-				isHeader: true,
-			},
-			{
-				id: "speech-speed",
-				label: "Speech Speed",
-				value: `${speechSpeed.toFixed(2)}x`,
-				description: "Adjust speech rate (1.0x - 2.0x)",
-				isCyclic: true,
-			}
-		);
-	}
+	const audioSettingsDisabled = interactionMode !== "voice";
+	items.push(
+		{
+			id: "header-audio",
+			label: "AUDIO PARAMETERS",
+			isHeader: true,
+		},
+		{
+			id: "speech-speed",
+			label: "Speech Speed",
+			value: audioSettingsDisabled ? "N/A" : `${speechSpeed.toFixed(2)}x`,
+			description: audioSettingsDisabled
+				? "Enable voice mode to adjust speech rate"
+				: "Adjust speech rate (1.0x - 2.0x)",
+			isCyclic: !audioSettingsDisabled,
+			disabled: audioSettingsDisabled,
+		}
+	);
 
 	items.push(
 		{
@@ -170,6 +172,7 @@ export function SettingsMenu({
 	// Filter out headers for selection logic
 	const selectableItems = items.filter((item) => !item.isHeader);
 	const selectableCount = selectableItems.length;
+	const labelWidth = Math.max(0, ...selectableItems.map((item) => item.label.length)) + 4;
 
 	useEffect(() => {
 		if (selectableCount === 0) {
@@ -276,19 +279,25 @@ export function SettingsMenu({
 								paddingRight={1}
 								flexDirection="column"
 							>
-								<box>
-									<text>
-										<span fg={labelColor}>
-											{isSelected ? "▶ " : "  "}
-											{item.label}:{" "}
-										</span>
-										<span fg={valueColor}>{item.value}</span>
-										{item.isToggle && !item.disabled && <span fg={COLORS.USER_LABEL}></span>}
-										{item.isCyclic && !item.disabled && <span fg={COLORS.USER_LABEL}></span>}
-									</text>
+								<box flexDirection="row">
+									<box width={labelWidth}>
+										<text>
+											<span fg={labelColor}>
+												{isSelected ? "▶ " : "  "}
+												{item.label}:{" "}
+											</span>
+										</text>
+									</box>
+									<box>
+										<text>
+											<span fg={valueColor}>{item.value}</span>
+											{item.isToggle && !item.disabled && <span fg={COLORS.USER_LABEL}></span>}
+											{item.isCyclic && !item.disabled && <span fg={COLORS.USER_LABEL}></span>}
+										</text>
+									</box>
 								</box>
 								{item.description && (
-									<box marginLeft={4}>
+									<box marginLeft={labelWidth}>
 										<text>
 											<span fg={COLORS.REASONING_DIM}>{item.description}</span>
 										</text>
