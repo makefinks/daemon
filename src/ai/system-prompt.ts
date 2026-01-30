@@ -131,7 +131,7 @@ Do NOT use web search for every request the user makes. Determine if web search 
 `,
 	fetchUrls: `
 ### 'fetchUrls'
-The fetchUrl tool allows for getting the actual contents of web pages.
+The fetchUrls tool allows for getting the actual contents of web pages.
 Use this tool to read the content of potentially relevant websites returned by the webSearch tool.
 If the user provides a URL, always fetch the content of the URL first before answering.
 
@@ -142,51 +142,59 @@ If the user provides a URL, always fetch the content of the URL first before ans
 3) **Paginate only if relevant** using \`lineOffset = previousOffset + previousLimit\`, same \`lineLimit\`.
 4) **Avoid large reads** unless you truly need one long contiguous excerpt.
 
-**Highlights mode (optional)**
-
-Use the \`highlightQuery\` parameter to get semantically relevant excerpts instead of paginated text:
-- Pass a natural language query describing what you're looking for
-- Returns the most relevant snippets from the page (uses Exa's semantic highlighting)
-- Great for quickly checking if a URL contains relevant information before reading more
-
-\`\`\`
-fetchUrls({ url: "https://example.com/article", highlightQuery: "machine learning applications" })
-→ Returns: highlights array with relevant excerpts
-\`\`\`
-
-**When to use highlights vs pagination:**
-- Use \`highlightQuery\` when scanning multiple URLs for relevance or extracting specific facts
-- Use pagination (lineOffset/lineLimit) when you need to read complete sections in order or need to verify highlights.
-
 <pagination-example>
 1. Fetch start of the page
 <tool-input name="fetchUrls">
 {
-  "url": "https://example.com/article",
-  "lineLimit": 40
+  "requests": [
+    {
+      "url": "https://example.com/article",
+      "lineLimit": 40
+    }
+  ]
 }
 </tool-input>
 
 2. Fetch more content without re-fetching the start again.
 <tool-input name="fetchUrls">
 {
-  "url": "https://example.com/article",
-  "lineOffset": 40,
-  "lineLimit": 40
+  "requests": [
+    {
+      "url": "https://example.com/article",
+      "lineOffset": 40,
+      "lineLimit": 40
+    }
+  ]
 }
 </tool-input>
 
 3. Fetch the next chunk without fetching the previous parts.
 <tool-input name="fetchUrls">
 {
-  "url": "https://example.com/article",
-  "lineOffset": 80,
-  "lineLimit": 40
+  "requests": [
+    {
+      "url": "https://example.com/article",
+      "lineOffset": 80,
+      "lineLimit": 40
+    }
+  ]
 }
 </tool-input>
 </pagination-example>
 
 Use pagination this way unless instructed otherwise. This avoids fetching page content reduntantly.
+
+<multi-url-example>
+Fetch multiple URLs in one call:
+<tool-input name="fetchUrls">
+{
+  "requests": [
+    { "url": "https://example.com/article", "lineLimit": 40 },
+    { "url": "https://example.com/faq", "lineLimit": 40 }
+  ]
+}
+</tool-input>
+</multi-url-example>
 `,
 	renderUrl: `
   ### 'renderUrl'

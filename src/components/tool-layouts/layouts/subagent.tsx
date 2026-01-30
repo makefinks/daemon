@@ -34,6 +34,12 @@ function extractUrl(input: unknown): string | null {
 	if ("url" in input && typeof input.url === "string") {
 		return input.url;
 	}
+	if ("requests" in input && Array.isArray(input.requests)) {
+		const first = input.requests.find((item: unknown) => isRecord(item) && typeof item.url === "string");
+		if (isRecord(first) && typeof first.url === "string") {
+			return first.url;
+		}
+	}
 	return null;
 }
 
@@ -88,6 +94,16 @@ function formatStepLabel(step: { toolName: string; input?: unknown }): string {
 
 	if (step.toolName === "fetchUrls" || step.toolName === "renderUrl") {
 		const url = extractUrl(step.input);
+		if (step.toolName === "fetchUrls" && isRecord(step.input) && Array.isArray(step.input.requests)) {
+			const count = step.input.requests.filter(
+				(item: unknown) => isRecord(item) && typeof item.url === "string"
+			).length;
+			if (url) {
+				const suffix = count > 1 ? ` (+${count - 1})` : "";
+				return `${toolLabel}: ${truncateLabel(url, MAX_URL_LENGTH)}${suffix}`;
+			}
+			return toolLabel;
+		}
 		if (url) {
 			return `${toolLabel}: ${truncateLabel(url, MAX_URL_LENGTH)}`;
 		}

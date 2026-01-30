@@ -92,34 +92,47 @@ describe("formatToolOutputPreview", () => {
 
 	describe("fetchUrls formatting", () => {
 		it("formats fetch result", () => {
-			const result = {
-				success: true,
-				url: "https://example.com",
-				text: "This is page content\n\nWith multiple lines",
-				remainingLines: 0,
-			};
+			const result = `<fetchUrls>
+  <url href="https://example.com" remainingLines="0">
+    This is page content
+    With multiple lines
+  </url>
+</fetchUrls>`;
 			const output = formatToolOutputPreview("fetchUrls", result);
-			expect(output).toHaveLength(3);
-			expect(output?.[0]).toBe("https://example.com (remainingLines=0)");
-			expect(output?.[1]).toMatch(/This is page content/);
+			expect(output?.[0]).toBe("<fetchUrls>");
+			expect(output?.join("\n")).toMatch(/<url href="https:\/\/example\.com"/);
+			expect(output?.join("\n")).toMatch(/This is page content/);
 		});
 
 		it("truncates long content", () => {
 			const longText = "a".repeat(300);
-			const result = {
-				success: true,
-				url: "https://example.com",
-				text: longText,
-				remainingLines: null,
-			};
+			const result = `<fetchUrls>
+  <url href="https://example.com" remainingLines="unknown">
+    ${longText}
+  </url>
+</fetchUrls>`;
 			const output = formatToolOutputPreview("fetchUrls", result);
-			expect(output?.[1].length).toBeLessThanOrEqual(160);
+			const longLine = output?.find((line) => line.includes("a"));
+			expect(longLine?.length).toBeLessThanOrEqual(160);
+		});
+
+		it("formats multi-result output", () => {
+			const result = `<fetchUrls>
+  <url href="https://example.com" remainingLines="0">
+    Alpha content
+  </url>
+  <url href="https://bad.example.com" error="404 Not Found" />
+</fetchUrls>`;
+			const output = formatToolOutputPreview("fetchUrls", result);
+			expect(output).toBeTruthy();
+			expect(output?.join("\n")).toMatch(/https:\/\/example\.com/);
+			expect(output?.join("\n")).toMatch(/error="404 Not Found"/);
 		});
 
 		it("handles fetch errors", () => {
-			const result = { success: false, error: "404 Not Found" };
+			const result = `<fetchUrls error="404 Not Found" />`;
 			const output = formatToolOutputPreview("fetchUrls", result);
-			expect(output).toEqual(["error: 404 Not Found"]);
+			expect(output).toEqual(['<fetchUrls error="404 Not Found" />']);
 		});
 	});
 

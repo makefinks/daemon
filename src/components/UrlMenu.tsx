@@ -139,7 +139,7 @@ export function UrlMenu({ items, onClose }: UrlMenuProps) {
 						</span>
 					</text>
 					<text>
-						<span fg={COLORS.REASONING_DIM}>(G=grounded, READ=% or HL=highlights)</span>
+						<span fg={COLORS.REASONING_DIM}>(G=grounded, READ=%)</span>
 					</text>
 				</box>
 
@@ -152,12 +152,7 @@ export function UrlMenu({ items, onClose }: UrlMenuProps) {
 						sortedItems.map((item, idx) => {
 							const { origin, path } = splitUrl(item.url);
 							const grounded = item.groundedCount > 0;
-							const readLabel =
-								item.readPercent !== undefined
-									? `${item.readPercent}%`
-									: item.highlightsCount !== undefined
-										? `HL:${item.highlightsCount}`
-										: "—";
+							const readLabel = item.readPercent !== undefined ? `${item.readPercent}%` : "—";
 
 							return (
 								<box key={idx} flexDirection="row" marginBottom={0}>

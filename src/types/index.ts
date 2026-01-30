@@ -447,7 +447,6 @@ export interface UrlMenuItem {
 	url: string;
 	groundedCount: number;
 	readPercent?: number;
-	highlightsCount?: number;
 	status: "ok" | "error";
 	error?: string;
 	lastSeenIndex: number;

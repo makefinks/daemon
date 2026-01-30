@@ -8,6 +8,10 @@ function normalizeWhitespace(text: string): string {
 	return text.replace(/\r\n/g, "\n").replace(/\t/g, "  ");
 }
 
+function escapeXmlAttribute(value: string): string {
+	return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 function truncateText(text: string, maxChars: number): { text: string; truncated: boolean } {
 	if (text.length <= maxChars) return { text, truncated: false };
 	if (maxChars <= 1) return { text: "…", truncated: true };
@@ -105,43 +109,73 @@ function formatExaSearchResult(result: unknown): string | null {
 }
 
 function formatExaFetchResult(result: unknown): string | null {
+	if (typeof result === "string") {
+		return result.trim().length > 0 ? result : null;
+	}
 	if (!isRecord(result)) return null;
 	if (result.success === false && typeof result.error === "string") {
 		return `error: ${result.error}`;
 	}
 	if (result.success !== true) return null;
 	const data = extractToolDataContainer(result);
-	const candidate = isRecord(data) ? (data as ExaLikeItem & { remainingLines?: unknown }) : {};
-	const label = formatExaItemLabel(candidate);
-	const url = typeof candidate.url === "string" ? candidate.url : "";
-	const title = typeof candidate.title === "string" ? candidate.title : "";
-	const lineOffset = typeof candidate.lineOffset === "number" ? candidate.lineOffset : undefined;
-	const lineLimit = typeof candidate.lineLimit === "number" ? candidate.lineLimit : undefined;
-	const remainingLines =
-		typeof (candidate as { remainingLines?: unknown }).remainingLines === "number" ||
-		(candidate as { remainingLines?: unknown }).remainingLines === null
-			? (candidate as { remainingLines: number | null }).remainingLines
-			: undefined;
-	const rangeParts: string[] = [];
-	if (lineOffset !== undefined) rangeParts.push(`lineOffset=${lineOffset}`);
-	if (lineLimit !== undefined) rangeParts.push(`lineLimit=${lineLimit}`);
-	if (remainingLines !== undefined) {
-		rangeParts.push(remainingLines === null ? "remainingLines=unknown" : `remainingLines=${remainingLines}`);
+	const container = isRecord(data) ? data : {};
+	const results = Array.isArray(container.results) ? container.results : null;
+	if (!results) return null;
+
+	const lines: string[] = ["<fetchUrls>"];
+	const maxItems = 3;
+	const MAX_LINES = 2;
+	const MAX_CHARS = 160;
+
+	for (const item of results.slice(0, maxItems)) {
+		if (!isRecord(item)) continue;
+
+		const candidate = item as ExaLikeItem & {
+			remainingLines?: unknown;
+			totalLines?: unknown;
+			error?: unknown;
+		};
+		const url = typeof candidate.url === "string" ? candidate.url : "";
+		if (!url) continue;
+
+		const attributes: string[] = [`href="${escapeXmlAttribute(url)}"`];
+		if (typeof candidate.lineOffset === "number") attributes.push(`lineOffset="${candidate.lineOffset}"`);
+		if (typeof candidate.lineLimit === "number") attributes.push(`lineLimit="${candidate.lineLimit}"`);
+		if (typeof candidate.totalLines === "number") attributes.push(`totalLines="${candidate.totalLines}"`);
+		if (typeof candidate.remainingLines === "number") {
+			attributes.push(`remainingLines="${candidate.remainingLines}"`);
+		} else if (candidate.remainingLines === null) {
+			attributes.push(`remainingLines="unknown"`);
+		}
+
+		if (candidate.success === false && typeof candidate.error === "string") {
+			attributes.push(`error="${escapeXmlAttribute(candidate.error)}"`);
+			lines.push(`  <url ${attributes.join(" ")} />`);
+			continue;
+		}
+
+		const text = typeof candidate.text === "string" ? candidate.text : "";
+		if (!text.trim()) {
+			lines.push(`  <url ${attributes.join(" ")} />`);
+			continue;
+		}
+
+		const snippetLines = normalizeWhitespace(text)
+			.replace(/\n{3,}/g, "\n\n")
+			.trim()
+			.split("\n")
+			.slice(0, MAX_LINES)
+			.map((l) => (l.length > MAX_CHARS ? `${l.slice(0, MAX_CHARS - 1)}…` : l));
+
+		lines.push(`  <url ${attributes.join(" ")}>`);
+		for (const line of snippetLines) {
+			lines.push(`    ${escapeXmlAttribute(line)}`);
+		}
+		lines.push("  </url>");
 	}
-	const remainingSuffix = rangeParts.length > 0 ? ` (${rangeParts.join(", ")})` : "";
 
-	const headerBase = url && title ? `${label} — ${url}` : label;
-	const header = `${headerBase}${remainingSuffix}`;
-
-	const text = typeof candidate.text === "string" ? candidate.text : "";
-	if (!text.trim()) return header;
-
-	// Provide a small snippet; downstream truncation enforces the hard caps.
-	const snippet = normalizeWhitespace(text)
-		.replace(/\n{3,}/g, "\n\n")
-		.trim();
-
-	return `${header}\n${snippet}`;
+	lines.push("</fetchUrls>");
+	return lines.length > 2 ? lines.join("\n") : null;
 }
 
 function formatRenderUrlResult(result: unknown): string | null {
