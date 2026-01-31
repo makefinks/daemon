@@ -28,14 +28,20 @@
 	},
 	"module": "src/index.tsx",
 	"type": "module",
-	"version": "0.9.0",
+	"version": "0.9.1",
 	"bin": {
 		"daemon": "dist/cli.js"
 	},
 	"publishConfig": {
 		"access": "public"
 	},
-	"files": ["dist", "src", "LICENSE", "README.md", "package.json"],
+	"files": [
+		"dist",
+		"src",
+		"LICENSE",
+		"README.md",
+		"package.json"
+	],
 	"scripts": {
 		"build:cli": "bun build src/cli.ts --outdir dist --target node",
 		"dev": "bun run --watch src/index.tsx",
