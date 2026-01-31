@@ -302,9 +302,13 @@ Rules:
 		})) as Mem0RawAddResult;
 
 		const extracted = result.results.map((r) => {
-			const event =
+			const rawEvent =
 				(r as unknown as { metadata?: { event?: string } }).metadata?.event ??
 				(r as { event?: string }).event;
+			const validEvents = ["ADD", "UPDATE", "DELETE", "NONE"] as const;
+			const event = validEvents.includes(rawEvent as (typeof validEvents)[number])
+				? (rawEvent as (typeof validEvents)[number])
+				: "NONE";
 			return {
 				id: r.id,
 				memory: r.memory,

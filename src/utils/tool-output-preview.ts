@@ -65,6 +65,10 @@ type ExaLikeItem = {
 	text?: unknown;
 	lineOffset?: unknown;
 	lineLimit?: unknown;
+	success?: unknown;
+	error?: unknown;
+	remainingLines?: unknown;
+	totalLines?: unknown;
 };
 
 function extractExaItems(data: unknown): ExaLikeItem[] | null {
@@ -146,8 +150,9 @@ function formatExaFetchResult(result: unknown): string | null {
 		if (headerLine) lines.push(headerLine);
 		if (normalLines[0]) lines.push(normalLines[0]);
 
-		if (errorLines.length > 0) {
-			lines.push(errorLines[0]);
+		const firstErrorLine = errorLines[0];
+		if (firstErrorLine) {
+			lines.push(firstErrorLine);
 		} else if (contentLine) {
 			lines.push(contentLine);
 		}

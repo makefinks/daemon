@@ -1,6 +1,7 @@
-import type { ToolLayoutConfig, ToolHeader } from "../types";
 import { COLORS } from "../../../ui/constants";
 import { registerToolLayout } from "../registry";
+import type { ToolBody } from "../types";
+import type { ToolHeader, ToolLayoutConfig } from "../types";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -106,6 +107,7 @@ type ExaLikeItem = {
 	remainingLines?: unknown;
 	totalLines?: unknown;
 	error?: unknown;
+	success?: unknown;
 };
 
 function formatExaItemLabel(item: ExaLikeItem): string {

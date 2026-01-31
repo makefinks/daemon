@@ -15,14 +15,14 @@ import {
 import { getDaemonManager } from "../state/daemon-state";
 import { getRuntimeContext } from "../state/runtime-context";
 import type {
+	MemoryToastOperation,
+	MemoryToastPreview,
 	ReasoningEffort,
 	StreamCallbacks,
 	TokenUsage,
 	ToolApprovalRequest,
 	ToolApprovalResponse,
 	TranscriptionResult,
-	MemoryToastPreview,
-	MemoryToastOperation,
 } from "../types";
 import { debug, toolDebug } from "../utils/debug-logger";
 import { getOpenRouterReportedCost } from "../utils/openrouter-reported-cost";
@@ -321,7 +321,7 @@ export async function generateResponse(
 async function persistConversationMemory(
 	userMessage: string,
 	assistantMessage: string
-): Promise<string | null> {
+): Promise<MemoryToastPreview | null> {
 	const userTextForMemory = userMessage.trim();
 	const assistantTextForMemory = assistantMessage.trim();
 

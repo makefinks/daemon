@@ -63,15 +63,28 @@ export const fetchUrls = tool({
 			return `<fetchUrls error="${escapeXmlAttribute(exaClientResult.error)}" />`;
 		}
 
-		const normalizedRequests = requests.map((request) => {
-			const hasLineOffset = typeof request.lineOffset === "number";
-			const hasLineLimit = typeof request.lineLimit === "number";
-			const invalidPagination = hasLineOffset && !hasLineLimit && (request.lineOffset ?? 0) > 0;
+		interface NormalizedRequest {
+			url: string;
+			lineOffset?: number;
+			lineLimit?: number;
+			invalidPagination: boolean;
+			effectiveLineOffset: number;
+			effectiveLineLimit: number;
+		}
+
+		const normalizedRequests = requests.map((request): NormalizedRequest => {
+			const lineOffset = request.lineOffset;
+			const lineLimit = request.lineLimit;
+			const hasLineOffset = typeof lineOffset === "number";
+			const hasLineLimit = typeof lineLimit === "number";
+			const invalidPagination = hasLineOffset && !hasLineLimit && (lineOffset ?? 0) > 0;
 			return {
-				...request,
+				url: request.url,
+				lineOffset,
+				lineLimit,
 				invalidPagination,
-				effectiveLineOffset: hasLineOffset ? request.lineOffset : 0,
-				effectiveLineLimit: hasLineLimit ? request.lineLimit : DEFAULT_LINE_LIMIT,
+				effectiveLineOffset: hasLineOffset ? lineOffset : 0,
+				effectiveLineLimit: hasLineLimit ? lineLimit : DEFAULT_LINE_LIMIT,
 			};
 		});
 

@@ -53,6 +53,7 @@ function parseFetchUrlsXml(result: string): {
 		const attrs: Record<string, string> = {};
 		for (const attr of attrText.matchAll(/(\w+)="([^"]*)"/g)) {
 			const key = attr[1];
+			if (!key) continue;
 			const value = attr[2] ?? "";
 			attrs[key] = unescapeXmlAttribute(value);
 		}
