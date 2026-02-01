@@ -89,11 +89,12 @@ DAEMON can persist user-specific facts across sessions using [mem0](https://gith
 | Multi-Model Support | Works with all OpenRouter models and includes a curated default list. |
 | Session Persistence | Preferences and chat sessions stored locally on disk. |
 | Memory  | Automatic persistance of user-specific facts with persistent recall using **mem0** |
-| Workspaces | On-disk workspaces for the agent to work in. |
+| Workspaces | Session-scoped on-disk workspaces for the agent to work in. |
 | Web Search | Exa-based search and fetch for grounded, up-to-date info. |
 | Grounding | Text-fragment grounding with a dedicated UI. |
 | Bash Execution | Bash integration with approval scoping for potentially dangerous commands. |
 | JS Page Rendering | Optional Playwright renderer for SPA content. |
+| MCP | Model Context Protocol tools  |
 
 ## 📦 Install (npm)
 
@@ -119,6 +120,7 @@ Configuration is done via environment variables (or the onboarding UI):
 - `OPENAI_API_KEY` (optional) - enables voice transcription + TTS
 
 > Keys entered via the onboarding UI are stored locally in `~/.config/daemon/credentials.json` with restricted permissions (`0600`). For maximum security, use environment variables instead.
+
 
 ## 🛠️ System dependencies
 
@@ -157,3 +159,36 @@ npm i -g playwright
 # 2) Install Chromium browser binaries
 npx playwright install chromium
 ```
+## 🔌 MCP server setup (Model Context Protocol)
+
+DAEMON can load MCP tools from external servers and expose them to the agent at runtime.
+MCP servers are configured via a local config file.
+
+Default config path:
+
+- macOS/Linux: `~/.config/daemon/config.json`
+
+Example config:
+
+```json
+{
+  "mcpServers": [
+    {
+      "id": "local-mcp",
+      "type": "http",
+      "url": "http://localhost:3333/mcp"
+    },
+    {
+      "type": "sse",
+      "url": "https://example.com/mcp/sse"
+    }
+  ]
+}
+```
+
+Notes:
+
+- `type` must be `http` or `sse`.
+- `url` is the MCP endpoint URL for the server.
+- `id` is optional; if omitted, DAEMON derives one from the host.
+- MCP server status and tools appear in the **Tools** menu once configured.
