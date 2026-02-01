@@ -269,6 +269,7 @@ export type VoiceInteractionType = "direct" | "review";
 
 export type ToolToggleId =
 	| "readFile"
+	| "writeFile"
 	| "runBash"
 	| "webSearch"
 	| "fetchUrls"
@@ -281,6 +282,7 @@ export type ToolToggles = Record<ToolToggleId, boolean>;
 
 export const DEFAULT_TOOL_TOGGLES: ToolToggles = {
 	readFile: true,
+	writeFile: true,
 	runBash: true,
 	webSearch: true,
 	fetchUrls: true,

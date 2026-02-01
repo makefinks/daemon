@@ -8,6 +8,7 @@ import { runBash } from "./run-bash";
 import { subagent } from "./subagents";
 import { todoManager } from "./todo-manager";
 import { webSearch } from "./web-search";
+import { writeFile } from "./write-file";
 
 import type { ToolToggleId, ToolToggles } from "../../types";
 import { detectLocalPlaywrightChromium } from "../../utils/js-rendering";
@@ -40,6 +41,7 @@ type ToolGateResult = {
 
 const TOOL_REGISTRY: ToolEntry[] = [
 	{ id: "readFile", toggleKey: "readFile", tool: readFile },
+	{ id: "writeFile", toggleKey: "writeFile", tool: writeFile },
 	{ id: "runBash", toggleKey: "runBash", tool: runBash },
 	{ id: "webSearch", toggleKey: "webSearch", tool: webSearch, gate: gateExa },
 	{ id: "fetchUrls", toggleKey: "fetchUrls", tool: fetchUrls, gate: gateExa },
@@ -68,6 +70,7 @@ async function gateRenderUrl(): Promise<ToolGateResult> {
 function normalizeToggles(toggles?: ToolToggles): ToolToggles {
 	return {
 		readFile: toggles?.readFile ?? true,
+		writeFile: toggles?.writeFile ?? true,
 		runBash: toggles?.runBash ?? true,
 		webSearch: toggles?.webSearch ?? true,
 		fetchUrls: toggles?.fetchUrls ?? true,
@@ -166,6 +169,7 @@ export async function buildToolSet(
 export function getToolLabels(): Record<ToolId, string> {
 	return {
 		readFile: "readFile",
+		writeFile: "writeFile",
 		runBash: "runBash",
 		webSearch: "webSearch",
 		fetchUrls: "fetchUrls",
@@ -179,6 +183,7 @@ export function getToolLabels(): Record<ToolId, string> {
 export function getDefaultToolOrder(): ToolId[] {
 	return [
 		"readFile",
+		"writeFile",
 		"runBash",
 		"webSearch",
 		"fetchUrls",
@@ -192,6 +197,7 @@ export function getDefaultToolOrder(): ToolId[] {
 export function createToolAvailabilitySnapshot(availability: ToolAvailabilityMap): Record<ToolId, boolean> {
 	return {
 		readFile: availability.readFile?.enabled ?? false,
+		writeFile: availability.writeFile?.enabled ?? false,
 		runBash: availability.runBash?.enabled ?? false,
 		webSearch: availability.webSearch?.enabled ?? false,
 		fetchUrls: availability.fetchUrls?.enabled ?? false,

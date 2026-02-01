@@ -9,6 +9,7 @@ export type InteractionMode = "text" | "voice";
 
 export interface ToolAvailability {
 	readFile: boolean;
+	writeFile: boolean;
 	runBash: boolean;
 	webSearch: boolean;
 	fetchUrls: boolean;
@@ -64,6 +65,7 @@ export function buildDaemonSystemPrompt(options: SystemPromptOptions = {}): stri
 function normalizeToolAvailability(toolAvailability?: Partial<ToolAvailability>): ToolAvailability {
 	return {
 		readFile: toolAvailability?.readFile ?? true,
+		writeFile: toolAvailability?.writeFile ?? true,
 		runBash: toolAvailability?.runBash ?? true,
 		webSearch: toolAvailability?.webSearch ?? true,
 		fetchUrls: toolAvailability?.fetchUrls ?? true,
@@ -243,6 +245,19 @@ Fetch multiple URLs in one call:
   By default it reads up to 2000 lines from the start when no offset/limit are provided.
   For partial reads, you must provide both a 0-based line offset and a line limit.
 `,
+	writeFile: `
+  ### 'writeFile' (local file writer)
+  Use this to write content to files. Creates new files or overwrites existing ones.
+  Automatically creates parent directories if they don't exist.
+
+  **CRITICAL: Always report the correct file location to the user**
+  - When you write a file, explicitly tell the user the full path where it was saved
+  - If the file is in the workspace, say "I have saved it to my workspace at: [full path]"
+  - If the file is in the current working directory, say "I have saved it to: [path]"
+  - Do NOT give commands like "cat filename" or "open filename" unless the file is actually in the current working directory
+  - For files in the workspace, give the full path: "cat /full/path/to/file" or tell the user to navigate there first
+`,
+
 	subagent: `
   ### 'subagent'
   Call this tool to spawn subagents for specific tasks.
@@ -260,6 +275,7 @@ function buildToolDefinitions(availability: ToolAvailability): string {
 	if (availability.groundingManager) blocks.push(TOOL_SECTIONS.groundingManager);
 	if (availability.runBash) blocks.push(TOOL_SECTIONS.runBash);
 	if (availability.readFile) blocks.push(TOOL_SECTIONS.readFile);
+	if (availability.writeFile) blocks.push(TOOL_SECTIONS.writeFile);
 	if (availability.subagent) blocks.push(TOOL_SECTIONS.subagent);
 
 	const webNote =
