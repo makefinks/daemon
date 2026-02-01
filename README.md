@@ -14,12 +14,11 @@ but can also interact with and **control** your system through the terminal with
 DAEMON requires Bun at runtime, but global installation is currently documented via npm because some Bun global setups can fail on native `sqlite3` bindings pulled in by the optional memory feature.
 
 ```bash
-# npm (recommended)
-# Note: you may see deprecation warnings from transitive dependencies.
+# Install via npm
 npm i -g @makefinks/daemon
 
-# additional installs (macOS)
-brew install sox # For Audio Input / Output
+# Additional installs (Audio)
+brew install sox 
 ```
 
 Then run with:
@@ -27,7 +26,9 @@ Then run with:
 daemon
 ```
 
-> **Note:** DAEMON requires [Bun](https://bun.sh) at runtime. Install Bun first: `curl -fsSL https://bun.com/install | bash`
+#### ⚠️ Important Notes
+> 1. DAEMON requires [Bun](https://bun.sh) at runtime. Install Bun first: `curl -fsSL https://bun.com/install | bash`
+> 2. Windows is currently **not** supported (Only by using WSL - with minor issues)
 
 See full installation details below for configuration and system dependencies.
 
