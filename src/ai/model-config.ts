@@ -9,14 +9,14 @@ import { loadManualConfig } from "../utils/config";
 // Available models for selection (OpenRouter format)
 export const AVAILABLE_MODELS: ModelOption[] = [
 	{ id: "x-ai/grok-4.1-fast", name: "Grok 4.1 Fast" },
+	{ id: "arcee-ai/trinity-large-preview:free", name: "Trinity Large Preview" },
 	{ id: "z-ai/glm-4.7", name: "GLM 4.7" },
 	{ id: "minimax/minimax-m2.1", name: "Minimax M2.1" },
 	{ id: "google/gemini-3-flash-preview", name: "Gemini 3 Flash" },
 	{ id: "google/gemini-3-pro-preview", name: "Gemini 3 Pro" },
 	{ id: "openai/gpt-5.2", name: "GPT 5.2" },
-	{ id: "moonshotai/kimi-k2-thinking", name: "Kimi K2 Thinking" },
+	{ id: "moonshotai/kimi-k2.5", name: "Kimi K2.5" },
 	{ id: "openai/gpt-oss-120b:exacto", name: "GPT-OSS-120" },
-	{ id: "mistralai/devstral-2512:free", name: "Mistral Devstral" },
 	{ id: "nvidia/nemotron-3-nano-30b-a3b:free", name: "Nemotron 3 Nano" },
 ];
 
