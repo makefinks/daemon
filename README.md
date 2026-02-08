@@ -41,12 +41,12 @@ listening to audio input, reasoning about questions, calling tools, and generati
 The avatar was deliberately designed to feel slightly ominous and alien-like playing into sci-fi depictions.
 
 ### 🧠 LLMs
-DAEMON can be powered by **any** model available on [OpenRouter](https://openrouter.ai/models).
-The TUI includes a model picker that can fetch and select models as they become available on OpenRouter.
-Models are sorted by average provider pricing and the picker includes information about their context window and caching support.
-Once a model is selected, the **selection of the inference provider** is possible. Open-source models can vary strongly between providers.
-> While all models on OpenRouter are supported, a curated list is included for the best experience.
-It is generally recommended to use Models that support caching due to being significantly cheaper in DAEMON
+DAEMON supports two model backends:
+- **OpenRouter** (API key based)
+- **GitHub Copilot** (GitHub-authenticated via Copilot CLI / SDK) (Experimental!)
+
+For OpenRouter, DAEMON can fetch and browse available models and route to a specific OpenRouter inference provider.
+For GitHub Copilot, DAEMON can use your Copilot subscription and list available Copilot models when authenticated.
 
 ![Model Picker](img/model-picker.png)
 
@@ -87,7 +87,7 @@ DAEMON can persist user-specific facts across sessions using [mem0](https://gith
 | Terminal TUI | OpenTUI-powered interface with sci-fi styling and hotkey controls. |
 | Text + Voice | Supports text input and voice interaction with transcription and TTS. |
 | Animated Avatar | Sci-fi avatar reacts to listening, tool use, and response generation. |
-| Multi-Model Support | Works with all OpenRouter models and includes a curated default list. |
+| Multi-Model Support | Works with OpenRouter and GitHub Copilot model backends. |
 | Session Persistence | Preferences and chat sessions stored locally on disk. |
 | Memory  | Automatic persistance of user-specific facts with persistent recall using **mem0** |
 | Workspaces | Session-scoped on-disk workspaces for the agent to work in. |
@@ -116,9 +116,19 @@ daemon
 
 Configuration is done via environment variables (or the onboarding UI):
 
-- `OPENROUTER_API_KEY` (required) - response generation via OpenRouter models
+- `OPENROUTER_API_KEY` (required only when OpenRouter is selected) - response generation via OpenRouter models
 - `EXA_API_KEY` (optional) - enables web search + fetch grounding via Exa
 - `OPENAI_API_KEY` (optional) - enables voice transcription + TTS
+
+For Copilot, authenticate once with either GitHub CLI or Copilot CLI:
+
+```bash
+gh auth login
+# or
+copilot login
+```
+
+> ⚠️ GitHub Copilot authentication support is experimental.
 
 > Keys entered via the onboarding UI are stored locally in `~/.config/daemon/credentials.json` with restricted permissions (`0600`). For maximum security, use environment variables instead.
 

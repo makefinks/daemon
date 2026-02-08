@@ -3,9 +3,10 @@ import { useKeyboard } from "@opentui/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { RefObject } from "react";
 import { handleOnboardingKey } from "../hooks/keyboard-handlers";
-import type { AppPreferences, AudioDevice, ModelOption, OnboardingStep } from "../types";
+import type { AppPreferences, AudioDevice, LlmProvider, ModelOption, OnboardingStep } from "../types";
 import { COLORS } from "../ui/constants";
 import { formatContextWindowK, formatPrice } from "../utils/formatters";
+import { ApiKeyInput } from "./ApiKeyInput";
 import { ApiKeyStep } from "./ApiKeyStep";
 
 const MODEL_COL_WIDTH = {
@@ -23,6 +24,13 @@ const API_KEY_CONFIGS = {
 		errorMessage: "OPENROUTER_API_KEY environment variable not found.",
 		envVarName: "OPENROUTER_API_KEY",
 		keyUrl: "https://openrouter.ai/keys",
+		optional: false,
+	},
+	copilot_auth: {
+		title: "GITHUB COPILOT LOGIN REQUIRED",
+		description: "Authenticate with GitHub/Copilot CLI, then validate from here.",
+		envVarName: "COPILOT_CLI_LOGIN",
+		keyUrl: "https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli",
 		optional: false,
 	},
 	openai_key: {
@@ -51,10 +59,13 @@ interface OnboardingOverlayProps {
 	currentDevice?: string;
 	currentOutputDevice?: string;
 	models: ModelOption[];
+	currentModelProvider: LlmProvider;
+	copilotAuthenticated: boolean;
 	currentModelId: string;
 	deviceLoadTimedOut?: boolean;
 	soxAvailable: boolean;
 	soxInstallHint: string;
+	setCurrentModelProvider: (provider: LlmProvider) => void;
 	setCurrentDevice: (deviceName: string | undefined) => void;
 	setCurrentOutputDevice: (deviceName: string | undefined) => void;
 	setCurrentModelId: (modelId: string) => void;
@@ -74,10 +85,13 @@ export function OnboardingOverlay({
 	currentDevice,
 	currentOutputDevice,
 	models,
+	currentModelProvider,
+	copilotAuthenticated,
 	currentModelId,
 	deviceLoadTimedOut,
 	soxAvailable,
 	soxInstallHint,
+	setCurrentModelProvider,
 	setCurrentDevice,
 	setCurrentOutputDevice,
 	setCurrentModelId,
@@ -87,8 +101,34 @@ export function OnboardingOverlay({
 	onKeySubmit,
 	apiKeyTextareaRef,
 }: OnboardingOverlayProps) {
+	const [selectedProviderIdx, setSelectedProviderIdx] = useState(0);
 	const [selectedDeviceIdx, setSelectedDeviceIdx] = useState(0);
 	const [selectedModelIdx, setSelectedModelIdx] = useState(0);
+
+	const providerOptions = useMemo(
+		() => [
+			{
+				id: "openrouter" as const,
+				label: "OpenRouter",
+				description: "API key based provider routing",
+			},
+			...(copilotAuthenticated
+				? ([
+						{
+							id: "copilot" as const,
+							label: "GitHub Copilot",
+							description: "GitHub auth + Copilot subscription",
+						},
+					] as const)
+				: []),
+		],
+		[copilotAuthenticated]
+	);
+
+	const initialProviderIdx = useMemo(() => {
+		const idx = providerOptions.findIndex((provider) => provider.id === currentModelProvider);
+		return idx >= 0 ? idx : 0;
+	}, [currentModelProvider, providerOptions]);
 
 	const initialDeviceIdx = useMemo(() => {
 		if (devices.length === 0) return 0;
@@ -104,6 +144,11 @@ export function OnboardingOverlay({
 	}, [models, currentModelId]);
 
 	useEffect(() => {
+		if (step !== "provider") return;
+		setSelectedProviderIdx(initialProviderIdx);
+	}, [step, initialProviderIdx]);
+
+	useEffect(() => {
 		if (step !== "device") return;
 		setSelectedDeviceIdx(initialDeviceIdx);
 	}, [step, initialDeviceIdx]);
@@ -117,13 +162,18 @@ export function OnboardingOverlay({
 		(key: KeyEvent) => {
 			const handled = handleOnboardingKey(key, {
 				step,
+				selectedProviderIdx,
 				devices,
 				models,
 				selectedDeviceIdx,
 				selectedModelIdx,
+				currentModelProvider,
+				copilotAuthenticated,
 				preferences,
+				setSelectedProviderIdx,
 				setSelectedDeviceIdx,
 				setSelectedModelIdx,
+				setCurrentModelProvider,
 				setCurrentDevice,
 				setCurrentOutputDevice,
 				setCurrentModelId,
@@ -140,11 +190,15 @@ export function OnboardingOverlay({
 		},
 		[
 			step,
+			selectedProviderIdx,
 			devices,
 			models,
 			selectedDeviceIdx,
 			selectedModelIdx,
+			currentModelProvider,
+			copilotAuthenticated,
 			preferences,
+			setCurrentModelProvider,
 			setCurrentDevice,
 			setCurrentOutputDevice,
 			setCurrentModelId,
@@ -209,12 +263,104 @@ export function OnboardingOverlay({
 					</>
 				)}
 
+				{step === "provider" && (
+					<>
+						<box marginBottom={1}>
+							<text>
+								<span fg={COLORS.DAEMON_LABEL}>[ SELECT MODEL PROVIDER ]</span>
+							</text>
+						</box>
+						<box marginBottom={1}>
+							<text>
+								<span fg={COLORS.REASONING_DIM}>Choose where DAEMON should run agent responses.</span>
+							</text>
+						</box>
+						<box marginBottom={1}>
+							<text>
+								<span fg={COLORS.USER_LABEL}>↑/↓ navigate, ENTER select</span>
+							</text>
+						</box>
+						<box flexDirection="column">
+							{providerOptions.map((provider, idx) => {
+								const isSelected = idx === selectedProviderIdx;
+								const isCurrent = currentModelProvider === provider.id;
+								return (
+									<box
+										key={provider.id}
+										backgroundColor={isSelected ? COLORS.MENU_SELECTED_BG : COLORS.MENU_BG}
+										paddingLeft={1}
+										paddingRight={1}
+										flexDirection="column"
+									>
+										<text>
+											<span fg={isSelected ? COLORS.DAEMON_LABEL : COLORS.MENU_TEXT}>
+												{isSelected ? "▶ " : "  "}
+												{provider.label}
+												{isCurrent ? " ●" : ""}
+											</span>
+										</text>
+										<text>
+											<span fg={COLORS.REASONING_DIM}> {provider.description}</span>
+										</text>
+									</box>
+								);
+							})}
+							{!copilotAuthenticated && (
+								<box marginTop={1}>
+									<text>
+										<span fg={COLORS.REASONING_DIM}>
+											Copilot appears after `gh auth login` and `copilot login`.
+										</span>
+									</text>
+								</box>
+							)}
+						</box>
+					</>
+				)}
+
 				{step === "openrouter_key" && (
 					<ApiKeyStep
 						{...API_KEY_CONFIGS.openrouter_key}
 						onSubmit={onKeySubmit}
 						textareaRef={apiKeyTextareaRef}
 					/>
+				)}
+
+				{step === "copilot_auth" && (
+					<>
+						<box marginBottom={1}>
+							<text>
+								<span fg={COLORS.DAEMON_LABEL}>[ {API_KEY_CONFIGS.copilot_auth.title} ]</span>
+							</text>
+						</box>
+						<box marginBottom={1}>
+							<text>
+								<span fg={COLORS.MENU_TEXT}>
+									Run `gh auth login` and `copilot login`, then press ENTER to validate.
+								</span>
+							</text>
+						</box>
+						<box marginBottom={1}>
+							<text>
+								<span fg={COLORS.REASONING_DIM}>
+									Copilot token auth is disabled in DAEMON; logged-in CLI session is required.
+								</span>
+							</text>
+						</box>
+						<box marginBottom={1}>
+							<text>
+								<span fg={COLORS.REASONING_DIM}>
+									Install/login guide: {API_KEY_CONFIGS.copilot_auth.keyUrl}
+								</span>
+								<span fg={COLORS.USER_LABEL}> · Shift+O to open</span>
+							</text>
+						</box>
+						<ApiKeyInput
+							onSubmit={onKeySubmit}
+							placeholder="Press ENTER to validate Copilot login..."
+							textareaRef={apiKeyTextareaRef}
+						/>
+					</>
 				)}
 
 				{step === "openai_key" && (

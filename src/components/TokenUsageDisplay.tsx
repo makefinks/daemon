@@ -10,15 +10,17 @@ import { type ModelMetadata, calculateCost, formatContextUsage, formatCost } fro
 interface TokenUsageDisplayProps {
 	usage: TokenUsage;
 	modelMetadata?: ModelMetadata | null;
+	hideCost?: boolean;
 }
 
-export function TokenUsageDisplay({ usage, modelMetadata }: TokenUsageDisplayProps) {
+export function TokenUsageDisplay({ usage, modelMetadata, hideCost = false }: TokenUsageDisplayProps) {
 	const mainPromptTokens = usage.promptTokens;
 	const mainCompletionTokens = usage.completionTokens;
 
 	// Calculate cost if we have pricing info
-	const cost =
-		typeof usage.cost === "number"
+	const cost = hideCost
+		? null
+		: typeof usage.cost === "number"
 			? usage.cost
 			: modelMetadata?.pricing
 				? calculateCost(

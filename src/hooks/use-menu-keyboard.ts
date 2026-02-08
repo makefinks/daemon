@@ -12,6 +12,7 @@ interface UseMenuKeyboardParams {
 	enableViKeys?: boolean;
 	closeOnSelect?: boolean;
 	ignoreEscape?: boolean;
+	disabled?: boolean;
 }
 
 interface UseMenuKeyboardReturn {
@@ -27,6 +28,7 @@ export function useMenuKeyboard({
 	enableViKeys = true,
 	closeOnSelect = true,
 	ignoreEscape = false,
+	disabled = false,
 }: UseMenuKeyboardParams): UseMenuKeyboardReturn {
 	const [selectedIndex, setSelectedIndex] = useState(initialIndex);
 
@@ -49,6 +51,9 @@ export function useMenuKeyboard({
 	const handleKeyPress = useCallback(
 		(key: KeyEvent) => {
 			if (key.eventType !== "press") return;
+			if (disabled) {
+				return;
+			}
 			if (ignoreEscape && key.name === "escape") {
 				return;
 			}
@@ -84,7 +89,7 @@ export function useMenuKeyboard({
 
 			key.preventDefault();
 		},
-		[itemCount, selectedIndex, onClose, onSelect, enableViKeys, closeOnSelect]
+		[itemCount, selectedIndex, onClose, onSelect, enableViKeys, closeOnSelect, ignoreEscape, disabled]
 	);
 
 	useKeyboard(handleKeyPress);

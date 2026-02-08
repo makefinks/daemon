@@ -14,7 +14,6 @@ import { getOpenRouterReportedCost } from "../../utils/openrouter-reported-cost"
 import { getMcpManager } from "../mcp/mcp-manager";
 import { extractFinalAssistantText } from "../message-utils";
 import { buildOpenRouterChatSettings, getSubagentModel } from "../model-config";
-import { buildToolSet } from "./tool-registry";
 
 // OpenRouter client for subagents
 const openrouter = createOpenRouter();
@@ -33,6 +32,7 @@ async function getSubagentTools(): Promise<ToolSet> {
 	if (!cachedSubagentBaseTools) {
 		cachedSubagentBaseTools = (async () => {
 			const toggles = getDaemonManager().toolToggles;
+			const { buildToolSet } = await import("./tool-registry");
 			const { tools } = await buildToolSet(toggles, {
 				omit: ["groundingManager", "subagent"],
 			});

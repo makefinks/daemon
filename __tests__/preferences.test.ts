@@ -82,6 +82,21 @@ describe("parsePreferences", () => {
 	});
 
 	describe("optional fields", () => {
+		describe("modelProvider", () => {
+			it("includes valid modelProvider values", () => {
+				const openRouterResult = parsePreferences({ modelProvider: "openrouter" });
+				expect(openRouterResult?.modelProvider).toBe("openrouter");
+
+				const copilotResult = parsePreferences({ modelProvider: "copilot" });
+				expect(copilotResult?.modelProvider).toBe("copilot");
+			});
+
+			it("omits invalid modelProvider values", () => {
+				const result = parsePreferences({ modelProvider: "invalid" });
+				expect(result?.modelProvider).toBeUndefined();
+			});
+		});
+
 		it("includes audioDeviceName when provided", () => {
 			const result = parsePreferences({ audioDeviceName: "My Device" });
 			expect(result?.audioDeviceName).toBe("My Device");

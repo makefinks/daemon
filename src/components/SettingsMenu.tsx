@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type {
 	AppPreferences,
 	InteractionMode,
+	LlmProvider,
 	VoiceInteractionType,
 	SpeechSpeed,
 	ReasoningEffort,
@@ -31,13 +32,17 @@ interface SettingsMenuProps {
 	speechSpeed: SpeechSpeed;
 	reasoningEffort: ReasoningEffort;
 	bashApprovalLevel: BashApprovalLevel;
+	modelProvider: LlmProvider;
 	supportsReasoning: boolean;
+	supportsReasoningXHigh: boolean;
+	copilotAvailable: boolean;
 	canEnableVoiceOutput: boolean;
 	showFullReasoning: boolean;
 	showToolOutput: boolean;
 	memoryEnabled: boolean;
 	onClose: () => void;
 	toggleInteractionMode: () => void;
+	cycleModelProvider: () => void;
 	setVoiceInteractionType: (type: VoiceInteractionType) => void;
 	setSpeechSpeed: (speed: SpeechSpeed) => void;
 	setReasoningEffort: (effort: ReasoningEffort) => void;
@@ -54,13 +59,17 @@ export function SettingsMenu({
 	speechSpeed,
 	reasoningEffort,
 	bashApprovalLevel,
+	modelProvider,
 	supportsReasoning,
+	supportsReasoningXHigh,
+	copilotAvailable,
 	canEnableVoiceOutput,
 	showFullReasoning,
 	showToolOutput,
 	memoryEnabled,
 	onClose,
 	toggleInteractionMode,
+	cycleModelProvider,
 	setVoiceInteractionType,
 	setSpeechSpeed,
 	setReasoningEffort,
@@ -94,6 +103,18 @@ export function SettingsMenu({
 			disabled: interactionModeLocked,
 		},
 		{
+			id: "model-provider",
+			label: "Model Provider",
+			value: modelProvider === "copilot" ? "COPILOT" : "OPENROUTER",
+			description:
+				!copilotAvailable && modelProvider === "openrouter"
+					? "OpenRouter API with provider routing (Copilot: run `gh auth login` + `copilot login`)"
+					: modelProvider === "copilot"
+						? "GitHub Copilot session runtime"
+						: "OpenRouter API with provider routing",
+			isToggle: true,
+		},
+		{
 			id: "voice-interaction-type",
 			label: "Voice Flow",
 			value: voiceInteractionType === "direct" ? "DIRECT" : "REVIEW",
@@ -108,7 +129,9 @@ export function SettingsMenu({
 			label: "Reasoning Effort",
 			value: supportsReasoning ? REASONING_EFFORT_LABELS[reasoningEffort] : "N/A",
 			description: supportsReasoning
-				? "Depth of reasoning (LOW / MEDIUM / HIGH)"
+				? supportsReasoningXHigh
+					? "Depth of reasoning (LOW / MEDIUM / HIGH / XHIGH)"
+					: "Depth of reasoning (LOW / MEDIUM / HIGH)"
 				: "Not supported by current model",
 			isCyclic: supportsReasoning,
 		},
@@ -187,17 +210,20 @@ export function SettingsMenu({
 			selectedIdx,
 			menuItemCount: selectableCount,
 			interactionMode,
+			modelProvider,
 			voiceInteractionType,
 			speechSpeed,
 			reasoningEffort,
 			bashApprovalLevel,
 			supportsReasoning,
+			supportsReasoningXHigh,
 			canEnableVoiceOutput,
 			showFullReasoning,
 			showToolOutput,
 			memoryEnabled,
 			setSelectedIdx,
 			toggleInteractionMode,
+			cycleModelProvider,
 			setVoiceInteractionType,
 			setSpeechSpeed,
 			setReasoningEffort,

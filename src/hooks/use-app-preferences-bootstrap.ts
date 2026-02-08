@@ -1,9 +1,19 @@
 import { useCallback, useEffect, useRef } from "react";
 import { startMcpManager } from "../ai/mcp/mcp-manager";
-import { setOpenRouterProviderTag, setResponseModel } from "../ai/model-config";
+import { hasCopilotCliAuthSafe } from "../ai/copilot-client";
+import {
+	getModelProvider,
+	getResponseModelForProvider,
+	setModelProvider,
+	setOpenRouterProviderTag,
+	setResponseModelForProvider,
+} from "../ai/model-config";
+import { invalidateDaemonToolsCache } from "../ai/tools";
+import { invalidateSubagentToolsCache } from "../ai/tools/subagents";
 import type {
 	AppPreferences,
 	BashApprovalLevel,
+	LlmProvider,
 	OnboardingStep,
 	ReasoningEffort,
 	SpeechSpeed,
@@ -26,7 +36,8 @@ export interface UseAppPreferencesBootstrapParams {
 		audioDeviceName?: string;
 		outputDeviceName?: string;
 	};
-	setCurrentModelId: (modelId: string) => void;
+	setCurrentModelProvider: (provider: LlmProvider) => void;
+	setCurrentModelForProvider: (provider: LlmProvider, modelId: string) => void;
 	setCurrentOpenRouterProviderTag: (providerTag: string | undefined) => void;
 	setCurrentDevice: (deviceName: string | undefined) => void;
 	setCurrentOutputDevice: (deviceName: string | undefined) => void;
@@ -41,6 +52,7 @@ export interface UseAppPreferencesBootstrapParams {
 	setLoadedPreferences: (prefs: AppPreferences | null) => void;
 	setOnboardingActive: (active: boolean) => void;
 	setOnboardingStep: (step: OnboardingStep) => void;
+	setCopilotAuthenticated: (authenticated: boolean) => void;
 	setPreferencesLoaded: (loaded: boolean) => void;
 }
 
@@ -53,7 +65,8 @@ export function useAppPreferencesBootstrap(
 ): UseAppPreferencesBootstrapReturn {
 	const {
 		manager,
-		setCurrentModelId,
+		setCurrentModelProvider,
+		setCurrentModelForProvider,
 		setCurrentOpenRouterProviderTag,
 		setCurrentDevice,
 		setCurrentOutputDevice,
@@ -68,6 +81,7 @@ export function useAppPreferencesBootstrap(
 		setLoadedPreferences,
 		setOnboardingActive,
 		setOnboardingStep,
+		setCopilotAuthenticated,
 		setPreferencesLoaded,
 	} = params;
 
@@ -82,6 +96,7 @@ export function useAppPreferencesBootstrap(
 
 	useEffect(() => {
 		let cancelled = false;
+		let copilotAuthCheckTimer: ReturnType<typeof setTimeout> | null = null;
 
 		(async () => {
 			const prefs = await loadPreferences();
@@ -100,9 +115,18 @@ export function useAppPreferencesBootstrap(
 			// Start MCP discovery in the background (non-blocking)
 			startMcpManager();
 
+			const modelProvider: LlmProvider = prefs?.modelProvider ?? "openrouter";
+			setModelProvider(modelProvider);
+			invalidateDaemonToolsCache();
+			invalidateSubagentToolsCache();
+			setCurrentModelProvider(modelProvider);
+
 			if (prefs?.modelId) {
-				setResponseModel(prefs.modelId);
-				setCurrentModelId(prefs.modelId);
+				setResponseModelForProvider(modelProvider, prefs.modelId);
+				setCurrentModelForProvider(modelProvider, prefs.modelId);
+			} else {
+				const fallbackModelId = getResponseModelForProvider(modelProvider);
+				setCurrentModelForProvider(modelProvider, fallbackModelId);
 			}
 
 			if (prefs?.openRouterProviderTag) {
@@ -169,20 +193,35 @@ export function useAppPreferencesBootstrap(
 			const hasOpenRouterKey = Boolean(process.env.OPENROUTER_API_KEY);
 			const hasOpenAiKey = Boolean(process.env.OPENAI_API_KEY);
 			const hasExaKey = Boolean(process.env.EXA_API_KEY);
+			const usingCopilotProvider = modelProvider === "copilot";
+			const hasCopilotAuth = usingCopilotProvider;
+			setCopilotAuthenticated(hasCopilotAuth);
+			copilotAuthCheckTimer = setTimeout(() => {
+				void (async () => {
+					const authenticated = await hasCopilotCliAuthSafe();
+					if (cancelled) return;
+					setCopilotAuthenticated(authenticated);
+					if (!authenticated && getModelProvider() === "copilot") {
+						setOnboardingStep("copilot_auth");
+						setOnboardingActive(true);
+					}
+				})();
+			}, 0);
 			const hasCoreSettings = Boolean(prefs?.audioDeviceName && prefs?.modelId);
 
 			setLoadedPreferences(prefs);
 
 			const isFreshLaunch = prefs === null;
-			const needsOnboarding = !hasOpenRouterKey || !hasOpenAiKey || !hasExaKey;
+			const hasProviderAuth = modelProvider === "openrouter" ? hasOpenRouterKey : hasCopilotAuth;
+			const needsOnboarding = !hasProviderAuth || !hasOpenAiKey || !hasExaKey;
 
 			if (isFreshLaunch) {
 				setOnboardingStep("intro");
 				setOnboardingActive(true);
 			} else if (needsOnboarding) {
-				let startStep: OnboardingStep = "intro";
-				if (!hasOpenRouterKey) {
-					startStep = "openrouter_key";
+				let startStep: OnboardingStep = "provider";
+				if (!hasProviderAuth) {
+					startStep = modelProvider === "openrouter" ? "openrouter_key" : "copilot_auth";
 				} else if (!hasOpenAiKey) {
 					startStep = "openai_key";
 				} else if (!hasExaKey) {
@@ -203,10 +242,14 @@ export function useAppPreferencesBootstrap(
 
 		return () => {
 			cancelled = true;
+			if (copilotAuthCheckTimer) {
+				clearTimeout(copilotAuthCheckTimer);
+			}
 		};
 	}, [
 		manager,
-		setCurrentModelId,
+		setCurrentModelProvider,
+		setCurrentModelForProvider,
 		setCurrentOpenRouterProviderTag,
 		setCurrentDevice,
 		setCurrentOutputDevice,
@@ -220,6 +263,7 @@ export function useAppPreferencesBootstrap(
 		setLoadedPreferences,
 		setOnboardingActive,
 		setOnboardingStep,
+		setCopilotAuthenticated,
 		setPreferencesLoaded,
 	]);
 

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { DaemonState } from "../types";
-import type { ContentBlock, SessionInfo } from "../types";
+import type { ContentBlock, LlmProvider, ModelOption, SessionInfo } from "../types";
 import { COLORS, STATE_COLOR_HEX, STATUS_TEXT } from "../ui/constants";
 import { formatElapsedTime } from "../utils/formatters";
 import type { ModelMetadata } from "../utils/model-metadata";
@@ -14,8 +14,11 @@ export interface UseAppDisplayStateParams {
 	responseElapsedMs: number;
 	hasInteracted: boolean;
 
+	currentModelProvider: LlmProvider;
 	currentModelId: string;
 	modelMetadata: ModelMetadata | null;
+	curatedModels: ModelOption[];
+	availableModels: ModelOption[];
 	preferencesLoaded: boolean;
 
 	currentSessionId: string | null;
@@ -57,8 +60,11 @@ export function useAppDisplayState(params: UseAppDisplayStateParams): UseAppDisp
 		reasoningQueue,
 		responseElapsedMs,
 		hasInteracted,
+		currentModelProvider,
 		currentModelId,
 		modelMetadata,
+		curatedModels,
+		availableModels,
 		preferencesLoaded,
 		currentSessionId,
 		sessionMenuItems,
@@ -113,8 +119,24 @@ export function useAppDisplayState(params: UseAppDisplayStateParams): UseAppDisp
 		if (modelMetadata?.name && modelMetadata.id === currentModelId) {
 			return modelMetadata.name;
 		}
+		const selectedModel =
+			availableModels.find((model) => model.id === currentModelId) ??
+			curatedModels.find((model) => model.id === currentModelId);
+		if (selectedModel?.name) {
+			return currentModelProvider === "copilot" ? `Copilot: ${selectedModel.name}` : selectedModel.name;
+		}
+		if (currentModelProvider === "copilot") {
+			return `Copilot: ${currentModelId}`;
+		}
 		return undefined;
-	}, [modelMetadata, currentModelId, preferencesLoaded]);
+	}, [
+		availableModels,
+		curatedModels,
+		currentModelProvider,
+		modelMetadata,
+		currentModelId,
+		preferencesLoaded,
+	]);
 
 	const sessionTitle = useMemo(() => {
 		if (!currentSessionId) return undefined;

@@ -60,12 +60,16 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 					reasoningEffort={settings.reasoningEffort}
 					bashApprovalLevel={settings.bashApprovalLevel}
 					supportsReasoning={settings.supportsReasoning}
+					supportsReasoningXHigh={settings.supportsReasoningXHigh}
+					modelProvider={model.currentModelProvider}
+					copilotAvailable={onboarding.copilotAuthenticated}
 					canEnableVoiceOutput={settings.canEnableVoiceOutput}
 					showFullReasoning={settings.showFullReasoning}
 					showToolOutput={settings.showToolOutput}
 					memoryEnabled={settings.memoryEnabled}
 					onClose={() => menus.setShowSettingsMenu(false)}
 					toggleInteractionMode={settingsCallbacks.onToggleInteractionMode}
+					cycleModelProvider={settingsCallbacks.onCycleModelProvider}
 					setVoiceInteractionType={settingsCallbacks.onSetVoiceInteractionType}
 					setSpeechSpeed={settingsCallbacks.onSetSpeechSpeed}
 					setReasoningEffort={settingsCallbacks.onSetReasoningEffort}
@@ -81,6 +85,7 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 				<ModelMenu
 					curatedModels={model.curatedModels}
 					allModels={model.openRouterModels}
+					modelProvider={model.currentModelProvider}
 					allModelsLoading={model.openRouterModelsLoading}
 					allModelsUpdatedAt={model.openRouterModelsUpdatedAt}
 					currentModelId={model.currentModelId}
@@ -90,7 +95,7 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 				/>
 			)}
 
-			{menus.showProviderMenu && (
+			{menus.showProviderMenu && model.currentModelProvider === "openrouter" && (
 				<ProviderMenu
 					items={model.providerMenuItems}
 					currentProviderTag={model.currentOpenRouterProviderTag}
@@ -141,10 +146,13 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 					currentDevice={device.currentDevice}
 					currentOutputDevice={device.currentOutputDevice}
 					models={model.curatedModels}
+					currentModelProvider={model.currentModelProvider}
+					copilotAuthenticated={onboarding.copilotAuthenticated}
 					currentModelId={model.currentModelId}
 					deviceLoadTimedOut={device.deviceLoadTimedOut}
 					soxAvailable={device.soxAvailable}
 					soxInstallHint={device.soxInstallHint}
+					setCurrentModelProvider={model.setCurrentModelProvider}
 					setCurrentDevice={device.setCurrentDevice}
 					setCurrentOutputDevice={device.setCurrentOutputDevice}
 					setCurrentModelId={model.setCurrentModelId}

@@ -74,6 +74,9 @@ export function parsePreferences(raw: unknown): AppPreferences | null {
 	if (typeof raw.modelId === "string") {
 		prefs.modelId = raw.modelId;
 	}
+	if (raw.modelProvider === "openrouter" || raw.modelProvider === "copilot") {
+		prefs.modelProvider = raw.modelProvider;
+	}
 	if (typeof raw.openRouterProviderTag === "string") {
 		prefs.openRouterProviderTag = raw.openRouterProviderTag;
 	}

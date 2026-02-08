@@ -6,6 +6,7 @@ import {
 	getDefaultToolOrder,
 	resolveToolAvailability,
 } from "../src/ai/tools/tool-registry";
+import { setModelProvider } from "../src/ai/model-config";
 import { DEFAULT_TOOL_TOGGLES } from "../src/types";
 
 const ORIGINAL_ENV = { ...process.env };
@@ -13,6 +14,7 @@ const ORIGINAL_ENV = { ...process.env };
 describe("tool registry", () => {
 	afterEach(() => {
 		process.env = { ...ORIGINAL_ENV };
+		setModelProvider("openrouter");
 	});
 
 	it("orders menu items consistently", async () => {
@@ -42,5 +44,13 @@ describe("tool registry", () => {
 
 		expect("subagent" in tools).toBe(false);
 		expect("groundingManager" in tools).toBe(false);
+	});
+
+	it("disables subagent when provider capabilities do not support it", async () => {
+		setModelProvider("copilot");
+		const availability = await resolveToolAvailability({ ...DEFAULT_TOOL_TOGGLES });
+
+		expect(availability.subagent.envAvailable).toBe(false);
+		expect(availability.subagent.disabledReason).toBeDefined();
 	});
 });

@@ -75,6 +75,7 @@
 	"dependencies": {
 		"@ai-sdk/mcp": "^1.0.14",
 		"@ai-sdk/openai": "^3.0.0",
+		"@github/copilot-sdk": "^0.1.23",
 		"@openrouter/ai-sdk-provider": "^2.1.0",
 		"@opentui-ui/toast": "^0.0.3",
 		"@opentui/core": "0.1.75",
@@ -84,7 +85,8 @@
 		"mem0ai": "^2.2.1",
 		"openai": "^6.16.0",
 		"opentui-spinner": "^0.0.6",
-		"react": "^19.2.3"
+		"react": "^19.2.3",
+		"zod-to-json-schema": "^3.25.1"
 	},
 	"optionalDependencies": {
 		"@opentui/core-win32-x64": "0.1.75",

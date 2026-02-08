@@ -9,7 +9,7 @@ import { daemonEvents } from "../state/daemon-events";
 import { getDaemonManager } from "../state/daemon-state";
 import { buildModelHistoryFromConversation } from "../state/session-store";
 import { DaemonState } from "../types";
-import type { ContentBlock, ConversationMessage, TokenUsage, ToolCall } from "../types";
+import type { ContentBlock, ConversationMessage, LlmProvider, TokenUsage, ToolCall } from "../types";
 import { REASONING_COLORS, STATE_COLORS } from "../types/theme";
 import { REASONING_ANIMATION } from "../ui/constants";
 import { type ModelMetadata, getModelMetadata } from "../utils/model-metadata";
@@ -41,6 +41,7 @@ import {
 } from "./daemon-event-handlers";
 
 export interface UseDaemonEventsParams {
+	currentModelProvider: LlmProvider;
 	currentModelId: string;
 	preferencesLoaded: boolean;
 	setReasoningQueue: (queue: string | ((prev: string) => string)) => void;
@@ -79,6 +80,7 @@ export interface UseDaemonEventsReturn {
 
 export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsReturn {
 	const {
+		currentModelProvider,
 		currentModelId,
 		preferencesLoaded,
 		setReasoningQueue,
@@ -117,6 +119,10 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 
 	useEffect(() => {
 		if (!preferencesLoaded) return;
+		if (currentModelProvider !== "openrouter") {
+			setModelMetadata(null);
+			return;
+		}
 		let cancelled = false;
 		getModelMetadata(currentModelId).then((metadata) => {
 			if (!cancelled) setModelMetadata(metadata);
@@ -124,7 +130,7 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 		return () => {
 			cancelled = true;
 		};
-	}, [currentModelId, preferencesLoaded]);
+	}, [currentModelId, currentModelProvider, preferencesLoaded]);
 
 	useEffect(() => {
 		clearFetchCache();

@@ -57,6 +57,31 @@ function clearAvatarToolEffects(avatar: DaemonAvatarRenderable | null): void {
 	avatar.setTypingMode(false);
 }
 
+function normalizeToolCallId(toolCallId: string | undefined): string | undefined {
+	if (typeof toolCallId !== "string") return undefined;
+	const trimmed = toolCallId.trim();
+	return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function isInProgressToolCall(toolCall: ToolCall | undefined): boolean {
+	const status = toolCall?.status;
+	return status === "streaming" || status === "running" || status === "awaiting_approval";
+}
+
+function findExistingToolCall(
+	refs: EventHandlerRefs,
+	toolName: string,
+	toolCallId: string | undefined
+): ToolCall | undefined {
+	if (toolCallId) {
+		return refs.toolCallsByIdRef.current.get(toolCallId);
+	}
+
+	return [...refs.toolCallsRef.current]
+		.reverse()
+		.find((call) => call.name === toolName && isInProgressToolCall(call));
+}
+
 export function createMemorySavedHandler() {
 	return (preview: MemoryToastPreview) => {
 		const description = preview.description?.trim();
@@ -401,15 +426,27 @@ export function createToolInputStartHandler(
 			blocks.pop();
 		}
 
+		const normalizedToolCallId = normalizeToolCallId(toolCallId);
+		const existingToolCall = findExistingToolCall(refs, toolName, normalizedToolCallId);
+		if (existingToolCall) {
+			if (existingToolCall.status === undefined || existingToolCall.status === "streaming") {
+				existingToolCall.status = "streaming";
+			}
+			setters.setCurrentContentBlocks([...blocks]);
+			return;
+		}
+
 		const toolCall: ToolCall = {
 			name: toolName,
 			input: undefined,
-			toolCallId,
+			toolCallId: normalizedToolCallId,
 			status: "streaming",
 			subagentSteps: toolName === "subagent" ? [] : undefined,
 		};
 		refs.toolCallsRef.current.push(toolCall);
-		refs.toolCallsByIdRef.current.set(toolCallId, toolCall);
+		if (normalizedToolCallId) {
+			refs.toolCallsByIdRef.current.set(normalizedToolCallId, toolCall);
+		}
 
 		blocks.push({ type: "tool", call: toolCall });
 		setters.setCurrentContentBlocks([...blocks]);
@@ -437,18 +474,28 @@ export function createToolInvocationHandler(
 
 		const blocks = refs.contentBlocksRef.current;
 
-		const existingToolCall = toolCallId ? refs.toolCallsByIdRef.current.get(toolCallId) : undefined;
-		if (existingToolCall && existingToolCall.status === "streaming") {
+		const normalizedToolCallId = normalizeToolCallId(toolCallId);
+		const existingToolCall = findExistingToolCall(refs, toolName, normalizedToolCallId);
+		if (existingToolCall) {
+			const shouldActivateToolAnimation =
+				existingToolCall.status === undefined ||
+				existingToolCall.status === "streaming" ||
+				existingToolCall.status === "awaiting_approval";
+
 			existingToolCall.input = input;
-			existingToolCall.status = "running";
+			if (shouldActivateToolAnimation) {
+				existingToolCall.status = "running";
+			}
 			setters.setCurrentContentBlocks([...blocks]);
 
-			const avatar = refs.avatarRef.current;
-			if (avatar) {
-				const category = getToolCategory(toolName);
-				avatar.triggerToolFlash(category as ToolCategory | undefined);
-				if (category !== "fast") {
-					avatar.setToolActive(true, category as ToolCategory | undefined);
+			if (shouldActivateToolAnimation) {
+				const avatar = refs.avatarRef.current;
+				if (avatar) {
+					const category = getToolCategory(toolName);
+					avatar.triggerToolFlash(category as ToolCategory | undefined);
+					if (category !== "fast") {
+						avatar.setToolActive(true, category as ToolCategory | undefined);
+					}
 				}
 			}
 			return;
@@ -462,14 +509,14 @@ export function createToolInvocationHandler(
 		const toolCall: ToolCall = {
 			name: toolName,
 			input,
-			toolCallId,
+			toolCallId: normalizedToolCallId,
 			status: "running",
 			subagentSteps: toolName === "subagent" ? [] : undefined,
 		};
 		refs.toolCallsRef.current.push(toolCall);
 
-		if (toolCallId) {
-			refs.toolCallsByIdRef.current.set(toolCallId, toolCall);
+		if (normalizedToolCallId) {
+			refs.toolCallsByIdRef.current.set(normalizedToolCallId, toolCall);
 		}
 
 		blocks.push({ type: "tool", call: toolCall });

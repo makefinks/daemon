@@ -9,6 +9,7 @@ import { useResponseTimer } from "./use-response-timer";
 import { useTypingMode } from "./use-typing-mode";
 
 import { daemonEvents } from "../state/daemon-events";
+import type { LlmProvider } from "../types";
 
 export interface DaemonRuntimeControllerResult {
 	reasoning: ReturnType<typeof useReasoningAnimation>;
@@ -41,6 +42,7 @@ export interface DaemonRuntimeControllerResult {
 }
 
 export function useDaemonRuntimeController({
+	currentModelProvider,
 	currentModelId,
 	preferencesLoaded,
 	sessionId,
@@ -48,6 +50,7 @@ export function useDaemonRuntimeController({
 	ensureSessionId,
 	onFirstMessage,
 }: {
+	currentModelProvider: LlmProvider;
 	currentModelId: string;
 	preferencesLoaded: boolean;
 	sessionId: string | null;
@@ -77,6 +80,7 @@ export function useDaemonRuntimeController({
 		setSessionUsage,
 		applyAvatarForState,
 	} = useDaemonEvents({
+		currentModelProvider,
 		currentModelId,
 		preferencesLoaded,
 		setReasoningQueue: reasoning.setReasoningQueue,

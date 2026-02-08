@@ -6,6 +6,7 @@ import type {
 	AudioDevice,
 	BashApprovalLevel,
 	GroundingMap,
+	LlmProvider,
 	ModelOption,
 	OnboardingStep,
 	ReasoningEffort,
@@ -55,6 +56,7 @@ export interface SettingsState {
 	reasoningEffort: ReasoningEffort;
 	bashApprovalLevel: BashApprovalLevel;
 	supportsReasoning: boolean;
+	supportsReasoningXHigh: boolean;
 	canEnableVoiceOutput: boolean;
 	showFullReasoning: boolean;
 	setShowFullReasoning: (show: boolean) => void;
@@ -71,6 +73,8 @@ export interface ModelState {
 	openRouterModels: ModelOption[];
 	openRouterModelsLoading: boolean;
 	openRouterModelsUpdatedAt: number | null;
+	currentModelProvider: LlmProvider;
+	setCurrentModelProvider: (provider: LlmProvider) => void;
 	currentModelId: string;
 	setCurrentModelId: (modelId: string) => void;
 	providerMenuItems: ProviderMenuItem[];
@@ -92,6 +96,7 @@ export interface GroundingState {
 export interface OnboardingState {
 	onboardingActive: boolean;
 	onboardingStep: OnboardingStep;
+	copilotAuthenticated: boolean;
 	setOnboardingStep: (step: OnboardingStep) => void;
 	onboardingPreferences: AppPreferences | null;
 	apiKeyTextareaRef: MutableRefObject<TextareaRenderable | null>;
@@ -104,6 +109,7 @@ export interface DeviceCallbacks {
 
 export interface SettingsCallbacks {
 	onToggleInteractionMode: () => void;
+	onCycleModelProvider: () => void;
 	onSetVoiceInteractionType: (type: VoiceInteractionType) => void;
 	onSetSpeechSpeed: (speed: SpeechSpeed) => void;
 	onSetReasoningEffort: (effort: ReasoningEffort) => void;

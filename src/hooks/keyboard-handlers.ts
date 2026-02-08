@@ -1,16 +1,19 @@
 import type { KeyEvent } from "@opentui/core";
-import { setResponseModel } from "../ai/model-config";
+import { getResponseModelForProvider, setModelProvider, setResponseModel } from "../ai/model-config";
+import { invalidateDaemonToolsCache } from "../ai/tools";
+import { invalidateSubagentToolsCache } from "../ai/tools/subagents";
 import type {
 	AppPreferences,
 	AudioDevice,
 	BashApprovalLevel,
+	LlmProvider,
 	ModelOption,
 	OnboardingStep,
 	ReasoningEffort,
 	SpeechSpeed,
 	VoiceInteractionType,
 } from "../types";
-import { BASH_APPROVAL_LEVELS, REASONING_EFFORT_LEVELS } from "../types";
+import { BASH_APPROVAL_LEVELS, getReasoningEffortLevels } from "../types";
 import { openUrlInBrowser } from "../utils/preferences";
 import { setAudioDevice } from "../voice/audio-recorder";
 import { isNavigateDownKey, isNavigateUpKey } from "./menu-navigation";
@@ -18,6 +21,7 @@ import { isNavigateDownKey, isNavigateUpKey } from "./menu-navigation";
 export type KeyHandler = (key: KeyEvent) => boolean;
 
 const API_KEY_URLS: Record<string, string> = {
+	copilot_auth: "https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli",
 	openrouter_key: "https://openrouter.ai/keys",
 	openai_key: "https://platform.openai.com/api-keys",
 	exa_key: "https://dashboard.exa.ai/api-keys",
@@ -25,13 +29,18 @@ const API_KEY_URLS: Record<string, string> = {
 
 interface OnboardingContext {
 	step: OnboardingStep;
+	selectedProviderIdx: number;
 	devices: AudioDevice[];
 	models: ModelOption[];
 	selectedDeviceIdx: number;
 	selectedModelIdx: number;
+	currentModelProvider: LlmProvider;
+	copilotAuthenticated: boolean;
 	preferences: AppPreferences | null;
+	setSelectedProviderIdx: (fn: (prev: number) => number) => void;
 	setSelectedDeviceIdx: (fn: (prev: number) => number) => void;
 	setSelectedModelIdx: (fn: (prev: number) => number) => void;
+	setCurrentModelProvider: (provider: LlmProvider) => void;
 	setCurrentDevice: (device: string) => void;
 	setCurrentOutputDevice: (device: string) => void;
 	setCurrentModelId: (modelId: string) => void;
@@ -49,28 +58,19 @@ export function getApiKeyUrl(step: OnboardingStep): string | null {
 }
 
 export function isApiKeyStep(step: OnboardingStep): boolean {
-	return step === "openrouter_key" || step === "openai_key" || step === "exa_key";
+	return step === "openrouter_key" || step === "copilot_auth" || step === "openai_key" || step === "exa_key";
 }
 
-type StepCondition = {
-	step: OnboardingStep;
-	check: (prefs: AppPreferences | null) => boolean;
-	/** If true, this step is only shown during initial onboarding, not when re-prompting */
-	onboardingOnly?: boolean;
-};
-
-const STEP_CONDITIONS: StepCondition[] = [
-	{ step: "openrouter_key", check: () => !process.env.OPENROUTER_API_KEY },
-	{ step: "openai_key", check: () => !process.env.OPENAI_API_KEY },
-	{ step: "exa_key", check: () => !process.env.EXA_API_KEY },
-	{ step: "device", check: (prefs) => !prefs?.audioDeviceName, onboardingOnly: true },
-	{ step: "model", check: (prefs) => !prefs?.modelId, onboardingOnly: true },
-	{ step: "settings", check: () => true, onboardingOnly: true },
-];
+export interface DetermineNextStepOptions {
+	currentProvider?: LlmProvider;
+	copilotAuthenticated?: boolean;
+}
 
 const STEP_ORDER: OnboardingStep[] = [
 	"intro",
+	"provider",
 	"openrouter_key",
+	"copilot_auth",
 	"openai_key",
 	"exa_key",
 	"device",
@@ -81,18 +81,36 @@ const STEP_ORDER: OnboardingStep[] = [
 
 export function determineNextStep(
 	currentStep: OnboardingStep,
-	preferences: AppPreferences | null
+	preferences: AppPreferences | null,
+	options: DetermineNextStepOptions = {}
 ): OnboardingStep {
 	const currentIndex = STEP_ORDER.indexOf(currentStep);
 	if (currentIndex === -1 || currentStep === "complete") return "complete";
 
 	const isReprompt = preferences?.onboardingCompleted === true;
+	const provider: LlmProvider = options.currentProvider ?? preferences?.modelProvider ?? "openrouter";
+	const hasCopilotAuth = Boolean(options.copilotAuthenticated);
 
-	for (const condition of STEP_CONDITIONS) {
+	const conditions: Array<{
+		step: OnboardingStep;
+		enabled: boolean;
+		onboardingOnly?: boolean;
+	}> = [
+		{ step: "provider", enabled: true, onboardingOnly: true },
+		{ step: "openrouter_key", enabled: provider === "openrouter" && !process.env.OPENROUTER_API_KEY },
+		{ step: "copilot_auth", enabled: provider === "copilot" && !hasCopilotAuth },
+		{ step: "openai_key", enabled: !process.env.OPENAI_API_KEY },
+		{ step: "exa_key", enabled: !process.env.EXA_API_KEY },
+		{ step: "device", enabled: !preferences?.audioDeviceName, onboardingOnly: true },
+		{ step: "model", enabled: !preferences?.modelId, onboardingOnly: true },
+		{ step: "settings", enabled: true, onboardingOnly: true },
+	];
+
+	for (const condition of conditions) {
 		if (isReprompt && condition.onboardingOnly) continue;
 
 		const conditionIndex = STEP_ORDER.indexOf(condition.step);
-		if (conditionIndex > currentIndex && condition.check(preferences)) {
+		if (conditionIndex > currentIndex && condition.enabled) {
 			return condition.step;
 		}
 	}
@@ -104,9 +122,14 @@ type EscapeHandler = (ctx: OnboardingContext) => void;
 
 const ESCAPE_HANDLERS: Partial<Record<OnboardingStep, EscapeHandler>> = {
 	intro: () => {},
+	provider: () => {},
 	openrouter_key: () => {},
+	copilot_auth: () => {},
 	openai_key: (ctx) => {
-		const nextStep = determineNextStep("openai_key", ctx.preferences);
+		const nextStep = determineNextStep("openai_key", ctx.preferences, {
+			currentProvider: ctx.currentModelProvider,
+			copilotAuthenticated: ctx.copilotAuthenticated,
+		});
 		if (nextStep === "complete") {
 			ctx.persistPreferences({ onboardingCompleted: true });
 			ctx.completeOnboarding();
@@ -115,7 +138,10 @@ const ESCAPE_HANDLERS: Partial<Record<OnboardingStep, EscapeHandler>> = {
 		}
 	},
 	exa_key: (ctx) => {
-		const nextStep = determineNextStep("exa_key", ctx.preferences);
+		const nextStep = determineNextStep("exa_key", ctx.preferences, {
+			currentProvider: ctx.currentModelProvider,
+			copilotAuthenticated: ctx.copilotAuthenticated,
+		});
 		if (nextStep === "complete") {
 			ctx.persistPreferences({ onboardingCompleted: true });
 			ctx.completeOnboarding();
@@ -156,8 +182,51 @@ export function handleOnboardingKey(key: KeyEvent, ctx: OnboardingContext): bool
 
 	if (step === "intro") {
 		if (key.name === "return") {
-			ctx.setOnboardingStep(determineNextStep(step, ctx.preferences));
+			ctx.setOnboardingStep(
+				determineNextStep(step, ctx.preferences, {
+					currentProvider: ctx.currentModelProvider,
+					copilotAuthenticated: ctx.copilotAuthenticated,
+				})
+			);
 		}
+		return true;
+	}
+
+	if (step === "provider") {
+		const providers: LlmProvider[] = ctx.copilotAuthenticated ? ["openrouter", "copilot"] : ["openrouter"];
+
+		if (isNavigateUpKey(key) || isNavigateDownKey(key)) {
+			ctx.setSelectedProviderIdx((prev) => {
+				if (isNavigateUpKey(key)) {
+					return prev > 0 ? prev - 1 : providers.length - 1;
+				}
+				return prev < providers.length - 1 ? prev + 1 : 0;
+			});
+			return true;
+		}
+
+		if (key.name === "return") {
+			const selectedProvider = providers[ctx.selectedProviderIdx] ?? "openrouter";
+			setModelProvider(selectedProvider);
+			invalidateDaemonToolsCache();
+			invalidateSubagentToolsCache();
+			ctx.setCurrentModelProvider(selectedProvider);
+
+			const defaultModelId = getResponseModelForProvider(selectedProvider);
+
+			ctx.persistPreferences({
+				modelProvider: selectedProvider,
+				modelId: defaultModelId,
+			});
+
+			ctx.setOnboardingStep(
+				determineNextStep("provider", ctx.preferences, {
+					currentProvider: selectedProvider,
+					copilotAuthenticated: ctx.copilotAuthenticated,
+				})
+			);
+		}
+
 		return true;
 	}
 
@@ -224,6 +293,7 @@ export function handleOnboardingKey(key: KeyEvent, ctx: OnboardingContext): bool
 				setResponseModel(selectedModel.id);
 				ctx.setCurrentModelId(selectedModel.id);
 				ctx.persistPreferences({
+					modelProvider: ctx.currentModelProvider,
 					modelId: selectedModel.id,
 					openRouterProviderTag: undefined,
 				});
@@ -248,17 +318,20 @@ interface SettingsMenuContext {
 	selectedIdx: number;
 	menuItemCount: number;
 	interactionMode: "text" | "voice";
+	modelProvider: LlmProvider;
 	voiceInteractionType: VoiceInteractionType;
 	speechSpeed: SpeechSpeed;
 	reasoningEffort: ReasoningEffort;
 	bashApprovalLevel: BashApprovalLevel;
 	supportsReasoning: boolean;
+	supportsReasoningXHigh: boolean;
 	canEnableVoiceOutput: boolean;
 	showFullReasoning: boolean;
 	showToolOutput: boolean;
 	memoryEnabled: boolean;
 	setSelectedIdx: (fn: (prev: number) => number) => void;
 	toggleInteractionMode: () => void;
+	cycleModelProvider: () => void;
 	setVoiceInteractionType: (type: VoiceInteractionType) => void;
 	setSpeechSpeed: (speed: SpeechSpeed) => void;
 	setReasoningEffort: (effort: ReasoningEffort) => void;
@@ -317,6 +390,13 @@ export function handleSettingsMenuKey(key: KeyEvent, ctx: SettingsMenuContext): 
 		settingIdx++;
 
 		if (ctx.selectedIdx === settingIdx) {
+			ctx.cycleModelProvider();
+			key.preventDefault();
+			return true;
+		}
+		settingIdx++;
+
+		if (ctx.selectedIdx === settingIdx) {
 			const current = ctx.manager.voiceInteractionType;
 			const next = current === "direct" ? "review" : "direct";
 			ctx.manager.voiceInteractionType = next;
@@ -329,10 +409,11 @@ export function handleSettingsMenuKey(key: KeyEvent, ctx: SettingsMenuContext): 
 
 		if (ctx.selectedIdx === settingIdx) {
 			if (ctx.supportsReasoning) {
+				const effortLevels = getReasoningEffortLevels(ctx.supportsReasoningXHigh);
 				const currentEffort = ctx.manager.reasoningEffort;
-				const currentIndex = REASONING_EFFORT_LEVELS.indexOf(currentEffort);
-				const nextIndex = (currentIndex + 1) % REASONING_EFFORT_LEVELS.length;
-				const nextEffort = REASONING_EFFORT_LEVELS[nextIndex] ?? "medium";
+				const currentIndex = effortLevels.indexOf(currentEffort);
+				const nextIndex = (currentIndex + 1) % effortLevels.length;
+				const nextEffort = effortLevels[nextIndex] ?? "medium";
 				ctx.manager.reasoningEffort = nextEffort;
 				ctx.setReasoningEffort(nextEffort);
 				ctx.persistPreferences({ reasoningEffort: nextEffort });

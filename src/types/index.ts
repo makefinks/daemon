@@ -151,6 +151,11 @@ export interface TranscriptionResult {
 }
 
 /**
+ * LLM backend provider used for agent responses.
+ */
+export type LlmProvider = "openrouter" | "copilot";
+
+/**
  * Callbacks for streaming AI responses
  */
 export interface StreamCallbacks {
@@ -213,18 +218,25 @@ export type SpeechSpeed = 1.0 | 1.25 | 1.5 | 1.75 | 2.0;
  * - "low": SURFACE - minimal reasoning
  * - "medium": DEEP - moderate reasoning (default)
  * - "high": ABYSSAL - maximum reasoning depth
+ * - "xhigh": EXTREME - extended deep reasoning (model-dependent)
  */
-export type ReasoningEffort = "low" | "medium" | "high";
+export type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
 
 /** Display labels for reasoning effort levels */
 export const REASONING_EFFORT_LABELS: Record<ReasoningEffort, string> = {
 	low: "LOW",
 	medium: "MEDIUM",
 	high: "HIGH",
+	xhigh: "XHIGH",
 };
 
 /** Ordered list of reasoning effort levels for cycling */
 export const REASONING_EFFORT_LEVELS: ReasoningEffort[] = ["low", "medium", "high"];
+export const REASONING_EFFORT_LEVELS_WITH_XHIGH: ReasoningEffort[] = ["low", "medium", "high", "xhigh"];
+
+export function getReasoningEffortLevels(includeXHigh: boolean): ReasoningEffort[] {
+	return includeXHigh ? REASONING_EFFORT_LEVELS_WITH_XHIGH : REASONING_EFFORT_LEVELS;
+}
 
 /**
  * Bash tool approval level settings.
@@ -248,7 +260,9 @@ export const BASH_APPROVAL_LEVELS: BashApprovalLevel[] = ["none", "dangerous", "
 /**
  * Onboarding flow steps.
  * - intro: Welcome screen
+ * - provider: Select backend provider
  * - openrouter_key: OpenRouter API key input (for AI models)
+ * - copilot_auth: GitHub Copilot authentication
  * - openai_key: OpenAI API key input (for transcription)
  * - exa_key: Exa API key input (for web search)
  * - device: Audio device selection
@@ -257,7 +271,9 @@ export const BASH_APPROVAL_LEVELS: BashApprovalLevel[] = ["none", "dangerous", "
  */
 export type OnboardingStep =
 	| "intro"
+	| "provider"
 	| "openrouter_key"
+	| "copilot_auth"
 	| "openai_key"
 	| "exa_key"
 	| "device"
@@ -302,6 +318,7 @@ export interface AppPreferences {
 	onboardingCompleted: boolean;
 	audioDeviceName?: string;
 	audioOutputDeviceName?: string;
+	modelProvider?: LlmProvider;
 	modelId?: string;
 	/**
 	 * OpenRouter inference provider slug (aka `provider` routing tag), e.g. "openai".
@@ -359,6 +376,10 @@ export interface ModelOption {
 	pricing?: ModelPricing;
 	contextLength?: number;
 	supportsCaching?: boolean;
+	/** Per-model support for reasoning effort controls (currently used by Copilot). */
+	supportsReasoningEffort?: boolean;
+	/** Whether this model supports Copilot's `xhigh` reasoning effort tier. */
+	supportsReasoningEffortXHigh?: boolean;
 }
 
 /**

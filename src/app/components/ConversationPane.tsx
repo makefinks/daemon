@@ -12,7 +12,7 @@ import { InlineStatusIndicator } from "../../components/InlineStatusIndicator";
 import { StatusBar } from "../../components/StatusBar";
 import { TokenUsageDisplay } from "../../components/TokenUsageDisplay";
 import { TypingInputBar } from "../../components/TypingInputBar";
-import type { ContentBlock, ConversationMessage, TokenUsage } from "../../types";
+import type { ContentBlock, ConversationMessage, LlmProvider, TokenUsage } from "../../types";
 import { DaemonState } from "../../types";
 import { COLORS, REASONING_MARKDOWN_STYLE } from "../../ui/constants";
 import { renderReasoningTicker } from "../../ui/reasoning-ticker";
@@ -68,6 +68,7 @@ export interface ConversationPaneProps {
 	typing: TypingInputState;
 	sessionUsage: TokenUsage;
 	modelMetadata: ModelMetadata | null;
+	currentModelProvider: LlmProvider;
 	hasInteracted: boolean;
 	suppressStatusBar?: boolean;
 	frostColor: string;
@@ -89,6 +90,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 		typing,
 		sessionUsage,
 		modelMetadata,
+		currentModelProvider,
 		hasInteracted,
 		suppressStatusBar = false,
 		frostColor,
@@ -246,7 +248,11 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 				(sessionUsage.totalTokens > 0 ||
 					(sessionUsage.subagentTotalTokens ?? 0) > 0 ||
 					typeof sessionUsage.cost === "number") && (
-					<TokenUsageDisplay usage={sessionUsage} modelMetadata={modelMetadata} />
+					<TokenUsageDisplay
+						usage={sessionUsage}
+						modelMetadata={modelMetadata}
+						hideCost={currentModelProvider === "copilot"}
+					/>
 				)}
 
 			{hasInteracted && resetNotification && (

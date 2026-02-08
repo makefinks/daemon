@@ -1,10 +1,21 @@
 import { useCallback } from "react";
-import { setOpenRouterProviderTag, setResponseModel } from "../ai/model-config";
+import { toast } from "@opentui-ui/toast/react";
+import {
+	getResponseModelForProvider,
+	setModelProvider,
+	setOpenRouterProviderTag,
+	setResponseModel,
+	setResponseModelForProvider,
+} from "../ai/model-config";
+import { invalidateDaemonToolsCache } from "../ai/tools";
+import { invalidateSubagentToolsCache } from "../ai/tools/subagents";
+import { getCopilotAuthStatusSafe, resetCopilotClient } from "../ai/copilot-client";
 import { setAudioDevice } from "../voice/audio-recorder";
 import { getDaemonManager } from "../state/daemon-state";
 import type {
 	AppPreferences,
 	AudioDevice,
+	LlmProvider,
 	ModelOption,
 	OnboardingStep,
 	ReasoningEffort,
@@ -14,8 +25,11 @@ import type {
 import { determineNextStep } from "./keyboard-handlers";
 
 export interface UseAppCallbacksParams {
+	currentModelProvider: LlmProvider;
+	setCurrentModelProvider: (provider: LlmProvider) => void;
 	currentModelId: string;
 	setCurrentModelId: (modelId: string) => void;
+	setCurrentModelForProvider: (provider: LlmProvider, modelId: string) => void;
 	setCurrentDevice: (deviceName: string | undefined) => void;
 	setCurrentOutputDevice: (deviceName: string | undefined) => void;
 	setCurrentOpenRouterProviderTag: (tag: string | undefined) => void;
@@ -26,7 +40,9 @@ export interface UseAppCallbacksParams {
 	persistPreferences: (updates: Partial<AppPreferences>) => void;
 	loadedPreferences: AppPreferences | null;
 	onboardingStep: OnboardingStep;
+	copilotAuthenticated: boolean;
 	setOnboardingStep: (step: OnboardingStep) => void;
+	setCopilotAuthenticated: (authenticated: boolean) => void;
 	apiKeyTextareaRef: React.RefObject<{ plainText?: string; setText: (v: string) => void } | null>;
 	setShowDeviceMenu: (show: boolean) => void;
 	setShowModelMenu: (show: boolean) => void;
@@ -40,6 +56,7 @@ export interface UseAppCallbacksReturn {
 	handleDeviceSelect: (device: AudioDevice) => void;
 	handleOutputDeviceSelect: (device: AudioDevice) => void;
 	handleModelSelect: (model: ModelOption) => void;
+	cycleModelProvider: () => void;
 	handleProviderSelect: (providerTag: string | undefined) => void;
 	toggleInteractionMode: () => void;
 	completeOnboarding: () => void;
@@ -48,8 +65,11 @@ export interface UseAppCallbacksReturn {
 
 export function useAppCallbacks(params: UseAppCallbacksParams): UseAppCallbacksReturn {
 	const {
+		currentModelProvider,
+		setCurrentModelProvider,
 		currentModelId,
 		setCurrentModelId,
+		setCurrentModelForProvider,
 		setCurrentDevice,
 		setCurrentOutputDevice,
 		setCurrentOpenRouterProviderTag,
@@ -60,7 +80,9 @@ export function useAppCallbacks(params: UseAppCallbacksParams): UseAppCallbacksR
 		persistPreferences,
 		loadedPreferences,
 		onboardingStep,
+		copilotAuthenticated,
 		setOnboardingStep,
+		setCopilotAuthenticated,
 		apiKeyTextareaRef,
 		setShowDeviceMenu,
 		setShowModelMenu,
@@ -92,18 +114,60 @@ export function useAppCallbacks(params: UseAppCallbacksParams): UseAppCallbacksR
 	const handleModelSelect = useCallback(
 		(model: ModelOption) => {
 			if (model.id !== currentModelId) {
-				setResponseModel(model.id);
-				setOpenRouterProviderTag(undefined);
+				setResponseModelForProvider(currentModelProvider, model.id);
 				setCurrentModelId(model.id);
-				setCurrentOpenRouterProviderTag(undefined);
-				persistPreferences({
-					modelId: model.id,
-					openRouterProviderTag: undefined,
-				});
+				if (currentModelProvider === "openrouter") {
+					setOpenRouterProviderTag(undefined);
+					setCurrentOpenRouterProviderTag(undefined);
+					persistPreferences({
+						modelProvider: currentModelProvider,
+						modelId: model.id,
+						openRouterProviderTag: undefined,
+					});
+				} else {
+					persistPreferences({
+						modelProvider: currentModelProvider,
+						modelId: model.id,
+					});
+				}
 			}
 		},
-		[currentModelId, setCurrentModelId, setCurrentOpenRouterProviderTag, persistPreferences]
+		[
+			currentModelProvider,
+			currentModelId,
+			setCurrentModelId,
+			setCurrentOpenRouterProviderTag,
+			persistPreferences,
+		]
 	);
+
+	const cycleModelProvider = useCallback(() => {
+		const nextProvider: LlmProvider = currentModelProvider === "openrouter" ? "copilot" : "openrouter";
+		if (nextProvider === "copilot" && !copilotAuthenticated) {
+			toast.error("COPILOT LOGIN REQUIRED", {
+				description: "Run `gh auth login` and `copilot login` to enable the Copilot provider.",
+			});
+			return;
+		}
+		const nextModelId = getResponseModelForProvider(nextProvider);
+
+		setModelProvider(nextProvider);
+		invalidateDaemonToolsCache();
+		invalidateSubagentToolsCache();
+		setCurrentModelProvider(nextProvider);
+		setCurrentModelForProvider(nextProvider, nextModelId);
+
+		persistPreferences({
+			modelProvider: nextProvider,
+			modelId: nextModelId,
+		});
+	}, [
+		currentModelProvider,
+		copilotAuthenticated,
+		setCurrentModelProvider,
+		setCurrentModelForProvider,
+		persistPreferences,
+	]);
 
 	const handleProviderSelect = useCallback(
 		(providerTag: string | undefined) => {
@@ -145,48 +209,81 @@ export function useAppCallbacks(params: UseAppCallbacksParams): UseAppCallbacksR
 	]);
 
 	const handleApiKeySubmit = useCallback(() => {
-		const key = (apiKeyTextareaRef.current?.plainText ?? "").trim();
-		if (!key) return;
+		void (async () => {
+			const key = (apiKeyTextareaRef.current?.plainText ?? "").trim();
 
-		if (onboardingStep === "openrouter_key") {
-			process.env.OPENROUTER_API_KEY = key;
-			persistPreferences({ openRouterApiKey: key });
-			const nextStep = determineNextStep("openrouter_key", loadedPreferences);
-			if (nextStep === "complete") {
-				persistPreferences({ onboardingCompleted: true });
-				completeOnboarding();
-			} else {
-				setOnboardingStep(nextStep);
-			}
-		} else if (onboardingStep === "openai_key") {
-			process.env.OPENAI_API_KEY = key;
-			persistPreferences({ openAiApiKey: key });
-			const nextStep = determineNextStep("openai_key", loadedPreferences);
-			if (nextStep === "complete") {
-				persistPreferences({ onboardingCompleted: true });
-				completeOnboarding();
-			} else {
-				setOnboardingStep(nextStep);
-			}
-		} else if (onboardingStep === "exa_key") {
-			process.env.EXA_API_KEY = key;
-			persistPreferences({ exaApiKey: key });
-			const nextStep = determineNextStep("exa_key", loadedPreferences);
-			if (nextStep === "complete") {
-				persistPreferences({ onboardingCompleted: true });
-				completeOnboarding();
-			} else {
-				setOnboardingStep(nextStep);
-			}
-		}
+			if (onboardingStep !== "copilot_auth" && !key) return;
 
-		apiKeyTextareaRef.current?.setText("");
+			if (onboardingStep === "openrouter_key") {
+				process.env.OPENROUTER_API_KEY = key;
+				persistPreferences({ openRouterApiKey: key });
+				const nextStep = determineNextStep("openrouter_key", loadedPreferences, {
+					currentProvider: currentModelProvider,
+				});
+				if (nextStep === "complete") {
+					persistPreferences({ onboardingCompleted: true });
+					completeOnboarding();
+				} else {
+					setOnboardingStep(nextStep);
+				}
+			} else if (onboardingStep === "copilot_auth") {
+				await resetCopilotClient();
+				const authStatus = await getCopilotAuthStatusSafe();
+				setCopilotAuthenticated(authStatus.isAuthenticated);
+				if (!authStatus.isAuthenticated) {
+					toast.error("COPILOT AUTH REQUIRED", {
+						description: "Run `gh auth login` and `copilot login`, then press ENTER to retry.",
+					});
+					return;
+				}
+
+				const nextStep = determineNextStep("copilot_auth", loadedPreferences, {
+					currentProvider: currentModelProvider,
+					copilotAuthenticated: true,
+				});
+				if (nextStep === "complete") {
+					persistPreferences({ onboardingCompleted: true });
+					completeOnboarding();
+				} else {
+					setOnboardingStep(nextStep);
+				}
+			} else if (onboardingStep === "openai_key") {
+				process.env.OPENAI_API_KEY = key;
+				persistPreferences({ openAiApiKey: key });
+				const nextStep = determineNextStep("openai_key", loadedPreferences, {
+					currentProvider: currentModelProvider,
+				});
+				if (nextStep === "complete") {
+					persistPreferences({ onboardingCompleted: true });
+					completeOnboarding();
+				} else {
+					setOnboardingStep(nextStep);
+				}
+			} else if (onboardingStep === "exa_key") {
+				process.env.EXA_API_KEY = key;
+				persistPreferences({ exaApiKey: key });
+				const nextStep = determineNextStep("exa_key", loadedPreferences, {
+					currentProvider: currentModelProvider,
+				});
+				if (nextStep === "complete") {
+					persistPreferences({ onboardingCompleted: true });
+					completeOnboarding();
+				} else {
+					setOnboardingStep(nextStep);
+				}
+			}
+
+			apiKeyTextareaRef.current?.setText("");
+		})();
 	}, [
 		onboardingStep,
 		persistPreferences,
 		loadedPreferences,
+		currentModelProvider,
+		copilotAuthenticated,
 		completeOnboarding,
 		setOnboardingStep,
+		setCopilotAuthenticated,
 		apiKeyTextareaRef,
 	]);
 
@@ -194,6 +291,7 @@ export function useAppCallbacks(params: UseAppCallbacksParams): UseAppCallbacksR
 		handleDeviceSelect,
 		handleOutputDeviceSelect,
 		handleModelSelect,
+		cycleModelProvider,
 		handleProviderSelect,
 		toggleInteractionMode,
 		completeOnboarding,

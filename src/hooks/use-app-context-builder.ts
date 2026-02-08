@@ -15,6 +15,7 @@ import type {
 	AudioDevice,
 	BashApprovalLevel,
 	GroundingMap,
+	LlmProvider,
 	ModelOption,
 	OnboardingStep,
 	ReasoningEffort,
@@ -65,6 +66,7 @@ export interface UseAppContextBuilderParams {
 		reasoningEffort: ReasoningEffort;
 		bashApprovalLevel: BashApprovalLevel;
 		supportsReasoning: boolean;
+		supportsReasoningXHigh: boolean;
 		canEnableVoiceOutput: boolean;
 		showFullReasoning: boolean;
 		setShowFullReasoning: (show: boolean) => void;
@@ -81,6 +83,8 @@ export interface UseAppContextBuilderParams {
 		openRouterModels: ModelOption[];
 		openRouterModelsLoading: boolean;
 		openRouterModelsUpdatedAt: number | null;
+		currentModelProvider: LlmProvider;
+		setCurrentModelProvider: (provider: LlmProvider) => void;
 		currentModelId: string;
 		setCurrentModelId: (modelId: string) => void;
 		providerMenuItems: ProviderMenuItem[];
@@ -102,6 +106,7 @@ export interface UseAppContextBuilderParams {
 	onboarding: {
 		onboardingActive: boolean;
 		onboardingStep: OnboardingStep;
+		copilotAuthenticated: boolean;
 		setOnboardingStep: (step: OnboardingStep) => void;
 		onboardingPreferences: AppPreferences | null;
 		apiKeyTextareaRef: MutableRefObject<TextareaRenderable | null>;

@@ -4,7 +4,7 @@ import type { ScrollBoxRenderable } from "@opentui/core";
 import { useKeyboard } from "@opentui/react";
 import { useCallback } from "react";
 import { getDaemonManager } from "../state/daemon-state";
-import { type AppPreferences, DaemonState } from "../types";
+import { type AppPreferences, type LlmProvider, DaemonState } from "../types";
 import { COLORS } from "../ui/constants";
 export interface KeyboardHandlerState {
 	isOverlayOpen: boolean;
@@ -13,6 +13,7 @@ export interface KeyboardHandlerState {
 	hasGrounding: boolean;
 	showFullReasoning: boolean;
 	showToolOutput: boolean;
+	currentModelProvider: LlmProvider;
 }
 
 export interface KeyboardHandlerActions {
@@ -43,7 +44,14 @@ export interface KeyboardHandlerActions {
 
 export function useDaemonKeyboard(state: KeyboardHandlerState, actions: KeyboardHandlerActions) {
 	const manager = getDaemonManager();
-	const { isOverlayOpen, escPendingCancel, hasInteracted, hasGrounding, showFullReasoning } = state;
+	const {
+		isOverlayOpen,
+		escPendingCancel,
+		hasInteracted,
+		hasGrounding,
+		showFullReasoning,
+		currentModelProvider,
+	} = state;
 
 	const closeAllMenus = useCallback(() => {
 		actions.setShowDeviceMenu(false);
@@ -161,6 +169,10 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 				key.eventType === "press" &&
 				(currentState === DaemonState.IDLE || currentState === DaemonState.SPEAKING)
 			) {
+				if (currentModelProvider !== "openrouter") {
+					key.preventDefault();
+					return;
+				}
 				closeAllMenus();
 				actions.setShowProviderMenu(true);
 				key.preventDefault();
@@ -310,8 +322,8 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 				currentState !== DaemonState.TYPING
 			) {
 				if (currentState === DaemonState.IDLE || currentState === DaemonState.SPEAKING) {
-					// Check for OpenRouter API key first (needed for any AI response)
-					if (!process.env.OPENROUTER_API_KEY) {
+					// OpenRouter provider requires OPENROUTER_API_KEY for model responses.
+					if (currentModelProvider === "openrouter" && !process.env.OPENROUTER_API_KEY) {
 						actions.setApiKeyMissingError(
 							"OPENROUTER_API_KEY not found · Set via environment variable or enter in onboarding"
 						);
@@ -340,8 +352,8 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 			// Shift+Tab for typing mode
 			if (key.name === "tab" && key.shift && key.eventType === "press") {
 				if (currentState === DaemonState.IDLE) {
-					// Check for OpenRouter API key (needed for any AI response)
-					if (!process.env.OPENROUTER_API_KEY) {
+					// OpenRouter provider requires OPENROUTER_API_KEY for model responses.
+					if (currentModelProvider === "openrouter" && !process.env.OPENROUTER_API_KEY) {
 						actions.setApiKeyMissingError(
 							"OPENROUTER_API_KEY not found · Set via environment variable or enter in onboarding"
 						);
@@ -411,6 +423,7 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 			hasGrounding,
 			showFullReasoning,
 			state.showToolOutput,
+			currentModelProvider,
 			actions,
 		]
 	);

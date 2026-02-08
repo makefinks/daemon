@@ -1,5 +1,9 @@
 import { describe, it, expect } from "bun:test";
-import { createTokenHandler, createToolInvocationHandler } from "../src/hooks/daemon-event-handlers";
+import {
+	createTokenHandler,
+	createToolInputStartHandler,
+	createToolInvocationHandler,
+} from "../src/hooks/daemon-event-handlers";
 import type { ContentBlock } from "../src/types";
 import { REASONING_ANIMATION } from "../src/ui/constants";
 
@@ -190,5 +194,52 @@ describe("daemon-event-handlers whitespace filtering", () => {
 		expect(avatar.reasoningMode).toBe(true);
 		expect(avatar.intensity).toBe(REASONING_ANIMATION.INTENSITY);
 		expect(avatar.toolFlashCalls).toBe(1);
+	});
+
+	it("does not duplicate tool blocks when tool input start repeats with the same call id", () => {
+		const refs = createRefs();
+		const setters = createSetters();
+		const deps = createDeps();
+
+		const onToolInputStart = createToolInputStartHandler(refs, setters, deps);
+		onToolInputStart("webSearch", "call_1");
+		onToolInputStart("webSearch", "call_1");
+
+		expect(refs.toolCallsRef.current.length).toBe(1);
+		expect(refs.contentBlocksRef.current.length).toBe(1);
+		expect(refs.contentBlocksRef.current[0]?.type).toBe("tool");
+		expect((refs.contentBlocksRef.current[0] as any).call.toolCallId).toBe("call_1");
+	});
+
+	it("does not duplicate tool blocks when tool invocation repeats with the same call id", () => {
+		const refs = createRefs();
+		const setters = createSetters();
+		const deps = createDeps();
+
+		const onTool = createToolInvocationHandler(refs, setters, deps);
+		onTool("webSearch", { q: "first" }, "call_1");
+		onTool("webSearch", { q: "second" }, "call_1");
+
+		expect(refs.toolCallsRef.current.length).toBe(1);
+		expect(refs.contentBlocksRef.current.length).toBe(1);
+		expect(refs.contentBlocksRef.current[0]?.type).toBe("tool");
+		expect((refs.contentBlocksRef.current[0] as any).call.input).toEqual({ q: "second" });
+	});
+
+	it("keeps a single tool block when invocation arrives before input-start for the same id", () => {
+		const refs = createRefs();
+		const setters = createSetters();
+		const deps = createDeps();
+
+		const onTool = createToolInvocationHandler(refs, setters, deps);
+		const onToolInputStart = createToolInputStartHandler(refs, setters, deps);
+
+		onTool("webSearch", { q: "test" }, "call_1");
+		onToolInputStart("webSearch", "call_1");
+
+		expect(refs.toolCallsRef.current.length).toBe(1);
+		expect(refs.contentBlocksRef.current.length).toBe(1);
+		expect(refs.contentBlocksRef.current[0]?.type).toBe("tool");
+		expect((refs.contentBlocksRef.current[0] as any).call.status).toBe("running");
 	});
 });

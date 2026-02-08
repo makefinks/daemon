@@ -3,11 +3,11 @@
  */
 
 import type { OpenRouterChatSettings } from "@openrouter/ai-sdk-provider";
-import type { ModelOption } from "../types";
+import type { LlmProvider, ModelOption } from "../types";
 import { loadManualConfig } from "../utils/config";
 
 // Available models for selection (OpenRouter format)
-export const AVAILABLE_MODELS: ModelOption[] = [
+export const AVAILABLE_OPENROUTER_MODELS: ModelOption[] = [
 	{ id: "x-ai/grok-4.1-fast", name: "Grok 4.1 Fast" },
 	{ id: "arcee-ai/trinity-large-preview:free", name: "Trinity Large Preview" },
 	{ id: "z-ai/glm-4.7", name: "GLM 4.7" },
@@ -20,18 +20,49 @@ export const AVAILABLE_MODELS: ModelOption[] = [
 	{ id: "nvidia/nemotron-3-nano-30b-a3b:free", name: "Nemotron 3 Nano" },
 ];
 
-// Default model ID
-export const DEFAULT_MODEL_ID = "z-ai/glm-4.7";
+// Default model IDs
+export const DEFAULT_OPENROUTER_MODEL_ID = "z-ai/glm-4.7";
+export const DEFAULT_COPILOT_MODEL_ID = "claude-sonnet-4.5";
+export const DEFAULT_MODEL_ID = DEFAULT_OPENROUTER_MODEL_ID;
+export const DEFAULT_MODEL_PROVIDER: LlmProvider = "openrouter";
 
-// Current selected model (mutable)
-let currentModelId = DEFAULT_MODEL_ID;
+// Backward-compatible alias used by existing OpenRouter pricing loaders.
+export const AVAILABLE_MODELS = AVAILABLE_OPENROUTER_MODELS;
+
+// Current selected provider + model IDs (mutable)
+let currentModelProvider: LlmProvider = DEFAULT_MODEL_PROVIDER;
+const currentModelIdByProvider: Record<LlmProvider, string> = {
+	openrouter: DEFAULT_OPENROUTER_MODEL_ID,
+	copilot: DEFAULT_COPILOT_MODEL_ID,
+};
 let currentOpenRouterProviderTag: string | undefined;
 
 /**
  * Get the current response model ID.
  */
 export function getResponseModel(): string {
-	return currentModelId;
+	return currentModelIdByProvider[currentModelProvider];
+}
+
+/**
+ * Get selected model ID for a specific provider.
+ */
+export function getResponseModelForProvider(provider: LlmProvider): string {
+	return currentModelIdByProvider[provider];
+}
+
+/**
+ * Get the currently selected LLM provider.
+ */
+export function getModelProvider(): LlmProvider {
+	return currentModelProvider;
+}
+
+/**
+ * Set the currently selected LLM provider.
+ */
+export function setModelProvider(provider: LlmProvider): void {
+	currentModelProvider = provider;
 }
 
 /**
@@ -57,10 +88,20 @@ export function setOpenRouterProviderTag(providerTag: string | undefined): void 
  */
 export function setResponseModel(modelId: string): void {
 	if (!modelId) return;
-	if (modelId !== currentModelId) {
-		currentModelId = modelId;
-		// Always reset provider when switching to a DIFFERENT model
-		currentOpenRouterProviderTag = undefined;
+	setResponseModelForProvider(currentModelProvider, modelId);
+}
+
+/**
+ * Set model ID for a specific provider.
+ */
+export function setResponseModelForProvider(provider: LlmProvider, modelId: string): void {
+	if (!modelId) return;
+	if (modelId !== currentModelIdByProvider[provider]) {
+		currentModelIdByProvider[provider] = modelId;
+		// Reset OpenRouter routing provider when switching OpenRouter models.
+		if (provider === "openrouter") {
+			currentOpenRouterProviderTag = undefined;
+		}
 	}
 }
 
@@ -68,7 +109,7 @@ export function setResponseModel(modelId: string): void {
  * Get the current subagent model ID (same as main agent).
  */
 export function getSubagentModel(): string {
-	return currentModelId;
+	return getResponseModel();
 }
 
 /**

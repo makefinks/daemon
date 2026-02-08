@@ -2,7 +2,7 @@ import type { ScrollBoxRenderable, TextareaRenderable } from "@opentui/core";
 import { useKeyboard } from "@opentui/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMenuKeyboard } from "../hooks/use-menu-keyboard";
-import type { ModelOption } from "../types";
+import type { LlmProvider, ModelOption } from "../types";
 import { COLORS } from "../ui/constants";
 import { formatContextWindowK, formatPrice } from "../utils/formatters";
 
@@ -20,6 +20,7 @@ const MIN_ALL_MODEL_QUERY_LENGTH = 3;
 interface ModelMenuProps {
 	curatedModels: ModelOption[];
 	allModels: ModelOption[];
+	modelProvider: LlmProvider;
 	allModelsLoading: boolean;
 	allModelsUpdatedAt: number | null;
 	currentModelId: string;
@@ -36,6 +37,7 @@ function formatUpdatedAt(timestamp: number | null): string {
 export function ModelMenu({
 	curatedModels,
 	allModels,
+	modelProvider,
 	allModelsLoading,
 	allModelsUpdatedAt,
 	currentModelId,
@@ -46,35 +48,38 @@ export function ModelMenu({
 	const [searchQuery, setSearchQuery] = useState("");
 	const [isSearchFocused, setIsSearchFocused] = useState(false);
 	const searchInputRef = useRef<TextareaRenderable | null>(null);
+	const isCopilotProvider = modelProvider === "copilot";
 
 	const sortedCurated = useMemo(() => {
+		if (isCopilotProvider) return [];
 		return [...curatedModels].sort((a, b) => {
 			const priceA = a.pricing ? a.pricing.prompt + a.pricing.completion : Number.MAX_SAFE_INTEGER;
 			const priceB = b.pricing ? b.pricing.prompt + b.pricing.completion : Number.MAX_SAFE_INTEGER;
 			if (priceA !== priceB) return priceA - priceB;
 			return a.name.localeCompare(b.name);
 		});
-	}, [curatedModels]);
+	}, [curatedModels, isCopilotProvider]);
 
 	const curatedIdSet = useMemo(() => new Set(sortedCurated.map((model) => model.id)), [sortedCurated]);
 
+	const allModelsWithFallback = useMemo(() => {
+		if (!currentModelId) return allModels;
+		if (allModels.some((model) => model.id === currentModelId)) return allModels;
+		return [...allModels, { id: currentModelId, name: currentModelId }];
+	}, [allModels, currentModelId]);
+
 	const savedModel = useMemo(() => {
+		if (isCopilotProvider) return null;
 		if (!currentModelId) return null;
 		if (curatedIdSet.has(currentModelId)) return null;
-		const match = allModels.find((model) => model.id === currentModelId);
+		const match = allModelsWithFallback.find((model) => model.id === currentModelId);
 		return match ?? { id: currentModelId, name: currentModelId };
-	}, [allModels, curatedIdSet, currentModelId]);
+	}, [allModelsWithFallback, curatedIdSet, currentModelId, isCopilotProvider]);
 
 	const savedModels = useMemo(() => (savedModel ? [savedModel] : []), [savedModel]);
 
-	const allModelsWithFallback = useMemo(() => {
-		if (!currentModelId) return allModels;
-		if (curatedIdSet.has(currentModelId)) return allModels;
-		if (savedModel) return allModels;
-		return [...allModels, { id: currentModelId, name: currentModelId }];
-	}, [allModels, curatedIdSet, currentModelId, savedModel]);
-
 	const filteredAllModels = useMemo(() => {
+		if (isCopilotProvider) return [];
 		const filtered = allModelsWithFallback.filter(
 			(model) => !curatedIdSet.has(model.id) && model.id !== savedModel?.id
 		);
@@ -82,63 +87,55 @@ export function ModelMenu({
 		if (query.length < MIN_ALL_MODEL_QUERY_LENGTH) {
 			return [];
 		}
+		const matching = filtered.filter(
+			(model) => model.name.toLowerCase().includes(query) || model.id.toLowerCase().includes(query)
+		);
+		return matching.sort((a, b) => a.name.localeCompare(b.name));
+	}, [allModelsWithFallback, curatedIdSet, isCopilotProvider, savedModel?.id, searchQuery]);
+
+	const copilotModels = useMemo(() => {
+		if (!isCopilotProvider) return [];
+		const query = searchQuery.trim().toLowerCase();
 		const matching = query
-			? filtered.filter(
+			? allModelsWithFallback.filter(
 					(model) => model.name.toLowerCase().includes(query) || model.id.toLowerCase().includes(query)
 				)
-			: filtered;
+			: allModelsWithFallback;
+		return [...matching].sort((a, b) => a.name.localeCompare(b.name));
+	}, [allModelsWithFallback, isCopilotProvider, searchQuery]);
 
-		return matching.sort((a, b) => a.name.localeCompare(b.name));
-	}, [allModelsWithFallback, curatedIdSet, savedModel?.id, searchQuery]);
+	const menuItems = useMemo(() => {
+		if (isCopilotProvider) return copilotModels;
+		return [...sortedCurated, ...savedModels, ...filteredAllModels];
+	}, [copilotModels, filteredAllModels, isCopilotProvider, savedModels, sortedCurated]);
 
-	const totalItems = sortedCurated.length + savedModels.length + filteredAllModels.length;
+	const totalItems = menuItems.length;
 
 	const initialIndex = useMemo(() => {
 		if (totalItems === 0) return 0;
-		const curatedIdx = sortedCurated.findIndex((model) => model.id === currentModelId);
-		if (curatedIdx >= 0) return curatedIdx;
-		const savedIdx = savedModels.findIndex((model) => model.id === currentModelId);
-		if (savedIdx >= 0) return sortedCurated.length + savedIdx;
-		const allIdx = filteredAllModels.findIndex((model) => model.id === currentModelId);
-		if (allIdx >= 0) return sortedCurated.length + savedModels.length + allIdx;
-		return 0;
-	}, [sortedCurated, savedModels, filteredAllModels, currentModelId, totalItems]);
+		const idx = menuItems.findIndex((model) => model.id === currentModelId);
+		return idx >= 0 ? idx : 0;
+	}, [currentModelId, menuItems, totalItems]);
 
 	const { selectedIndex } = useMenuKeyboard({
 		itemCount: totalItems,
 		initialIndex,
 		onClose,
 		onSelect: (selectedIdx) => {
-			if (selectedIdx < sortedCurated.length) {
-				const model = sortedCurated[selectedIdx];
-				if (model) {
-					onSelect(model);
-				}
-				return;
-			}
-
-			const afterCurated = selectedIdx - sortedCurated.length;
-			if (afterCurated < savedModels.length) {
-				const model = savedModels[afterCurated];
-				if (model) {
-					onSelect(model);
-				}
-				return;
-			}
-
-			const model = filteredAllModels[afterCurated - savedModels.length];
+			const model = menuItems[selectedIdx];
 			if (model) {
 				onSelect(model);
 			}
 		},
 		enableViKeys: !isSearchFocused,
 		ignoreEscape: isSearchFocused,
+		disabled: isSearchFocused,
 	});
 
 	useKeyboard((key) => {
 		if (key.eventType !== "press") return;
 
-		if (!isSearchFocused && (key.name === "r" || key.sequence?.toLowerCase() === "r")) {
+		if (!isCopilotProvider && !isSearchFocused && (key.name === "r" || key.sequence?.toLowerCase() === "r")) {
 			onRefreshAllModels();
 			key.preventDefault();
 			return;
@@ -151,13 +148,16 @@ export function ModelMenu({
 		}
 	});
 
-	const allSelectedIndex = selectedIndex - sortedCurated.length - savedModels.length;
+	const scrollModels = isCopilotProvider ? copilotModels : filteredAllModels;
+	const allSelectedIndex = isCopilotProvider
+		? selectedIndex
+		: selectedIndex - sortedCurated.length - savedModels.length;
 	const isAllSectionSelected = allSelectedIndex >= 0;
 
 	const scrollRef = useRef<ScrollBoxRenderable | null>(null);
 	const scrollboxHeight = Math.min(
 		MAX_ALL_SCROLLBOX_HEIGHT,
-		Math.max(ALL_MODEL_ITEM_HEIGHT, filteredAllModels.length * ALL_MODEL_ITEM_HEIGHT)
+		Math.max(ALL_MODEL_ITEM_HEIGHT, scrollModels.length * ALL_MODEL_ITEM_HEIGHT)
 	);
 
 	useEffect(() => {
@@ -184,9 +184,10 @@ export function ModelMenu({
 		if (nextTop !== currentTop) {
 			scrollbox.scrollTop = nextTop;
 		}
-	}, [allSelectedIndex, filteredAllModels.length, isAllSectionSelected]);
+	}, [allSelectedIndex, isAllSectionSelected, scrollModels.length]);
 
 	const updatedAtLabel = formatUpdatedAt(allModelsUpdatedAt);
+	const needsSearchHint = !isCopilotProvider && searchQuery.trim().length < MIN_ALL_MODEL_QUERY_LENGTH;
 
 	const renderModelRow = (model: ModelOption, isSelected: boolean, isCurrent: boolean) => {
 		const pricing = model.pricing;
@@ -262,7 +263,10 @@ export function ModelMenu({
 				</box>
 				<box marginBottom={1}>
 					<text>
-						<span fg={COLORS.USER_LABEL}>↑/↓ or j/k navigate · ENTER select · R refresh · ESC cancel</span>
+						<span fg={COLORS.USER_LABEL}>
+							↑/↓ or j/k navigate · ENTER select
+							{isCopilotProvider ? "" : " · R refresh"} · ESC cancel
+						</span>
 					</text>
 				</box>
 				<box marginBottom={1}>
@@ -273,7 +277,7 @@ export function ModelMenu({
 
 				<box marginBottom={0}>
 					<text>
-						<span fg={COLORS.USER_LABEL}>— SEARCH ALL MODELS —</span>
+						<span fg={COLORS.USER_LABEL}>— SEARCH MODELS —</span>
 					</text>
 				</box>
 
@@ -337,118 +341,176 @@ export function ModelMenu({
 					</box>
 				) : null}
 
-				<box marginBottom={1} marginTop={1}>
-					<text>
-						<span fg={COLORS.DAEMON_LABEL}>[ RECOMMENDED ]</span>
-					</text>
-				</box>
-
-				{sortedCurated.length === 0 ? (
-					<box marginBottom={1} paddingLeft={1}>
-						<text>
-							<span fg={COLORS.REASONING_DIM}>No curated models available</span>
-						</text>
-					</box>
-				) : (
-					<>
-						<box marginBottom={1}>
-							<box flexDirection="row" justifyContent="space-between">
-								<text>
-									<span fg={COLORS.REASONING_DIM}>MODEL</span>
-								</text>
-								<text>
-									<span fg={COLORS.REASONING_DIM}>
-										{"CTX".padStart(COL_WIDTH.CTX)} {"IN".padStart(COL_WIDTH.IN)}{" "}
-										{"OUT".padStart(COL_WIDTH.OUT)} {"CACHE".padStart(COL_WIDTH.CACHE)}
-									</span>
-								</text>
-							</box>
-						</box>
-						<box flexDirection="column">
-							{sortedCurated.map((model, idx) =>
-								renderModelRow(model, idx === selectedIndex, model.id === currentModelId)
-							)}
-						</box>
-					</>
-				)}
-
-				{savedModels.length > 0 ? (
+				{isCopilotProvider ? (
 					<>
 						<box marginBottom={1} marginTop={1}>
 							<text>
-								<span fg={COLORS.DAEMON_LABEL}>[ SAVED ]</span>
+								<span fg={COLORS.DAEMON_LABEL}>[ MODELS ]</span>
+								{allModelsLoading ? <span fg={COLORS.REASONING_DIM}> (loading...)</span> : null}
 							</text>
 						</box>
-						<box flexDirection="column">
-							{savedModels.map((model, idx) =>
-								renderModelRow(
-									model,
-									sortedCurated.length + idx === selectedIndex,
-									model.id === currentModelId
-								)
-							)}
-						</box>
-					</>
-				) : null}
-
-				<box marginBottom={1} marginTop={1}>
-					<text>
-						<span fg={COLORS.DAEMON_LABEL}>[ ALL MODELS ]</span>
-						{allModelsLoading ? <span fg={COLORS.REASONING_DIM}> (refreshing...)</span> : null}
-					</text>
-				</box>
-
-				{filteredAllModels.length === 0 ? (
-					<box marginTop={0} paddingLeft={1}>
-						<text>
-							<span fg={COLORS.REASONING_DIM}>
-								{searchQuery.trim().length < MIN_ALL_MODEL_QUERY_LENGTH
-									? `Type ${MIN_ALL_MODEL_QUERY_LENGTH}+ characters to search`
-									: allModelsLoading
-										? "Loading models..."
-										: "No models found"}
-							</span>
-						</text>
-					</box>
-				) : (
-					<>
-						<box marginBottom={1}>
-							<box flexDirection="row" justifyContent="space-between">
-								<text>
-									<span fg={COLORS.REASONING_DIM}>MODEL</span>
-								</text>
+						{copilotModels.length === 0 ? (
+							<box marginTop={0} paddingLeft={1}>
 								<text>
 									<span fg={COLORS.REASONING_DIM}>
-										{"CTX".padStart(COL_WIDTH.CTX)} {"IN".padStart(COL_WIDTH.IN)}{" "}
-										{"OUT".padStart(COL_WIDTH.OUT)} {"CACHE".padStart(COL_WIDTH.CACHE)}
+										{allModelsLoading ? "Loading models..." : "No models found"}
 									</span>
 								</text>
 							</box>
+						) : (
+							<>
+								<box marginBottom={1}>
+									<box flexDirection="row" justifyContent="space-between">
+										<text>
+											<span fg={COLORS.REASONING_DIM}>MODEL</span>
+										</text>
+										<text>
+											<span fg={COLORS.REASONING_DIM}>
+												{"CTX".padStart(COL_WIDTH.CTX)} {"IN".padStart(COL_WIDTH.IN)}{" "}
+												{"OUT".padStart(COL_WIDTH.OUT)} {"CACHE".padStart(COL_WIDTH.CACHE)}
+											</span>
+										</text>
+									</box>
+								</box>
+								<scrollbox
+									ref={scrollRef}
+									height={scrollboxHeight}
+									alignSelf="flex-start"
+									focused={false}
+									scrollY={true}
+									scrollX={false}
+									style={{
+										rootOptions: { backgroundColor: COLORS.MENU_BG },
+										wrapperOptions: { backgroundColor: COLORS.MENU_BG },
+										viewportOptions: { backgroundColor: COLORS.MENU_BG },
+										contentOptions: { backgroundColor: COLORS.MENU_BG },
+									}}
+								>
+									<box flexDirection="column">
+										{copilotModels.map((model, idx) =>
+											renderModelRow(model, idx === selectedIndex, model.id === currentModelId)
+										)}
+									</box>
+								</scrollbox>
+							</>
+						)}
+					</>
+				) : (
+					<>
+						<box marginBottom={1} marginTop={1}>
+							<text>
+								<span fg={COLORS.DAEMON_LABEL}>[ RECOMMENDED ]</span>
+							</text>
 						</box>
-						<scrollbox
-							ref={scrollRef}
-							height={scrollboxHeight}
-							alignSelf="flex-start"
-							focused={false}
-							scrollY={true}
-							scrollX={false}
-							style={{
-								rootOptions: { backgroundColor: COLORS.MENU_BG },
-								wrapperOptions: { backgroundColor: COLORS.MENU_BG },
-								viewportOptions: { backgroundColor: COLORS.MENU_BG },
-								contentOptions: { backgroundColor: COLORS.MENU_BG },
-							}}
-						>
-							<box flexDirection="column">
-								{filteredAllModels.map((model, idx) =>
-									renderModelRow(
-										model,
-										sortedCurated.length + idx === selectedIndex,
-										model.id === currentModelId
-									)
-								)}
+
+						{sortedCurated.length === 0 ? (
+							<box marginBottom={1} paddingLeft={1}>
+								<text>
+									<span fg={COLORS.REASONING_DIM}>No curated models available</span>
+								</text>
 							</box>
-						</scrollbox>
+						) : (
+							<>
+								<box marginBottom={1}>
+									<box flexDirection="row" justifyContent="space-between">
+										<text>
+											<span fg={COLORS.REASONING_DIM}>MODEL</span>
+										</text>
+										<text>
+											<span fg={COLORS.REASONING_DIM}>
+												{"CTX".padStart(COL_WIDTH.CTX)} {"IN".padStart(COL_WIDTH.IN)}{" "}
+												{"OUT".padStart(COL_WIDTH.OUT)} {"CACHE".padStart(COL_WIDTH.CACHE)}
+											</span>
+										</text>
+									</box>
+								</box>
+								<box flexDirection="column">
+									{sortedCurated.map((model, idx) =>
+										renderModelRow(model, idx === selectedIndex, model.id === currentModelId)
+									)}
+								</box>
+							</>
+						)}
+
+						{savedModels.length > 0 ? (
+							<>
+								<box marginBottom={1} marginTop={1}>
+									<text>
+										<span fg={COLORS.DAEMON_LABEL}>[ SAVED ]</span>
+									</text>
+								</box>
+								<box flexDirection="column">
+									{savedModels.map((model, idx) =>
+										renderModelRow(
+											model,
+											sortedCurated.length + idx === selectedIndex,
+											model.id === currentModelId
+										)
+									)}
+								</box>
+							</>
+						) : null}
+
+						<box marginBottom={1} marginTop={1}>
+							<text>
+								<span fg={COLORS.DAEMON_LABEL}>[ ALL MODELS ]</span>
+								{allModelsLoading ? <span fg={COLORS.REASONING_DIM}> (refreshing...)</span> : null}
+							</text>
+						</box>
+
+						{filteredAllModels.length === 0 ? (
+							<box marginTop={0} paddingLeft={1}>
+								<text>
+									<span fg={COLORS.REASONING_DIM}>
+										{needsSearchHint
+											? `Type ${MIN_ALL_MODEL_QUERY_LENGTH}+ characters to search`
+											: allModelsLoading
+												? "Loading models..."
+												: "No models found"}
+									</span>
+								</text>
+							</box>
+						) : (
+							<>
+								<box marginBottom={1}>
+									<box flexDirection="row" justifyContent="space-between">
+										<text>
+											<span fg={COLORS.REASONING_DIM}>MODEL</span>
+										</text>
+										<text>
+											<span fg={COLORS.REASONING_DIM}>
+												{"CTX".padStart(COL_WIDTH.CTX)} {"IN".padStart(COL_WIDTH.IN)}{" "}
+												{"OUT".padStart(COL_WIDTH.OUT)} {"CACHE".padStart(COL_WIDTH.CACHE)}
+											</span>
+										</text>
+									</box>
+								</box>
+								<scrollbox
+									ref={scrollRef}
+									height={scrollboxHeight}
+									alignSelf="flex-start"
+									focused={false}
+									scrollY={true}
+									scrollX={false}
+									style={{
+										rootOptions: { backgroundColor: COLORS.MENU_BG },
+										wrapperOptions: { backgroundColor: COLORS.MENU_BG },
+										viewportOptions: { backgroundColor: COLORS.MENU_BG },
+										contentOptions: { backgroundColor: COLORS.MENU_BG },
+									}}
+								>
+									<box flexDirection="column">
+										{filteredAllModels.map((model, idx) =>
+											renderModelRow(
+												model,
+												sortedCurated.length + savedModels.length + idx === selectedIndex,
+												model.id === currentModelId
+											)
+										)}
+									</box>
+								</scrollbox>
+							</>
+						)}
 					</>
 				)}
 			</box>

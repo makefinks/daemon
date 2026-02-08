@@ -10,6 +10,7 @@ import { todoManager } from "./todo-manager";
 import { webSearch } from "./web-search";
 import { writeFile } from "./write-file";
 
+import { getProviderCapabilities } from "../providers/capabilities";
 import type { ToolToggleId, ToolToggles } from "../../types";
 import { detectLocalPlaywrightChromium } from "../../utils/js-rendering";
 
@@ -48,7 +49,7 @@ const TOOL_REGISTRY: ToolEntry[] = [
 	{ id: "renderUrl", toggleKey: "renderUrl", tool: renderUrl, gate: gateRenderUrl },
 	{ id: "todoManager", toggleKey: "todoManager", tool: todoManager },
 	{ id: "groundingManager", toggleKey: "groundingManager", tool: groundingManager },
-	{ id: "subagent", toggleKey: "subagent", tool: subagent },
+	{ id: "subagent", toggleKey: "subagent", tool: subagent, gate: gateSubagent },
 ];
 
 function gateExa(): Promise<ToolGateResult> {
@@ -65,6 +66,20 @@ async function gateRenderUrl(): Promise<ToolGateResult> {
 		envAvailable: capability.available,
 		disabledReason: capability.available ? undefined : capability.reason,
 	};
+}
+
+function gateSubagent(): Promise<ToolGateResult> {
+	const capabilities = getProviderCapabilities();
+	if (!capabilities.supportsSubagentTool) {
+		return Promise.resolve({
+			envAvailable: false,
+			disabledReason: "Subagent tool is unavailable for the current model provider.",
+		});
+	}
+
+	return Promise.resolve({
+		envAvailable: true,
+	});
 }
 
 function normalizeToggles(toggles?: ToolToggles): ToolToggles {
