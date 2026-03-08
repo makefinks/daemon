@@ -329,6 +329,7 @@ interface SettingsMenuContext {
 	showFullReasoning: boolean;
 	showToolOutput: boolean;
 	memoryEnabled: boolean;
+	memoryToggleDisabled: boolean;
 	setSelectedIdx: (fn: (prev: number) => number) => void;
 	toggleInteractionMode: () => void;
 	cycleModelProvider: () => void;
@@ -437,6 +438,10 @@ export function handleSettingsMenuKey(key: KeyEvent, ctx: SettingsMenuContext): 
 		settingIdx++;
 
 		if (ctx.selectedIdx === settingIdx) {
+			if (ctx.memoryToggleDisabled) {
+				key.preventDefault();
+				return true;
+			}
 			const next = !ctx.manager.memoryEnabled;
 			ctx.manager.memoryEnabled = next;
 			ctx.setMemoryEnabled(next);

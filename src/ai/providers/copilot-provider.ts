@@ -83,6 +83,48 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: s
 	}
 }
 
+async function withInactivityTimeout<T>(
+	promise: Promise<T>,
+	timeoutMs: number,
+	getLastActivityAt: () => number | null,
+	message: string
+): Promise<T> {
+	if (timeoutMs <= 0) {
+		return promise;
+	}
+
+	const pollIntervalMs = Math.min(1000, Math.max(250, Math.floor(timeoutMs / 6)));
+
+	return await new Promise<T>((resolve, reject) => {
+		let settled = false;
+		const cleanup = () => {
+			if (settled) return;
+			settled = true;
+			clearInterval(intervalId);
+		};
+
+		const intervalId = setInterval(() => {
+			const lastActivityAt = getLastActivityAt();
+			if (lastActivityAt === null) return;
+			if (Date.now() - lastActivityAt > timeoutMs) {
+				cleanup();
+				reject(new Error(message));
+			}
+		}, pollIntervalMs);
+
+		promise.then(
+			(value) => {
+				cleanup();
+				resolve(value);
+			},
+			(error) => {
+				cleanup();
+				reject(error);
+			}
+		);
+	});
+}
+
 function modelMessageContentToText(message: ModelMessage): string {
 	if (typeof message.content === "string") {
 		return message.content;
@@ -477,7 +519,8 @@ async function streamCopilotSession(params: {
 			DEFAULT_COPILOT_IDLE_TIMEOUT_MS
 		);
 		const sendTimeoutMessage = "Copilot request timed out while submitting prompt.";
-		const idleTimeoutMessage = "Copilot request timed out while waiting for response completion.";
+		const idleTimeoutMessage =
+			"Copilot request timed out due to inactivity while waiting for response completion.";
 
 		sendStartedAt = Date.now();
 		await withTimeout(
@@ -492,7 +535,7 @@ async function streamCopilotSession(params: {
 		rememberEvent({ type: "session.send.complete" });
 
 		idleWaitStartedAt = Date.now();
-		await withTimeout(idlePromise, idleTimeoutMs, idleTimeoutMessage);
+		await withInactivityTimeout(idlePromise, idleTimeoutMs, () => lastEventAt, idleTimeoutMessage);
 
 		if (aborted) {
 			return null;

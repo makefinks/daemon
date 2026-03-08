@@ -24,8 +24,25 @@ export type { ModelMessage } from "ai";
 
 const openai = createOpenAI({});
 
+function isMemoryPipelineUsableForCurrentProvider(): boolean {
+	if (!isMemoryAvailable()) {
+		return false;
+	}
+
+	return true;
+}
+
+async function isMemoryWriteUsableForCurrentProvider(): Promise<boolean> {
+	if (!isMemoryPipelineUsableForCurrentProvider()) {
+		return false;
+	}
+	const memoryManager = getMemoryManager();
+	await memoryManager.initialize();
+	return memoryManager.isWriteEnabled;
+}
+
 async function buildMemoryInjectionForPrompt(userMessage: string): Promise<string | undefined> {
-	if (!getDaemonManager().memoryEnabled || !isMemoryAvailable()) {
+	if (!getDaemonManager().memoryEnabled || !isMemoryPipelineUsableForCurrentProvider()) {
 		return undefined;
 	}
 
@@ -136,10 +153,10 @@ async function persistConversationMemory(
 
 	if (!userTextForMemory || !assistantTextForMemory) return null;
 	if (!getDaemonManager().memoryEnabled) return null;
-	if (!isMemoryAvailable()) return null;
+	if (!isMemoryPipelineUsableForCurrentProvider()) return null;
+	if (!(await isMemoryWriteUsableForCurrentProvider())) return null;
 
 	const memoryManager = getMemoryManager();
-	await memoryManager.initialize();
 	if (!memoryManager.isAvailable) return null;
 
 	try {

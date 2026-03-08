@@ -39,7 +39,7 @@ export function MemoryMenu({ onClose }: MemoryMenuProps) {
 
 		const loadMemories = async () => {
 			if (!isMemoryAvailable()) {
-				setError("Memory system not available (requires OPENAI_API_KEY and OPENROUTER_API_KEY)");
+				setError("Memory system not available (requires OPENAI_API_KEY)");
 				setIsLoading(false);
 				return;
 			}

@@ -140,14 +140,17 @@ export function buildOpenRouterChatSettings(
 // Transcription model (OpenAI)
 export const TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe-2025-12-15";
 
-// Default model for memory operations (cheap & fast)
-export const DEFAULT_MEMORY_MODEL = "x-ai/grok-4.1-fast";
+// Default model for memory operations.
+export const DEFAULT_MEMORY_MODEL_OPENROUTER = "x-ai/grok-4.1-fast";
 
 /**
  * Get the model ID for memory operations (deduplication, extraction).
- * Checks config.json for override, otherwise uses DEFAULT_MEMORY_MODEL.
+ * Checks config.json for override, otherwise returns DEFAULT_MEMORY_MODEL_OPENROUTER.
  */
 export function getMemoryModel(): string {
 	const config = loadManualConfig();
-	return config.memoryModel ?? DEFAULT_MEMORY_MODEL;
+	if (config.memoryModel) {
+		return config.memoryModel;
+	}
+	return DEFAULT_MEMORY_MODEL_OPENROUTER;
 }

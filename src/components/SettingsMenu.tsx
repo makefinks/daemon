@@ -1,6 +1,7 @@
 import type { KeyEvent } from "@opentui/core";
 import { useKeyboard } from "@opentui/react";
 import { useEffect, useState } from "react";
+import { getMemoryManager, isMemoryAvailable } from "../ai/memory";
 import type {
 	AppPreferences,
 	InteractionMode,
@@ -80,13 +81,77 @@ export function SettingsMenu({
 	persistPreferences,
 }: SettingsMenuProps) {
 	const [selectedIdx, setSelectedIdx] = useState(0);
+	const [storedMemoryCount, setStoredMemoryCount] = useState<number | null>(null);
 	const manager = getDaemonManager();
+	const openAiKeyMissing = !process.env.OPENAI_API_KEY;
+	const openRouterKeyMissing = !process.env.OPENROUTER_API_KEY;
+	const hasStoredMemories = (storedMemoryCount ?? 0) > 0;
+	const memoryCountKnown = storedMemoryCount !== null;
+	const memoryToggleDisabled =
+		openAiKeyMissing || (openRouterKeyMissing && (!memoryCountKnown || storedMemoryCount === 0));
+
+	useEffect(() => {
+		if (!openAiKeyMissing || !memoryEnabled) {
+			return;
+		}
+
+		manager.memoryEnabled = false;
+		setMemoryEnabled(false);
+		persistPreferences({ memoryEnabled: false });
+	}, [manager, memoryEnabled, openAiKeyMissing, persistPreferences, setMemoryEnabled]);
+
+	useEffect(() => {
+		let cancelled = false;
+
+		const loadStoredMemoryCount = async () => {
+			if (!isMemoryAvailable()) {
+				if (!cancelled) {
+					setStoredMemoryCount(0);
+				}
+				return;
+			}
+
+			try {
+				const memoryManager = getMemoryManager();
+				await memoryManager.initialize();
+				if (!memoryManager.isAvailable) {
+					if (!cancelled) {
+						setStoredMemoryCount(0);
+					}
+					return;
+				}
+				const storedMemories = await memoryManager.getAll();
+				if (!cancelled) {
+					setStoredMemoryCount(storedMemories.length);
+				}
+			} catch {
+				if (!cancelled) {
+					setStoredMemoryCount(0);
+				}
+			}
+		};
+
+		void loadStoredMemoryCount();
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
 	const interactionModeLocked = !canEnableVoiceOutput && interactionMode === "text";
 	const interactionModeDescription = interactionModeLocked
 		? "[LOCKED] OpenAI key required for voice output"
 		: interactionMode === "voice"
 			? "Conversational responses and speech output"
 			: "Markdown responses for terminal";
+	const memoryDescription = openAiKeyMissing
+		? "[LOCKED] OPENAI_API_KEY is required for memory"
+		: openRouterKeyMissing && !memoryCountKnown
+			? "[LOCKED] Checking stored memories... OPENROUTER_API_KEY missing: no new memories added"
+			: memoryToggleDisabled
+				? "[LOCKED] No stored memories and OPENROUTER_API_KEY is missing, so no new memories can be added"
+				: openRouterKeyMissing && hasStoredMemories
+					? "Inject stored memories only (OPENROUTER_API_KEY missing: no new memories added)"
+					: "Auto-save messages + inject relevant memories";
 
 	const items: SettingsMenuItem[] = [
 		{
@@ -146,8 +211,9 @@ export function SettingsMenu({
 			id: "memory-enabled",
 			label: "Memory",
 			value: memoryEnabled ? "ON" : "OFF",
-			description: "Auto-save messages + inject relevant memories",
+			description: memoryDescription,
 			isToggle: true,
+			disabled: memoryToggleDisabled,
 		},
 	];
 
@@ -221,6 +287,7 @@ export function SettingsMenu({
 			showFullReasoning,
 			showToolOutput,
 			memoryEnabled,
+			memoryToggleDisabled,
 			setSelectedIdx,
 			toggleInteractionMode,
 			cycleModelProvider,

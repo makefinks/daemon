@@ -56,6 +56,7 @@ class MemoryManager {
 	private memory: Memory | null = null;
 	private initPromise: Promise<void> | null = null;
 	private _isAvailable = false;
+	private _writeEnabled = false;
 
 	private constructor() {}
 
@@ -69,6 +70,11 @@ class MemoryManager {
 	/** Check if memory system is available (has required API keys) */
 	get isAvailable(): boolean {
 		return this._isAvailable;
+	}
+
+	/** Check whether memory write/extraction is available */
+	get isWriteEnabled(): boolean {
+		return this._writeEnabled;
 	}
 
 	/** Initialize mem0 with configuration */
@@ -94,11 +100,8 @@ class MemoryManager {
 			return;
 		}
 
-		if (!openrouterKey) {
-			debug.info("memory-init", "Memory system unavailable: OPENROUTER_API_KEY not set");
-			this._isAvailable = false;
-			return;
-		}
+		// Read/search works with embeddings only; writing/inference requires OpenRouter.
+		const writeEnabled = Boolean(openrouterKey);
 
 		try {
 			const configDir = getAppConfigDir();
@@ -188,21 +191,27 @@ Rules:
 					},
 				},
 				disableHistory: true,
-				llm: {
-					provider: "openai",
-					config: {
-						apiKey: openrouterKey,
-						model: llmModel,
-						baseURL: "https://openrouter.ai/api/v1",
-					},
-				},
+				...(openrouterKey
+					? {
+							llm: {
+								provider: "openai",
+								config: {
+									apiKey: openrouterKey,
+									model: llmModel,
+									baseURL: "https://openrouter.ai/api/v1",
+								},
+							},
+						}
+					: {}),
 			});
 
 			this._isAvailable = true;
+			this._writeEnabled = writeEnabled;
 			debug.info("memory-init", {
 				message: `Memory system initialized`,
 				vectorDbPath,
 				llmModel,
+				writeEnabled,
 			});
 		} catch (error) {
 			debug.error("memory-init", {
@@ -210,6 +219,7 @@ Rules:
 				error: error instanceof Error ? error.message : String(error),
 			});
 			this._isAvailable = false;
+			this._writeEnabled = false;
 		}
 	}
 
@@ -264,6 +274,9 @@ Rules:
 	): Promise<MemoryAddResult> {
 		if (!this.memory || !this._isAvailable) {
 			throw new Error("Memory system not available");
+		}
+		if (!this._writeEnabled) {
+			throw new Error("Memory write unavailable: OPENROUTER_API_KEY not set");
 		}
 
 		const sanitizedMessages = messages.map((message) => {
@@ -398,5 +411,5 @@ export function getMemoryManager(): MemoryManager {
 
 /** Check if memory is available without full initialization */
 export function isMemoryAvailable(): boolean {
-	return Boolean(process.env.OPENAI_API_KEY && process.env.OPENROUTER_API_KEY);
+	return Boolean(process.env.OPENAI_API_KEY);
 }
