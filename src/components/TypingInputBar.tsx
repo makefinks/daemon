@@ -3,8 +3,14 @@
  * Ensures the OpenTUI input has a usable width and supports multi-line text.
  */
 
-import type { KeyBinding, TextareaRenderable, PasteEvent, KeyEvent } from "@opentui/core";
-import { useRef, type RefObject } from "react";
+import {
+	type KeyBinding,
+	type KeyEvent,
+	type PasteEvent,
+	type TextareaRenderable,
+	decodePasteBytes,
+} from "@opentui/core";
+import { type RefObject, useRef } from "react";
 import { COLORS } from "../ui/constants";
 import { debug } from "../utils/debug-logger";
 import { pasteClipboardIntoTextarea } from "../utils/paste";
@@ -48,12 +54,13 @@ export function TypingInputBar({
 	};
 
 	const handlePaste = (event: PasteEvent) => {
+		const pasteText = decodePasteBytes(event.bytes);
 		debug.log("[TypingInputBar] onPaste received", {
-			textLength: event.text.length,
-			textPreview: event.text.slice(0, 50),
+			textLength: pasteText.length,
+			textPreview: pasteText.slice(0, 50),
 			defaultPrevented: event.defaultPrevented,
 		});
-		if (!event.text.trim()) {
+		if (!pasteText.trim()) {
 			event.preventDefault();
 			void pasteClipboardIntoTextarea(activeRef.current, { source: "typing-onPaste" });
 		}

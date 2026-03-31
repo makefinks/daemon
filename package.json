@@ -35,13 +35,7 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"files": [
-		"dist",
-		"src",
-		"LICENSE",
-		"README.md",
-		"package.json"
-	],
+	"files": ["dist", "src", "bun.lock", "LICENSE", "README.md", "package.json"],
 	"scripts": {
 		"build:cli": "bun build src/cli.ts --outdir dist --target node",
 		"dev": "bun run --watch src/index.tsx",
@@ -78,8 +72,8 @@
 		"@github/copilot-sdk": "^0.1.23",
 		"@openrouter/ai-sdk-provider": "^2.1.0",
 		"@opentui-ui/toast": "^0.0.3",
-		"@opentui/core": "0.1.75",
-		"@opentui/react": "0.1.75",
+		"@opentui/core": "0.1.92",
+		"@opentui/react": "0.1.92",
 		"ai": "^6.0.0",
 		"exa-js": "^2.0.12",
 		"mem0ai": "^2.2.1",
@@ -89,11 +83,11 @@
 		"zod-to-json-schema": "^3.25.1"
 	},
 	"optionalDependencies": {
-		"@opentui/core-win32-x64": "0.1.75",
-		"@opentui/core-win32-arm64": "0.1.75",
-		"@opentui/core-darwin-x64": "0.1.75",
-		"@opentui/core-darwin-arm64": "0.1.75",
-		"@opentui/core-linux-x64": "0.1.75",
-		"@opentui/core-linux-arm64": "0.1.75"
+		"@opentui/core-win32-x64": "0.1.92",
+		"@opentui/core-win32-arm64": "0.1.92",
+		"@opentui/core-darwin-x64": "0.1.92",
+		"@opentui/core-darwin-arm64": "0.1.92",
+		"@opentui/core-linux-x64": "0.1.92",
+		"@opentui/core-linux-arm64": "0.1.92"
 	}
 }

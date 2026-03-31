@@ -3,8 +3,8 @@
  * Simple single-line input using OpenTUI textarea.
  */
 
-import type { TextareaRenderable, PasteEvent, KeyEvent } from "@opentui/core";
-import { useRef, type RefObject } from "react";
+import { type KeyEvent, type PasteEvent, type TextareaRenderable, decodePasteBytes } from "@opentui/core";
+import { type RefObject, useRef } from "react";
 import { COLORS } from "../ui/constants";
 import { debug } from "../utils/debug-logger";
 import { pasteClipboardIntoTextarea } from "../utils/paste";
@@ -33,12 +33,13 @@ export function ApiKeyInput({
 	};
 
 	const handlePaste = (event: PasteEvent) => {
+		const pasteText = decodePasteBytes(event.bytes);
 		debug.log("[ApiKeyInput] onPaste received", {
-			textLength: event.text.length,
-			textPreview: event.text.slice(0, 50),
+			textLength: pasteText.length,
+			textPreview: pasteText.slice(0, 50),
 			defaultPrevented: event.defaultPrevented,
 		});
-		if (!event.text.trim()) {
+		if (!pasteText.trim()) {
 			event.preventDefault();
 			void pasteClipboardIntoTextarea(activeRef.current, {
 				singleLine: true,

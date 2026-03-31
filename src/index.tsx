@@ -3,7 +3,7 @@
  * Main application entry point.
  */
 
-import { ConsolePosition, createCliRenderer } from "@opentui/core";
+import { ConsolePosition, createCliRenderer, decodePasteBytes } from "@opentui/core";
 import { createRoot } from "@opentui/react";
 import { destroyMcpManager } from "./ai/mcp/mcp-manager";
 import { App } from "./app/App";
@@ -30,9 +30,10 @@ const renderer = await createCliRenderer({
 
 // Debug: Log all paste events at the renderer level
 renderer.keyInput.on("paste", (event) => {
+	const pasteText = decodePasteBytes(event.bytes);
 	debug.log("[Renderer] Paste event received", {
-		textLength: event.text.length,
-		textPreview: event.text.slice(0, 50),
+		textLength: pasteText.length,
+		textPreview: pasteText.slice(0, 50),
 	});
 });
 
