@@ -4,6 +4,7 @@ import type {
 	CopilotSession,
 	GetAuthStatusResponse,
 	ModelInfo,
+	PermissionHandler,
 	SessionConfig,
 	Tool as CopilotTool,
 	ToolResultObject,
@@ -147,6 +148,29 @@ function normalizeSessionConfigForModel(
 	return {
 		...config,
 		reasoningEffort: undefined,
+	};
+}
+
+const denyCopilotPermissionRequest: PermissionHandler = (request, invocation) => {
+	debug.warn("copilot-permission-request-denied", {
+		sessionId: invocation.sessionId,
+		kind: request.kind,
+		toolCallId: request.toolCallId,
+	});
+
+	return {
+		kind: "denied-no-approval-rule-and-could-not-request-from-user",
+	};
+};
+
+function ensurePermissionHandler(config: Omit<SessionConfig, "sessionId">): Omit<SessionConfig, "sessionId"> {
+	if (config.onPermissionRequest) {
+		return config;
+	}
+
+	return {
+		...config,
+		onPermissionRequest: denyCopilotPermissionRequest,
 	};
 }
 
@@ -524,7 +548,7 @@ export async function getOrCreateCopilotSession(
 ): Promise<{ session: CopilotSession; created: boolean }> {
 	// Warm model cache and fail fast with an explicit auth/models error before session RPCs.
 	const models = await listCopilotModelsSafe();
-	const normalizedConfig = normalizeSessionConfigForModel(config, models);
+	const normalizedConfig = ensurePermissionHandler(normalizeSessionConfigForModel(config, models));
 	const requestedModelId =
 		typeof normalizedConfig.model === "string" && normalizedConfig.model.trim().length > 0
 			? normalizedConfig.model.trim()

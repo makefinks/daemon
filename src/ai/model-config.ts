@@ -9,15 +9,11 @@ import { loadManualConfig } from "../utils/config";
 // Available models for selection (OpenRouter format)
 export const AVAILABLE_OPENROUTER_MODELS: ModelOption[] = [
 	{ id: "x-ai/grok-4.1-fast", name: "Grok 4.1 Fast" },
-	{ id: "arcee-ai/trinity-large-preview:free", name: "Trinity Large Preview" },
-	{ id: "z-ai/glm-4.7", name: "GLM 4.7" },
-	{ id: "minimax/minimax-m2.1", name: "Minimax M2.1" },
+	{ id: "z-ai/glm-5.1", name: "GLM 5.1" },
+	{ id: "minimax/minimax-m2.7", name: "Minimax M2.7" },
 	{ id: "google/gemini-3-flash-preview", name: "Gemini 3 Flash" },
-	{ id: "google/gemini-3-pro-preview", name: "Gemini 3 Pro" },
-	{ id: "openai/gpt-5.2", name: "GPT 5.2" },
+	{ id: "google/gemma-4-31b-it", name: "Gemma 4 31B" },
 	{ id: "moonshotai/kimi-k2.5", name: "Kimi K2.5" },
-	{ id: "openai/gpt-oss-120b:exacto", name: "GPT-OSS-120" },
-	{ id: "nvidia/nemotron-3-nano-30b-a3b:free", name: "Nemotron 3 Nano" },
 ];
 
 // Default model IDs
@@ -141,7 +137,7 @@ export function buildOpenRouterChatSettings(
 export const TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe-2025-12-15";
 
 // Default model for memory operations.
-export const DEFAULT_MEMORY_MODEL_OPENROUTER = "x-ai/grok-4.1-fast";
+export const DEFAULT_MEMORY_MODEL_OPENROUTER = "openai/gpt-5.4-nano";
 
 /**
  * Get the model ID for memory operations (deduplication, extraction).

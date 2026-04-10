@@ -76,7 +76,7 @@
 	"dependencies": {
 		"@ai-sdk/mcp": "^1.0.14",
 		"@ai-sdk/openai": "^3.0.0",
-		"@github/copilot-sdk": "^0.1.23",
+		"@github/copilot-sdk": "0.1.23",
 		"@openrouter/ai-sdk-provider": "^2.1.0",
 		"@opentui-ui/toast": "^0.0.3",
 		"@opentui/core": "0.1.92",
@@ -90,11 +90,11 @@
 		"zod-to-json-schema": "^3.25.1"
 	},
 	"optionalDependencies": {
-		"@opentui/core-win32-x64": "0.1.92",
-		"@opentui/core-win32-arm64": "0.1.92",
-		"@opentui/core-darwin-x64": "0.1.92",
 		"@opentui/core-darwin-arm64": "0.1.92",
+		"@opentui/core-darwin-x64": "0.1.92",
+		"@opentui/core-linux-arm64": "0.1.92",
 		"@opentui/core-linux-x64": "0.1.92",
-		"@opentui/core-linux-arm64": "0.1.92"
+		"@opentui/core-win32-arm64": "0.1.92",
+		"@opentui/core-win32-x64": "0.1.92"
 	}
 }
