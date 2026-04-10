@@ -28,7 +28,7 @@
 	},
 	"module": "src/index.tsx",
 	"type": "module",
-	"version": "0.11.4",
+	"version": "0.12.0",
 	"bin": {
 		"daemon": "dist/cli.js"
 	},
