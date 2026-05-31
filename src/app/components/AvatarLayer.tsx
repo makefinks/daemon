@@ -3,6 +3,8 @@ import type { RefObject } from "react";
 import type { DaemonAvatarRenderable } from "../../avatar/DaemonAvatarRenderable";
 import { BANNER_GRADIENT, DAEMON_BANNER_LINES, useGlitchyBanner } from "../../hooks/use-glitchy-banner";
 import { DaemonState } from "../../types";
+import { COLORS } from "../../ui/constants";
+import { APP_VERSION } from "../../utils/app-version";
 
 export interface AvatarLayerProps {
 	avatarRef: RefObject<DaemonAvatarRenderable | null>;
@@ -93,6 +95,7 @@ function AvatarLayerImpl(props: AvatarLayerProps) {
 					{bannerLines.map((line, i) => (
 						<text key={i}>
 							<span fg={bannerColors[i]}>{line}</span>
+							{i === bannerLines.length - 1 && <span fg={COLORS.REASONING_DIM}> v{APP_VERSION}</span>}
 						</text>
 					))}
 				</box>

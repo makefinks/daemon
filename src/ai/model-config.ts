@@ -8,16 +8,18 @@ import { loadManualConfig } from "../utils/config";
 
 // Available models for selection (OpenRouter format)
 export const AVAILABLE_OPENROUTER_MODELS: ModelOption[] = [
-	{ id: "x-ai/grok-4.1-fast", name: "Grok 4.1 Fast" },
+	{ id: "openai/gpt-5.5", name: "GPT-5.5" },
+	{ id: "google/gemini-3.5-flash", name: "Gemini 3.5 Flash" },
+	{ id: "x-ai/grok-4.3", name: "Grok 4.3" },
+	{ id: "anthropic/claude-opus-4.8", name: "Claude Opus 4.8" },
+	{ id: "deepseek/deepseek-v4-flash", name: "DeepSeek V4 Flash" },
+	{ id: "deepseek/deepseek-v4-flash:free", name: "DeepSeek V4 Flash Free" },
+	{ id: "qwen/qwen3.7-max", name: "Qwen 3.7 Max" },
 	{ id: "z-ai/glm-5.1", name: "GLM 5.1" },
-	{ id: "minimax/minimax-m2.7", name: "Minimax M2.7" },
-	{ id: "google/gemini-3-flash-preview", name: "Gemini 3 Flash" },
-	{ id: "google/gemma-4-31b-it", name: "Gemma 4 31B" },
-	{ id: "moonshotai/kimi-k2.5", name: "Kimi K2.5" },
 ];
 
 // Default model IDs
-export const DEFAULT_OPENROUTER_MODEL_ID = "z-ai/glm-4.7";
+export const DEFAULT_OPENROUTER_MODEL_ID = "z-ai/glm-5.1";
 export const DEFAULT_OPENAI_CODEX_MODEL_ID = "gpt-5.4";
 export const DEFAULT_COPILOT_MODEL_ID = "claude-sonnet-4.5";
 export const DEFAULT_MODEL_ID = DEFAULT_OPENROUTER_MODEL_ID;
