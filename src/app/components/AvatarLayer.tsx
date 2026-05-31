@@ -95,7 +95,7 @@ function AvatarLayerImpl(props: AvatarLayerProps) {
 					{bannerLines.map((line, i) => (
 						<text key={i}>
 							<span fg={bannerColors[i]}>{line}</span>
-							{i === bannerLines.length - 1 && <span fg={COLORS.REASONING_DIM}> v{APP_VERSION}</span>}
+							{i === bannerLines.length - 1 && (!animateBanner || glitchyBanner.complete) && <span fg={COLORS.REASONING_DIM}> v{APP_VERSION}</span>}
 						</text>
 					))}
 				</box>

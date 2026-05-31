@@ -623,6 +623,7 @@ export function OnboardingOverlay({
 													<span fg={isSelected ? COLORS.DAEMON_LABEL : COLORS.MENU_TEXT}>
 														{isSelected ? "▶ " : "  "}
 														{model.name}
+														{model.id.endsWith(":free") && <span fg={COLORS.STATUS_COMPLETED}> [FREE]</span>}
 														{isCurrent ? " ●" : ""}
 													</span>
 												</text>
