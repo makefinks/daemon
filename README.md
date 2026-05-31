@@ -15,7 +15,7 @@ DAEMON requires Bun at runtime, but global installation is currently documented 
 
 ```bash
 # Install via npm
-npm i -g @makefinks/daemon
+bun i -g @makefinks/daemon
 
 # Additional installs (Audio)
 brew install sox 
@@ -108,7 +108,7 @@ curl -fsSL https://bun.com/install | bash
 Then install DAEMON:
 ```bash
 # Global npm install
-npm i -g @makefinks/daemon
+bun i -g @makefinks/daemon
 
 # Then run
 daemon
@@ -165,10 +165,10 @@ This feature is **optional** and intentionally not installed by default (browser
 
 ```bash
 # 1) Install Playwright globally
-npm i -g playwright
+bun i -g playwright
 
 # 2) Install Chromium browser binaries
-npx playwright install chromium
+bunx playwright install chromium
 ```
 ## 🔌 MCP server setup (Model Context Protocol)
 
