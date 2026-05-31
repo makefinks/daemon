@@ -21,7 +21,7 @@ import { isNavigateDownKey, isNavigateUpKey } from "./menu-navigation";
 export type KeyHandler = (key: KeyEvent) => boolean;
 
 const API_KEY_URLS: Record<string, string> = {
-	copilot_auth: "https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli",
+	copilot_auth: "https://cli.github.com/manual/gh_auth_login",
 	openrouter_key: "https://openrouter.ai/keys",
 	openai_key: "https://platform.openai.com/api-keys",
 	exa_key: "https://dashboard.exa.ai/api-keys",
@@ -35,6 +35,7 @@ interface OnboardingContext {
 	selectedDeviceIdx: number;
 	selectedModelIdx: number;
 	currentModelProvider: LlmProvider;
+	openAiCodexAuthenticated: boolean;
 	copilotAuthenticated: boolean;
 	preferences: AppPreferences | null;
 	setSelectedProviderIdx: (fn: (prev: number) => number) => void;
@@ -46,6 +47,7 @@ interface OnboardingContext {
 	setCurrentModelId: (modelId: string) => void;
 	setOnboardingStep: (step: OnboardingStep) => void;
 	completeOnboarding: () => void;
+	onSubmitAction: () => void;
 	persistPreferences: (updates: Partial<AppPreferences>) => void;
 	currentModelId: string;
 	manager: {
@@ -63,6 +65,7 @@ export function isApiKeyStep(step: OnboardingStep): boolean {
 
 export interface DetermineNextStepOptions {
 	currentProvider?: LlmProvider;
+	codexAuthenticated?: boolean;
 	copilotAuthenticated?: boolean;
 }
 
@@ -70,6 +73,7 @@ const STEP_ORDER: OnboardingStep[] = [
 	"intro",
 	"provider",
 	"openrouter_key",
+	"openai_codex_auth",
 	"copilot_auth",
 	"openai_key",
 	"exa_key",
@@ -89,6 +93,7 @@ export function determineNextStep(
 
 	const isReprompt = preferences?.onboardingCompleted === true;
 	const provider: LlmProvider = options.currentProvider ?? preferences?.modelProvider ?? "openrouter";
+	const hasCodexAuth = Boolean(options.codexAuthenticated);
 	const hasCopilotAuth = Boolean(options.copilotAuthenticated);
 
 	const conditions: Array<{
@@ -98,6 +103,7 @@ export function determineNextStep(
 	}> = [
 		{ step: "provider", enabled: true, onboardingOnly: true },
 		{ step: "openrouter_key", enabled: provider === "openrouter" && !process.env.OPENROUTER_API_KEY },
+		{ step: "openai_codex_auth", enabled: provider === "openai-codex" && !hasCodexAuth },
 		{ step: "copilot_auth", enabled: provider === "copilot" && !hasCopilotAuth },
 		{ step: "openai_key", enabled: !process.env.OPENAI_API_KEY },
 		{ step: "exa_key", enabled: !process.env.EXA_API_KEY },
@@ -124,10 +130,12 @@ const ESCAPE_HANDLERS: Partial<Record<OnboardingStep, EscapeHandler>> = {
 	intro: () => {},
 	provider: () => {},
 	openrouter_key: () => {},
+	openai_codex_auth: () => {},
 	copilot_auth: () => {},
 	openai_key: (ctx) => {
 		const nextStep = determineNextStep("openai_key", ctx.preferences, {
 			currentProvider: ctx.currentModelProvider,
+			codexAuthenticated: ctx.openAiCodexAuthenticated,
 			copilotAuthenticated: ctx.copilotAuthenticated,
 		});
 		if (nextStep === "complete") {
@@ -140,6 +148,7 @@ const ESCAPE_HANDLERS: Partial<Record<OnboardingStep, EscapeHandler>> = {
 	exa_key: (ctx) => {
 		const nextStep = determineNextStep("exa_key", ctx.preferences, {
 			currentProvider: ctx.currentModelProvider,
+			codexAuthenticated: ctx.openAiCodexAuthenticated,
 			copilotAuthenticated: ctx.copilotAuthenticated,
 		});
 		if (nextStep === "complete") {
@@ -185,6 +194,7 @@ export function handleOnboardingKey(key: KeyEvent, ctx: OnboardingContext): bool
 			ctx.setOnboardingStep(
 				determineNextStep(step, ctx.preferences, {
 					currentProvider: ctx.currentModelProvider,
+					codexAuthenticated: ctx.openAiCodexAuthenticated,
 					copilotAuthenticated: ctx.copilotAuthenticated,
 				})
 			);
@@ -193,7 +203,7 @@ export function handleOnboardingKey(key: KeyEvent, ctx: OnboardingContext): bool
 	}
 
 	if (step === "provider") {
-		const providers: LlmProvider[] = ctx.copilotAuthenticated ? ["openrouter", "copilot"] : ["openrouter"];
+		const providers: LlmProvider[] = ["openrouter", "openai-codex", "copilot"];
 
 		if (isNavigateUpKey(key) || isNavigateDownKey(key)) {
 			ctx.setSelectedProviderIdx((prev) => {
@@ -222,11 +232,20 @@ export function handleOnboardingKey(key: KeyEvent, ctx: OnboardingContext): bool
 			ctx.setOnboardingStep(
 				determineNextStep("provider", ctx.preferences, {
 					currentProvider: selectedProvider,
+					codexAuthenticated: ctx.openAiCodexAuthenticated,
 					copilotAuthenticated: ctx.copilotAuthenticated,
 				})
 			);
 		}
 
+		return true;
+	}
+
+	if (step === "openai_codex_auth" || step === "copilot_auth") {
+		if (key.name === "return") {
+			ctx.onSubmitAction();
+			return true;
+		}
 		return true;
 	}
 
@@ -319,6 +338,8 @@ interface SettingsMenuContext {
 	menuItemCount: number;
 	interactionMode: "text" | "voice";
 	modelProvider: LlmProvider;
+	openAiCodexAuthenticated: boolean;
+	copilotAuthenticated: boolean;
 	voiceInteractionType: VoiceInteractionType;
 	speechSpeed: SpeechSpeed;
 	reasoningEffort: ReasoningEffort;
@@ -333,6 +354,8 @@ interface SettingsMenuContext {
 	setSelectedIdx: (fn: (prev: number) => number) => void;
 	toggleInteractionMode: () => void;
 	cycleModelProvider: () => void;
+	manageOpenAiCodexAuth: () => void;
+	manageCopilotAuth: () => void;
 	setVoiceInteractionType: (type: VoiceInteractionType) => void;
 	setSpeechSpeed: (speed: SpeechSpeed) => void;
 	setReasoningEffort: (effort: ReasoningEffort) => void;
@@ -392,6 +415,20 @@ export function handleSettingsMenuKey(key: KeyEvent, ctx: SettingsMenuContext): 
 
 		if (ctx.selectedIdx === settingIdx) {
 			ctx.cycleModelProvider();
+			key.preventDefault();
+			return true;
+		}
+		settingIdx++;
+
+		if (ctx.selectedIdx === settingIdx) {
+			ctx.manageOpenAiCodexAuth();
+			key.preventDefault();
+			return true;
+		}
+		settingIdx++;
+
+		if (ctx.selectedIdx === settingIdx) {
+			ctx.manageCopilotAuth();
 			key.preventDefault();
 			return true;
 		}

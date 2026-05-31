@@ -14,6 +14,7 @@ export interface KeyboardHandlerState {
 	showFullReasoning: boolean;
 	showToolOutput: boolean;
 	currentModelProvider: LlmProvider;
+	openAiCodexAuthenticated: boolean;
 }
 
 export interface KeyboardHandlerActions {
@@ -51,6 +52,7 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 		hasGrounding,
 		showFullReasoning,
 		currentModelProvider,
+		openAiCodexAuthenticated,
 	} = state;
 
 	const closeAllMenus = useCallback(() => {
@@ -330,6 +332,13 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 						key.preventDefault();
 						return;
 					}
+					if (currentModelProvider === "openai-codex" && !openAiCodexAuthenticated) {
+						actions.setApiKeyMissingError(
+							"OpenAI Codex login missing · Complete browser login in onboarding to use your ChatGPT subscription"
+						);
+						key.preventDefault();
+						return;
+					}
 					// Check for OpenAI API key (needed for voice transcription)
 					if (!process.env.OPENAI_API_KEY) {
 						actions.setApiKeyMissingError("Voice input is disabled because OpenAI API key is not set.");
@@ -356,6 +365,13 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 					if (currentModelProvider === "openrouter" && !process.env.OPENROUTER_API_KEY) {
 						actions.setApiKeyMissingError(
 							"OPENROUTER_API_KEY not found · Set via environment variable or enter in onboarding"
+						);
+						key.preventDefault();
+						return;
+					}
+					if (currentModelProvider === "openai-codex" && !openAiCodexAuthenticated) {
+						actions.setApiKeyMissingError(
+							"OpenAI Codex login missing · Complete browser login in onboarding to use your ChatGPT subscription"
 						);
 						key.preventDefault();
 						return;

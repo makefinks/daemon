@@ -61,8 +61,9 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 					bashApprovalLevel={settings.bashApprovalLevel}
 					supportsReasoning={settings.supportsReasoning}
 					supportsReasoningXHigh={settings.supportsReasoningXHigh}
+					openAiCodexAuthenticated={onboarding.openAiCodexAuthenticated}
 					modelProvider={model.currentModelProvider}
-					copilotAvailable={onboarding.copilotAuthenticated}
+					copilotAuthenticated={onboarding.copilotAuthenticated}
 					canEnableVoiceOutput={settings.canEnableVoiceOutput}
 					showFullReasoning={settings.showFullReasoning}
 					showToolOutput={settings.showToolOutput}
@@ -70,6 +71,8 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 					onClose={() => menus.setShowSettingsMenu(false)}
 					toggleInteractionMode={settingsCallbacks.onToggleInteractionMode}
 					cycleModelProvider={settingsCallbacks.onCycleModelProvider}
+					manageOpenAiCodexAuth={settingsCallbacks.onManageOpenAiCodexAuth}
+					manageCopilotAuth={settingsCallbacks.onManageCopilotAuth}
 					setVoiceInteractionType={settingsCallbacks.onSetVoiceInteractionType}
 					setSpeechSpeed={settingsCallbacks.onSetSpeechSpeed}
 					setReasoningEffort={settingsCallbacks.onSetReasoningEffort}
@@ -147,6 +150,7 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 					currentOutputDevice={device.currentOutputDevice}
 					models={model.curatedModels}
 					currentModelProvider={model.currentModelProvider}
+					openAiCodexAuthenticated={onboarding.openAiCodexAuthenticated}
 					copilotAuthenticated={onboarding.copilotAuthenticated}
 					currentModelId={model.currentModelId}
 					deviceLoadTimedOut={device.deviceLoadTimedOut}

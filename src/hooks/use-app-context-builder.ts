@@ -106,6 +106,7 @@ export interface UseAppContextBuilderParams {
 	onboarding: {
 		onboardingActive: boolean;
 		onboardingStep: OnboardingStep;
+		openAiCodexAuthenticated: boolean;
 		copilotAuthenticated: boolean;
 		setOnboardingStep: (step: OnboardingStep) => void;
 		onboardingPreferences: AppPreferences | null;

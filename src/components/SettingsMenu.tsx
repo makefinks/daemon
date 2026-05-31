@@ -36,7 +36,8 @@ interface SettingsMenuProps {
 	modelProvider: LlmProvider;
 	supportsReasoning: boolean;
 	supportsReasoningXHigh: boolean;
-	copilotAvailable: boolean;
+	openAiCodexAuthenticated: boolean;
+	copilotAuthenticated: boolean;
 	canEnableVoiceOutput: boolean;
 	showFullReasoning: boolean;
 	showToolOutput: boolean;
@@ -44,6 +45,8 @@ interface SettingsMenuProps {
 	onClose: () => void;
 	toggleInteractionMode: () => void;
 	cycleModelProvider: () => void;
+	manageOpenAiCodexAuth: () => void;
+	manageCopilotAuth: () => void;
 	setVoiceInteractionType: (type: VoiceInteractionType) => void;
 	setSpeechSpeed: (speed: SpeechSpeed) => void;
 	setReasoningEffort: (effort: ReasoningEffort) => void;
@@ -63,7 +66,8 @@ export function SettingsMenu({
 	modelProvider,
 	supportsReasoning,
 	supportsReasoningXHigh,
-	copilotAvailable,
+	openAiCodexAuthenticated,
+	copilotAuthenticated,
 	canEnableVoiceOutput,
 	showFullReasoning,
 	showToolOutput,
@@ -71,6 +75,8 @@ export function SettingsMenu({
 	onClose,
 	toggleInteractionMode,
 	cycleModelProvider,
+	manageOpenAiCodexAuth,
+	manageCopilotAuth,
 	setVoiceInteractionType,
 	setSpeechSpeed,
 	setReasoningEffort,
@@ -85,20 +91,30 @@ export function SettingsMenu({
 	const manager = getDaemonManager();
 	const openAiKeyMissing = !process.env.OPENAI_API_KEY;
 	const openRouterKeyMissing = !process.env.OPENROUTER_API_KEY;
+	const memoryLockedByProvider = modelProvider === "copilot" || modelProvider === "openai-codex";
 	const hasStoredMemories = (storedMemoryCount ?? 0) > 0;
 	const memoryCountKnown = storedMemoryCount !== null;
 	const memoryToggleDisabled =
-		openAiKeyMissing || (openRouterKeyMissing && (!memoryCountKnown || storedMemoryCount === 0));
+		memoryLockedByProvider ||
+		openAiKeyMissing ||
+		(openRouterKeyMissing && (!memoryCountKnown || storedMemoryCount === 0));
 
 	useEffect(() => {
-		if (!openAiKeyMissing || !memoryEnabled) {
+		if ((!openAiKeyMissing && !memoryLockedByProvider) || !memoryEnabled) {
 			return;
 		}
 
 		manager.memoryEnabled = false;
 		setMemoryEnabled(false);
 		persistPreferences({ memoryEnabled: false });
-	}, [manager, memoryEnabled, openAiKeyMissing, persistPreferences, setMemoryEnabled]);
+	}, [
+		manager,
+		memoryEnabled,
+		memoryLockedByProvider,
+		openAiKeyMissing,
+		persistPreferences,
+		setMemoryEnabled,
+	]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -143,15 +159,19 @@ export function SettingsMenu({
 		: interactionMode === "voice"
 			? "Conversational responses and speech output"
 			: "Markdown responses for terminal";
-	const memoryDescription = openAiKeyMissing
-		? "[LOCKED] OPENAI_API_KEY is required for memory"
-		: openRouterKeyMissing && !memoryCountKnown
-			? "[LOCKED] Checking stored memories... OPENROUTER_API_KEY missing: no new memories added"
-			: memoryToggleDisabled
-				? "[LOCKED] No stored memories and OPENROUTER_API_KEY is missing, so no new memories can be added"
-				: openRouterKeyMissing && hasStoredMemories
-					? "Inject stored memories only (OPENROUTER_API_KEY missing: no new memories added)"
-					: "Auto-save messages + inject relevant memories";
+	const memoryDescription = memoryLockedByProvider
+		? modelProvider === "copilot"
+			? "[LOCKED] Memory is disabled while using GitHub Copilot"
+			: "[LOCKED] Memory is disabled while using OpenAI Codex"
+		: openAiKeyMissing
+			? "[LOCKED] OPENAI_API_KEY is required for memory"
+			: openRouterKeyMissing && !memoryCountKnown
+				? "[LOCKED] Checking stored memories... OPENROUTER_API_KEY missing: no new memories added"
+				: memoryToggleDisabled
+					? "[LOCKED] No stored memories and OPENROUTER_API_KEY is missing, so no new memories can be added"
+					: openRouterKeyMissing && hasStoredMemories
+						? "Inject stored memories only (OPENROUTER_API_KEY missing: no new memories added)"
+						: "Auto-save messages + inject relevant memories";
 
 	const items: SettingsMenuItem[] = [
 		{
@@ -170,14 +190,47 @@ export function SettingsMenu({
 		{
 			id: "model-provider",
 			label: "Model Provider",
-			value: modelProvider === "copilot" ? "COPILOT" : "OPENROUTER",
+			value:
+				modelProvider === "copilot"
+					? "COPILOT"
+					: modelProvider === "openai-codex"
+						? "OPENAI CODEX"
+						: "OPENROUTER",
 			description:
-				!copilotAvailable && modelProvider === "openrouter"
-					? "OpenRouter API with provider routing (Copilot: run `gh auth login` + `copilot login`)"
-					: modelProvider === "copilot"
-						? "GitHub Copilot session runtime"
-						: "OpenRouter API with provider routing",
+				!copilotAuthenticated && modelProvider === "openrouter"
+					? "OpenRouter API with provider routing"
+					: modelProvider === "openai-codex"
+						? "ChatGPT subscription auth via OpenAI Codex OAuth"
+						: modelProvider === "copilot"
+							? "GitHub Copilot session runtime"
+							: "OpenRouter API with provider routing",
 			isToggle: true,
+		},
+		{
+			id: "header-provider-auth",
+			label: "PROVIDER AUTH",
+			isHeader: true,
+		},
+		{
+			id: "openai-codex-auth",
+			label: "OpenAI Codex Auth",
+			value: openAiCodexAuthenticated ? "CONNECTED" : "CONNECT",
+			description: openAiCodexAuthenticated
+				? "Browser OAuth active. Press ENTER to re-authenticate."
+				: "Connect your ChatGPT/Codex subscription via browser OAuth.",
+		},
+		{
+			id: "copilot-auth",
+			label: "Copilot Auth",
+			value: copilotAuthenticated ? "CONNECTED" : "CONNECT",
+			description: copilotAuthenticated
+				? "GitHub auth detected. Press ENTER to view auth guidance again."
+				: "Exit DAEMON, run `gh auth login`, then relaunch to use Copilot.",
+		},
+		{
+			id: "header-runtime",
+			label: "RUNTIME",
+			isHeader: true,
 		},
 		{
 			id: "voice-interaction-type",
@@ -210,7 +263,7 @@ export function SettingsMenu({
 		{
 			id: "memory-enabled",
 			label: "Memory",
-			value: memoryEnabled ? "ON" : "OFF",
+			value: !memoryLockedByProvider && memoryEnabled ? "ON" : "OFF",
 			description: memoryDescription,
 			isToggle: true,
 			disabled: memoryToggleDisabled,
@@ -277,6 +330,8 @@ export function SettingsMenu({
 			menuItemCount: selectableCount,
 			interactionMode,
 			modelProvider,
+			openAiCodexAuthenticated,
+			copilotAuthenticated,
 			voiceInteractionType,
 			speechSpeed,
 			reasoningEffort,
@@ -291,6 +346,8 @@ export function SettingsMenu({
 			setSelectedIdx,
 			toggleInteractionMode,
 			cycleModelProvider,
+			manageOpenAiCodexAuth,
+			manageCopilotAuth,
 			setVoiceInteractionType,
 			setSpeechSpeed,
 			setReasoningEffort,
@@ -336,7 +393,9 @@ export function SettingsMenu({
 				</box>
 				<box marginBottom={1}>
 					<text>
-						<span fg={COLORS.USER_LABEL}>↑/↓ or j/k to navigate, ENTER to cycle, ESC to close</span>
+						<span fg={COLORS.USER_LABEL}>
+							↑/↓ or j/k to navigate, ENTER to change or connect, ESC to close
+						</span>
 					</text>
 				</box>
 				<box flexDirection="column">
@@ -358,11 +417,16 @@ export function SettingsMenu({
 							: isSelected
 								? COLORS.DAEMON_LABEL
 								: COLORS.MENU_TEXT;
+						const isAuthRow = item.id === "openai-codex-auth" || item.id === "copilot-auth";
 						const valueColor = item.disabled
 							? COLORS.REASONING_DIM
-							: item.value === "VOICE"
-								? COLORS.DAEMON_LABEL
-								: COLORS.DAEMON_TEXT;
+							: isAuthRow && item.value === "CONNECT"
+								? COLORS.TYPING_PROMPT
+								: isAuthRow && item.value === "CONNECTED"
+									? COLORS.DAEMON_TEXT
+									: item.value === "VOICE"
+										? COLORS.DAEMON_LABEL
+										: COLORS.DAEMON_TEXT;
 
 						return (
 							<box

@@ -96,6 +96,7 @@ export interface GroundingState {
 export interface OnboardingState {
 	onboardingActive: boolean;
 	onboardingStep: OnboardingStep;
+	openAiCodexAuthenticated: boolean;
 	copilotAuthenticated: boolean;
 	setOnboardingStep: (step: OnboardingStep) => void;
 	onboardingPreferences: AppPreferences | null;
@@ -110,6 +111,8 @@ export interface DeviceCallbacks {
 export interface SettingsCallbacks {
 	onToggleInteractionMode: () => void;
 	onCycleModelProvider: () => void;
+	onManageOpenAiCodexAuth: () => void;
+	onManageCopilotAuth: () => void;
 	onSetVoiceInteractionType: (type: VoiceInteractionType) => void;
 	onSetSpeechSpeed: (speed: SpeechSpeed) => void;
 	onSetReasoningEffort: (effort: ReasoningEffort) => void;

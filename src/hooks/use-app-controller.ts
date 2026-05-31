@@ -118,9 +118,15 @@ export function useAppController({
 		canEnableVoiceOutput,
 	} = appSettings;
 
+	const bootstrap = useBootstrapController({
+		preferencesLoaded,
+		showDeviceMenu,
+	});
+
 	const appModel = useAppModel({
 		preferencesLoaded,
 		showProviderMenu,
+		openAiCodexAuthenticated: bootstrap.openAiCodexAuthenticated,
 	});
 	const {
 		currentModelProvider,
@@ -139,11 +145,6 @@ export function useAppController({
 		providerMenuItems,
 		refreshOpenRouterModels,
 	} = appModel;
-
-	const bootstrap = useBootstrapController({
-		preferencesLoaded,
-		showDeviceMenu,
-	});
 	const onboardingComplete = preferencesLoaded && !bootstrap.onboardingActive;
 
 	useEffect(() => {
@@ -162,6 +163,7 @@ export function useAppController({
 		currentModelProvider,
 		currentModelId,
 		preferencesLoaded,
+		openAiCodexAuthenticated: bootstrap.openAiCodexAuthenticated,
 		sessionId: session.currentSessionId,
 		sessionIdRef: session.currentSessionIdRef,
 		ensureSessionId: session.ensureSessionId,
@@ -173,11 +175,11 @@ export function useAppController({
 	const [escPendingCancel, setEscPendingCancel] = useState(false);
 
 	const supportsReasoning =
-		currentModelProvider === "copilot"
-			? currentModelSupportsReasoning
-			: (daemon.modelMetadata?.supportsReasoning ?? false);
+		currentModelProvider === "openrouter"
+			? (daemon.modelMetadata?.supportsReasoning ?? false)
+			: currentModelSupportsReasoning;
 	const supportsReasoningXHigh =
-		currentModelProvider === "copilot" ? currentModelSupportsReasoningXHigh : false;
+		currentModelProvider === "openrouter" ? false : currentModelSupportsReasoningXHigh;
 
 	// Preferences bootstrap (hook): returns a stable persist callback.
 	const { persistPreferences } = useAppPreferencesBootstrap({
@@ -198,6 +200,7 @@ export function useAppController({
 		setLoadedPreferences: bootstrap.setLoadedPreferences,
 		setOnboardingActive: bootstrap.setOnboardingActive,
 		setOnboardingStep: bootstrap.setOnboardingStep,
+		setOpenAiCodexAuthenticated: bootstrap.setOpenAiCodexAuthenticated,
 		setCopilotAuthenticated: bootstrap.setCopilotAuthenticated,
 		setPreferencesLoaded,
 	});
@@ -232,6 +235,8 @@ export function useAppController({
 		handleOutputDeviceSelect,
 		handleModelSelect,
 		cycleModelProvider,
+		manageOpenAiCodexAuth,
+		manageCopilotAuth,
 		handleProviderSelect,
 		toggleInteractionMode,
 		completeOnboarding,
@@ -252,8 +257,10 @@ export function useAppController({
 		persistPreferences,
 		loadedPreferences: bootstrap.loadedPreferences,
 		onboardingStep: bootstrap.onboardingStep,
+		openAiCodexAuthenticated: bootstrap.openAiCodexAuthenticated,
 		copilotAuthenticated: bootstrap.copilotAuthenticated,
 		setOnboardingStep: bootstrap.setOnboardingStep,
+		setOpenAiCodexAuthenticated: bootstrap.setOpenAiCodexAuthenticated,
 		setCopilotAuthenticated: bootstrap.setCopilotAuthenticated,
 		apiKeyTextareaRef: bootstrap.apiKeyTextareaRef,
 		setShowDeviceMenu,
@@ -387,6 +394,7 @@ export function useAppController({
 			showFullReasoning,
 			showToolOutput,
 			currentModelProvider,
+			openAiCodexAuthenticated: bootstrap.openAiCodexAuthenticated,
 		},
 		keyboardActions
 	);
@@ -525,6 +533,7 @@ export function useAppController({
 		onboarding: {
 			onboardingActive: bootstrap.onboardingActive,
 			onboardingStep: bootstrap.onboardingStep,
+			openAiCodexAuthenticated: bootstrap.openAiCodexAuthenticated,
 			copilotAuthenticated: bootstrap.copilotAuthenticated,
 			setOnboardingStep: bootstrap.setOnboardingStep,
 			onboardingPreferences: bootstrap.loadedPreferences,
@@ -537,6 +546,8 @@ export function useAppController({
 		settingsCallbacks: {
 			onToggleInteractionMode: toggleInteractionMode,
 			onCycleModelProvider: cycleModelProvider,
+			onManageOpenAiCodexAuth: manageOpenAiCodexAuth,
+			onManageCopilotAuth: manageCopilotAuth,
 			onSetVoiceInteractionType: setVoiceInteractionType,
 			onSetSpeechSpeed: setSpeechSpeed,
 			onSetReasoningEffort: setReasoningEffort,

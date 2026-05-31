@@ -20,7 +20,7 @@ function buildCopilotModelsListErrorMessage(): string {
 	return [
 		"Copilot failed to list available models.",
 		"DAEMON uses logged-in-user auth for Copilot.",
-		"Verify `gh auth status` and run `copilot login`.",
+		"Verify `gh auth status`, then relaunch DAEMON.",
 		"If your network uses custom certs set `COPILOT_USE_SYSTEM_CA=1` or `NODE_EXTRA_CA_CERTS`.",
 	].join(" ");
 }
@@ -293,7 +293,7 @@ async function streamCopilotSession(params: {
 			}
 			if (err.message.includes("Timed out while")) {
 				throw new Error(
-					"Copilot provider timed out. Verify Copilot CLI access (run `copilot login`), then retry."
+					"Copilot provider timed out. Verify GitHub auth with `gh auth status`, then relaunch DAEMON and retry."
 				);
 			}
 			throw err;
@@ -599,7 +599,7 @@ async function streamCopilotSession(params: {
 		}
 		if (err.message.includes("Timed out while")) {
 			throw new Error(
-				"Copilot provider timed out. Verify Copilot CLI access (run `copilot login`), then retry."
+				"Copilot provider timed out. Verify GitHub auth with `gh auth status`, then relaunch DAEMON and retry."
 			);
 		}
 		throw err;

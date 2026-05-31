@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import {
 	AVAILABLE_MODELS,
+	DEFAULT_OPENAI_CODEX_MODEL_ID,
 	DEFAULT_COPILOT_MODEL_ID,
 	DEFAULT_MODEL_ID,
 	DEFAULT_MODEL_PROVIDER,
@@ -8,6 +9,7 @@ import {
 import type { ProviderMenuItem } from "../components/ProviderMenu";
 import type { LlmProvider, ModelOption } from "../types";
 import type { OpenRouterInferenceProvider } from "../utils/openrouter-endpoints";
+import { useAppOpenAiCodexModelsLoader } from "./use-app-openai-codex-models-loader";
 import { mergePricingAverages } from "../utils/openrouter-pricing";
 import { useAppCopilotModelsLoader } from "./use-app-copilot-models-loader";
 import { useAppModelPricingLoader } from "./use-app-model-pricing-loader";
@@ -17,6 +19,7 @@ import { useAppOpenRouterProviderLoader } from "./use-app-openrouter-provider-lo
 export interface UseAppModelParams {
 	preferencesLoaded: boolean;
 	showProviderMenu: boolean;
+	openAiCodexAuthenticated: boolean;
 }
 
 export interface UseAppModelReturn {
@@ -43,10 +46,11 @@ export interface UseAppModelReturn {
 }
 
 export function useAppModel(params: UseAppModelParams): UseAppModelReturn {
-	const { preferencesLoaded, showProviderMenu } = params;
+	const { preferencesLoaded, showProviderMenu, openAiCodexAuthenticated } = params;
 
 	const [currentModelProvider, setCurrentModelProvider] = useState<LlmProvider>(DEFAULT_MODEL_PROVIDER);
 	const [openRouterModelId, setOpenRouterModelId] = useState(DEFAULT_MODEL_ID);
+	const [openAiCodexModelId, setOpenAiCodexModelId] = useState(DEFAULT_OPENAI_CODEX_MODEL_ID);
 	const [copilotModelId, setCopilotModelId] = useState(DEFAULT_COPILOT_MODEL_ID);
 
 	const [currentOpenRouterProviderTag, setCurrentOpenRouterProviderTag] = useState<string | undefined>(
@@ -60,11 +64,20 @@ export function useAppModel(params: UseAppModelParams): UseAppModelReturn {
 	const [openRouterModelsUpdatedAt, setOpenRouterModelsUpdatedAt] = useState<number | null>(null);
 	const [openRouterProviders, setOpenRouterProviders] = useState<OpenRouterInferenceProvider[]>([]);
 
+	const [openAiCodexModels, setOpenAiCodexModels] = useState<ModelOption[]>([]);
+	const [openAiCodexModelsLoading, setOpenAiCodexModelsLoading] = useState(false);
+	const [openAiCodexModelsUpdatedAt, setOpenAiCodexModelsUpdatedAt] = useState<number | null>(null);
+
 	const [copilotModels, setCopilotModels] = useState<ModelOption[]>([]);
 	const [copilotModelsLoading, setCopilotModelsLoading] = useState(false);
 	const [copilotModelsUpdatedAt, setCopilotModelsUpdatedAt] = useState<number | null>(null);
 
-	const currentModelId = currentModelProvider === "openrouter" ? openRouterModelId : copilotModelId;
+	const currentModelId =
+		currentModelProvider === "openrouter"
+			? openRouterModelId
+			: currentModelProvider === "openai-codex"
+				? openAiCodexModelId
+				: copilotModelId;
 
 	useAppModelPricingLoader({
 		preferencesLoaded,
@@ -83,6 +96,14 @@ export function useAppModel(params: UseAppModelParams): UseAppModelReturn {
 		setModels: setOpenRouterModels,
 		setLoading: setOpenRouterModelsLoading,
 		setUpdatedAt: setOpenRouterModelsUpdatedAt,
+	});
+
+	const { refresh: refreshOpenAiCodexModels } = useAppOpenAiCodexModelsLoader({
+		preferencesLoaded,
+		enabled: openAiCodexAuthenticated,
+		setModels: setOpenAiCodexModels,
+		setLoading: setOpenAiCodexModelsLoading,
+		setUpdatedAt: setOpenAiCodexModelsUpdatedAt,
 	});
 
 	const { refresh: refreshCopilotModels } = useAppCopilotModelsLoader({
@@ -139,32 +160,59 @@ export function useAppModel(params: UseAppModelParams): UseAppModelReturn {
 	}, [openRouterProviders, currentOpenRouterProviderTag]);
 
 	const modelsWithPricing =
-		currentModelProvider === "openrouter" ? openRouterModelsWithPricing : copilotModels;
-	const modelsForMenu = currentModelProvider === "openrouter" ? openRouterModels : copilotModels;
+		currentModelProvider === "openrouter"
+			? openRouterModelsWithPricing
+			: currentModelProvider === "openai-codex"
+				? openAiCodexModels
+				: copilotModels;
+	const modelsForMenu =
+		currentModelProvider === "openrouter"
+			? openRouterModels
+			: currentModelProvider === "openai-codex"
+				? openAiCodexModels
+				: copilotModels;
 	const modelsLoading =
-		currentModelProvider === "openrouter" ? openRouterModelsLoading : copilotModelsLoading;
+		currentModelProvider === "openrouter"
+			? openRouterModelsLoading
+			: currentModelProvider === "openai-codex"
+				? openAiCodexModelsLoading
+				: copilotModelsLoading;
 	const modelsUpdatedAt =
-		currentModelProvider === "openrouter" ? openRouterModelsUpdatedAt : copilotModelsUpdatedAt;
+		currentModelProvider === "openrouter"
+			? openRouterModelsUpdatedAt
+			: currentModelProvider === "openai-codex"
+				? openAiCodexModelsUpdatedAt
+				: copilotModelsUpdatedAt;
 	const currentModelSupportsReasoning = useMemo(() => {
-		if (currentModelProvider !== "copilot") {
+		if (currentModelProvider === "openrouter") {
 			return false;
 		}
-		const selected = copilotModels.find((model) => model.id === copilotModelId);
+		const selected =
+			currentModelProvider === "openai-codex"
+				? openAiCodexModels.find((model) => model.id === openAiCodexModelId)
+				: copilotModels.find((model) => model.id === copilotModelId);
 		return selected?.supportsReasoningEffort === true;
-	}, [copilotModelId, copilotModels, currentModelProvider]);
+	}, [copilotModelId, copilotModels, currentModelProvider, openAiCodexModelId, openAiCodexModels]);
 	const currentModelSupportsReasoningXHigh = useMemo(() => {
-		if (currentModelProvider !== "copilot") {
+		if (currentModelProvider === "openrouter") {
 			return false;
 		}
-		const selected = copilotModels.find((model) => model.id === copilotModelId);
+		const selected =
+			currentModelProvider === "openai-codex"
+				? openAiCodexModels.find((model) => model.id === openAiCodexModelId)
+				: copilotModels.find((model) => model.id === copilotModelId);
 		return selected?.supportsReasoningEffortXHigh === true;
-	}, [copilotModelId, copilotModels, currentModelProvider]);
+	}, [copilotModelId, copilotModels, currentModelProvider, openAiCodexModelId, openAiCodexModels]);
 
 	const setCurrentModelId = useCallback(
 		(modelId: string) => {
 			if (!modelId) return;
 			if (currentModelProvider === "openrouter") {
 				setOpenRouterModelId(modelId);
+				return;
+			}
+			if (currentModelProvider === "openai-codex") {
+				setOpenAiCodexModelId(modelId);
 				return;
 			}
 			setCopilotModelId(modelId);
@@ -178,6 +226,10 @@ export function useAppModel(params: UseAppModelParams): UseAppModelReturn {
 			setOpenRouterModelId(modelId);
 			return;
 		}
+		if (provider === "openai-codex") {
+			setOpenAiCodexModelId(modelId);
+			return;
+		}
 		setCopilotModelId(modelId);
 	}, []);
 
@@ -186,8 +238,12 @@ export function useAppModel(params: UseAppModelParams): UseAppModelReturn {
 			await refreshOpenRouterModelsRaw();
 			return;
 		}
+		if (currentModelProvider === "openai-codex") {
+			await refreshOpenAiCodexModels();
+			return;
+		}
 		await refreshCopilotModels();
-	}, [currentModelProvider, refreshOpenRouterModelsRaw, refreshCopilotModels]);
+	}, [currentModelProvider, refreshOpenAiCodexModels, refreshOpenRouterModelsRaw, refreshCopilotModels]);
 
 	return {
 		currentModelProvider,

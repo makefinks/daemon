@@ -9,11 +9,12 @@ describe("provider registry", () => {
 
 	it("returns adapter for explicit provider", () => {
 		expect(getProviderAdapter("openrouter").id).toBe("openrouter");
+		expect(getProviderAdapter("openai-codex").id).toBe("openai-codex");
 		expect(getProviderAdapter("copilot").id).toBe("copilot");
 	});
 
 	it("defaults to current model provider", () => {
-		setModelProvider("copilot");
-		expect(getProviderAdapter().id).toBe("copilot");
+		setModelProvider("openai-codex");
+		expect(getProviderAdapter().id).toBe("openai-codex");
 	});
 });

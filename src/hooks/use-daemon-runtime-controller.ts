@@ -45,6 +45,7 @@ export function useDaemonRuntimeController({
 	currentModelProvider,
 	currentModelId,
 	preferencesLoaded,
+	openAiCodexAuthenticated,
 	sessionId,
 	sessionIdRef,
 	ensureSessionId,
@@ -53,6 +54,7 @@ export function useDaemonRuntimeController({
 	currentModelProvider: LlmProvider;
 	currentModelId: string;
 	preferencesLoaded: boolean;
+	openAiCodexAuthenticated: boolean;
 	sessionId: string | null;
 	sessionIdRef: MutableRefObject<string | null>;
 	ensureSessionId: () => Promise<string>;
@@ -83,6 +85,7 @@ export function useDaemonRuntimeController({
 		currentModelProvider,
 		currentModelId,
 		preferencesLoaded,
+		openAiCodexAuthenticated,
 		setReasoningQueue: reasoning.setReasoningQueue,
 		setFullReasoning: reasoning.setFullReasoning,
 		clearReasoningState: reasoning.clearReasoningState,

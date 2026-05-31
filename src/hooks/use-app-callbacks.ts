@@ -4,14 +4,14 @@ import {
 	getResponseModelForProvider,
 	setModelProvider,
 	setOpenRouterProviderTag,
-	setResponseModel,
 	setResponseModelForProvider,
 } from "../ai/model-config";
 import { invalidateDaemonToolsCache } from "../ai/tools";
 import { invalidateSubagentToolsCache } from "../ai/tools/subagents";
-import { getCopilotAuthStatusSafe, resetCopilotClient } from "../ai/copilot-client";
+import { loginOpenAiCodex } from "../ai/openai-codex-auth";
 import { setAudioDevice } from "../voice/audio-recorder";
 import { getDaemonManager } from "../state/daemon-state";
+import { shutdownApp } from "../utils/app-shutdown";
 import type {
 	AppPreferences,
 	AudioDevice,
@@ -40,8 +40,10 @@ export interface UseAppCallbacksParams {
 	persistPreferences: (updates: Partial<AppPreferences>) => void;
 	loadedPreferences: AppPreferences | null;
 	onboardingStep: OnboardingStep;
+	openAiCodexAuthenticated: boolean;
 	copilotAuthenticated: boolean;
 	setOnboardingStep: (step: OnboardingStep) => void;
+	setOpenAiCodexAuthenticated: (authenticated: boolean) => void;
 	setCopilotAuthenticated: (authenticated: boolean) => void;
 	apiKeyTextareaRef: React.RefObject<{ plainText?: string; setText: (v: string) => void } | null>;
 	setShowDeviceMenu: (show: boolean) => void;
@@ -57,6 +59,8 @@ export interface UseAppCallbacksReturn {
 	handleOutputDeviceSelect: (device: AudioDevice) => void;
 	handleModelSelect: (model: ModelOption) => void;
 	cycleModelProvider: () => void;
+	manageOpenAiCodexAuth: () => void;
+	manageCopilotAuth: () => void;
 	handleProviderSelect: (providerTag: string | undefined) => void;
 	toggleInteractionMode: () => void;
 	completeOnboarding: () => void;
@@ -80,8 +84,10 @@ export function useAppCallbacks(params: UseAppCallbacksParams): UseAppCallbacksR
 		persistPreferences,
 		loadedPreferences,
 		onboardingStep,
+		openAiCodexAuthenticated,
 		copilotAuthenticated,
 		setOnboardingStep,
+		setOpenAiCodexAuthenticated,
 		setCopilotAuthenticated,
 		apiKeyTextareaRef,
 		setShowDeviceMenu,
@@ -142,13 +148,13 @@ export function useAppCallbacks(params: UseAppCallbacksParams): UseAppCallbacksR
 	);
 
 	const cycleModelProvider = useCallback(() => {
-		const nextProvider: LlmProvider = currentModelProvider === "openrouter" ? "copilot" : "openrouter";
-		if (nextProvider === "copilot" && !copilotAuthenticated) {
-			toast.error("COPILOT LOGIN REQUIRED", {
-				description: "Run `gh auth login` and `copilot login` to enable the Copilot provider.",
-			});
-			return;
-		}
+		const availableProviders: LlmProvider[] = [
+			"openrouter",
+			...(openAiCodexAuthenticated ? (["openai-codex"] as const) : []),
+			...(copilotAuthenticated ? (["copilot"] as const) : []),
+		];
+		const currentIndex = availableProviders.indexOf(currentModelProvider);
+		const nextProvider = availableProviders[(currentIndex + 1) % availableProviders.length] ?? "openrouter";
 		const nextModelId = getResponseModelForProvider(nextProvider);
 
 		setModelProvider(nextProvider);
@@ -163,11 +169,26 @@ export function useAppCallbacks(params: UseAppCallbacksParams): UseAppCallbacksR
 		});
 	}, [
 		currentModelProvider,
+		openAiCodexAuthenticated,
 		copilotAuthenticated,
 		setCurrentModelProvider,
 		setCurrentModelForProvider,
+		setOnboardingActive,
+		setOnboardingStep,
 		persistPreferences,
 	]);
+
+	const manageOpenAiCodexAuth = useCallback(() => {
+		setShowSettingsMenu(false);
+		setOnboardingStep("openai_codex_auth");
+		setOnboardingActive(true);
+	}, [setOnboardingActive, setOnboardingStep, setShowSettingsMenu]);
+
+	const manageCopilotAuth = useCallback(() => {
+		setShowSettingsMenu(false);
+		setOnboardingStep("copilot_auth");
+		setOnboardingActive(true);
+	}, [setOnboardingActive, setOnboardingStep, setShowSettingsMenu]);
 
 	const handleProviderSelect = useCallback(
 		(providerTag: string | undefined) => {
@@ -211,14 +232,17 @@ export function useAppCallbacks(params: UseAppCallbacksParams): UseAppCallbacksR
 	const handleApiKeySubmit = useCallback(() => {
 		void (async () => {
 			const key = (apiKeyTextareaRef.current?.plainText ?? "").trim();
+			const isKeylessStep = onboardingStep === "copilot_auth" || onboardingStep === "openai_codex_auth";
 
-			if (onboardingStep !== "copilot_auth" && !key) return;
+			if (!isKeylessStep && !key) return;
 
 			if (onboardingStep === "openrouter_key") {
 				process.env.OPENROUTER_API_KEY = key;
 				persistPreferences({ openRouterApiKey: key });
 				const nextStep = determineNextStep("openrouter_key", loadedPreferences, {
 					currentProvider: currentModelProvider,
+					codexAuthenticated: openAiCodexAuthenticated,
+					copilotAuthenticated,
 				});
 				if (nextStep === "complete") {
 					persistPreferences({ onboardingCompleted: true });
@@ -227,31 +251,47 @@ export function useAppCallbacks(params: UseAppCallbacksParams): UseAppCallbacksR
 					setOnboardingStep(nextStep);
 				}
 			} else if (onboardingStep === "copilot_auth") {
-				await resetCopilotClient();
-				const authStatus = await getCopilotAuthStatusSafe();
-				setCopilotAuthenticated(authStatus.isAuthenticated);
-				if (!authStatus.isAuthenticated) {
-					toast.error("COPILOT AUTH REQUIRED", {
-						description: "Run `gh auth login` and `copilot login`, then press ENTER to retry.",
-					});
-					return;
-				}
-
-				const nextStep = determineNextStep("copilot_auth", loadedPreferences, {
-					currentProvider: currentModelProvider,
-					copilotAuthenticated: true,
+				toast.info("COPILOT AUTH", {
+					description: "Exit DAEMON, run `gh auth login`, then relaunch to use Copilot.",
 				});
-				if (nextStep === "complete") {
-					persistPreferences({ onboardingCompleted: true });
-					completeOnboarding();
-				} else {
-					setOnboardingStep(nextStep);
+				setTimeout(() => {
+					shutdownApp(0);
+				}, 0);
+				return;
+			} else if (onboardingStep === "openai_codex_auth") {
+				try {
+					toast.info("OPENAI CODEX LOGIN", {
+						description: "Opening browser for ChatGPT/Codex login...",
+					});
+					await loginOpenAiCodex();
+					setOpenAiCodexAuthenticated(true);
+					const nextStep = determineNextStep("openai_codex_auth", loadedPreferences, {
+						currentProvider: currentModelProvider,
+						codexAuthenticated: true,
+						copilotAuthenticated,
+					});
+					toast.success("OPENAI CODEX READY", {
+						description: "DAEMON can now use your ChatGPT/Codex subscription.",
+					});
+					if (nextStep === "complete") {
+						persistPreferences({ onboardingCompleted: true });
+						completeOnboarding();
+					} else {
+						setOnboardingStep(nextStep);
+					}
+				} catch (error) {
+					const err = error instanceof Error ? error : new Error(String(error));
+					toast.error("OPENAI CODEX LOGIN FAILED", {
+						description: err.message,
+					});
 				}
 			} else if (onboardingStep === "openai_key") {
 				process.env.OPENAI_API_KEY = key;
 				persistPreferences({ openAiApiKey: key });
 				const nextStep = determineNextStep("openai_key", loadedPreferences, {
 					currentProvider: currentModelProvider,
+					codexAuthenticated: openAiCodexAuthenticated,
+					copilotAuthenticated,
 				});
 				if (nextStep === "complete") {
 					persistPreferences({ onboardingCompleted: true });
@@ -264,6 +304,8 @@ export function useAppCallbacks(params: UseAppCallbacksParams): UseAppCallbacksR
 				persistPreferences({ exaApiKey: key });
 				const nextStep = determineNextStep("exa_key", loadedPreferences, {
 					currentProvider: currentModelProvider,
+					codexAuthenticated: openAiCodexAuthenticated,
+					copilotAuthenticated,
 				});
 				if (nextStep === "complete") {
 					persistPreferences({ onboardingCompleted: true });
@@ -280,9 +322,11 @@ export function useAppCallbacks(params: UseAppCallbacksParams): UseAppCallbacksR
 		persistPreferences,
 		loadedPreferences,
 		currentModelProvider,
+		openAiCodexAuthenticated,
 		copilotAuthenticated,
 		completeOnboarding,
 		setOnboardingStep,
+		setOpenAiCodexAuthenticated,
 		setCopilotAuthenticated,
 		apiKeyTextareaRef,
 	]);
@@ -292,6 +336,8 @@ export function useAppCallbacks(params: UseAppCallbacksParams): UseAppCallbacksR
 		handleOutputDeviceSelect,
 		handleModelSelect,
 		cycleModelProvider,
+		manageOpenAiCodexAuth,
+		manageCopilotAuth,
 		handleProviderSelect,
 		toggleInteractionMode,
 		completeOnboarding,

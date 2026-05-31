@@ -123,10 +123,17 @@ export function useAppDisplayState(params: UseAppDisplayStateParams): UseAppDisp
 			availableModels.find((model) => model.id === currentModelId) ??
 			curatedModels.find((model) => model.id === currentModelId);
 		if (selectedModel?.name) {
-			return currentModelProvider === "copilot" ? `Copilot: ${selectedModel.name}` : selectedModel.name;
+			return currentModelProvider === "copilot"
+				? `Copilot: ${selectedModel.name}`
+				: currentModelProvider === "openai-codex"
+					? `Codex: ${selectedModel.name}`
+					: selectedModel.name;
 		}
 		if (currentModelProvider === "copilot") {
 			return `Copilot: ${currentModelId}`;
+		}
+		if (currentModelProvider === "openai-codex") {
+			return `Codex: ${currentModelId}`;
 		}
 		return undefined;
 	}, [

@@ -12,7 +12,7 @@ import { DaemonState } from "../types";
 import type { ContentBlock, ConversationMessage, LlmProvider, TokenUsage, ToolCall } from "../types";
 import { REASONING_COLORS, STATE_COLORS } from "../types/theme";
 import { REASONING_ANIMATION } from "../ui/constants";
-import { type ModelMetadata, getModelMetadata } from "../utils/model-metadata";
+import { type ModelMetadata, getModelMetadataForProvider } from "../utils/model-metadata";
 import {
 	type EventHandlerDeps,
 	type EventHandlerRefs,
@@ -44,6 +44,7 @@ export interface UseDaemonEventsParams {
 	currentModelProvider: LlmProvider;
 	currentModelId: string;
 	preferencesLoaded: boolean;
+	openAiCodexAuthenticated: boolean;
 	setReasoningQueue: (queue: string | ((prev: string) => string)) => void;
 	setFullReasoning: (full: string | ((prev: string) => string)) => void;
 	clearReasoningState: () => void;
@@ -83,6 +84,7 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 		currentModelProvider,
 		currentModelId,
 		preferencesLoaded,
+		openAiCodexAuthenticated,
 		setReasoningQueue,
 		setFullReasoning,
 		clearReasoningState,
@@ -119,18 +121,22 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 
 	useEffect(() => {
 		if (!preferencesLoaded) return;
-		if (currentModelProvider !== "openrouter") {
+		if (currentModelProvider === "copilot") {
+			setModelMetadata(null);
+			return;
+		}
+		if (currentModelProvider === "openai-codex" && !openAiCodexAuthenticated) {
 			setModelMetadata(null);
 			return;
 		}
 		let cancelled = false;
-		getModelMetadata(currentModelId).then((metadata) => {
+		getModelMetadataForProvider(currentModelId, currentModelProvider).then((metadata) => {
 			if (!cancelled) setModelMetadata(metadata);
 		});
 		return () => {
 			cancelled = true;
 		};
-	}, [currentModelId, currentModelProvider, preferencesLoaded]);
+	}, [currentModelId, currentModelProvider, openAiCodexAuthenticated, preferencesLoaded]);
 
 	useEffect(() => {
 		clearFetchCache();

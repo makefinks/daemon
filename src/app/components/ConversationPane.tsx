@@ -251,7 +251,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 					<TokenUsageDisplay
 						usage={sessionUsage}
 						modelMetadata={modelMetadata}
-						hideCost={currentModelProvider === "copilot"}
+						hideCost={currentModelProvider !== "openrouter"}
 					/>
 				)}
 

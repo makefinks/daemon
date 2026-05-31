@@ -87,6 +87,9 @@ describe("parsePreferences", () => {
 				const openRouterResult = parsePreferences({ modelProvider: "openrouter" });
 				expect(openRouterResult?.modelProvider).toBe("openrouter");
 
+				const openAiCodexResult = parsePreferences({ modelProvider: "openai-codex" });
+				expect(openAiCodexResult?.modelProvider).toBe("openai-codex");
+
 				const copilotResult = parsePreferences({ modelProvider: "copilot" });
 				expect(copilotResult?.modelProvider).toBe("copilot");
 			});
@@ -156,6 +159,9 @@ describe("parsePreferences", () => {
 
 				const high = parsePreferences({ reasoningEffort: "high" });
 				expect(high?.reasoningEffort).toBe("high");
+
+				const xhigh = parsePreferences({ reasoningEffort: "xhigh" });
+				expect(xhigh?.reasoningEffort).toBe("xhigh");
 			});
 
 			it("omits invalid reasoningEffort values", () => {

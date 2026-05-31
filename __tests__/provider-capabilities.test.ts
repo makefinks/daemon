@@ -9,11 +9,12 @@ describe("provider capabilities", () => {
 
 	it("returns explicit capabilities for each provider", () => {
 		expect(getProviderCapabilities("openrouter").supportsSubagentTool).toBe(true);
+		expect(getProviderCapabilities("openai-codex").supportsSubagentTool).toBe(true);
 		expect(getProviderCapabilities("copilot").supportsSubagentTool).toBe(false);
 	});
 
 	it("defaults to current provider when no provider is provided", () => {
-		setModelProvider("copilot");
-		expect(getProviderCapabilities().supportsSubagentTool).toBe(false);
+		setModelProvider("openai-codex");
+		expect(getProviderCapabilities().supportsSubagentTool).toBe(true);
 	});
 });

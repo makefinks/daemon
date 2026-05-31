@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef } from "react";
 import { startMcpManager } from "../ai/mcp/mcp-manager";
 import { hasCopilotCliAuthSafe } from "../ai/copilot-client";
+import { hasOpenAiCodexAuthSafe } from "../ai/openai-codex-auth";
 import {
-	getModelProvider,
 	getResponseModelForProvider,
 	setModelProvider,
 	setOpenRouterProviderTag,
@@ -21,6 +21,7 @@ import type {
 	VoiceInteractionType,
 } from "../types";
 import { DEFAULT_TOOL_TOGGLES } from "../types";
+import { getOpenAiCodexModels } from "../utils/openai-codex-models";
 import { loadPreferences, updatePreferences } from "../utils/preferences";
 import { setAudioDevice } from "../voice/audio-recorder";
 
@@ -52,6 +53,7 @@ export interface UseAppPreferencesBootstrapParams {
 	setLoadedPreferences: (prefs: AppPreferences | null) => void;
 	setOnboardingActive: (active: boolean) => void;
 	setOnboardingStep: (step: OnboardingStep) => void;
+	setOpenAiCodexAuthenticated: (authenticated: boolean) => void;
 	setCopilotAuthenticated: (authenticated: boolean) => void;
 	setPreferencesLoaded: (loaded: boolean) => void;
 }
@@ -81,6 +83,7 @@ export function useAppPreferencesBootstrap(
 		setLoadedPreferences,
 		setOnboardingActive,
 		setOnboardingStep,
+		setOpenAiCodexAuthenticated,
 		setCopilotAuthenticated,
 		setPreferencesLoaded,
 	} = params;
@@ -96,7 +99,6 @@ export function useAppPreferencesBootstrap(
 
 	useEffect(() => {
 		let cancelled = false;
-		let copilotAuthCheckTimer: ReturnType<typeof setTimeout> | null = null;
 
 		(async () => {
 			const prefs = await loadPreferences();
@@ -193,26 +195,28 @@ export function useAppPreferencesBootstrap(
 			const hasOpenRouterKey = Boolean(process.env.OPENROUTER_API_KEY);
 			const hasOpenAiKey = Boolean(process.env.OPENAI_API_KEY);
 			const hasExaKey = Boolean(process.env.EXA_API_KEY);
-			const usingCopilotProvider = modelProvider === "copilot";
-			const hasCopilotAuth = usingCopilotProvider;
+			const [hasOpenAiCodexAuth, hasCopilotAuth] = await Promise.all([
+				hasOpenAiCodexAuthSafe(),
+				hasCopilotCliAuthSafe(),
+			]);
+			if (cancelled) return;
+			if (hasOpenAiCodexAuth) {
+				await getOpenAiCodexModels();
+				if (cancelled) return;
+			}
+			setOpenAiCodexAuthenticated(hasOpenAiCodexAuth);
 			setCopilotAuthenticated(hasCopilotAuth);
-			copilotAuthCheckTimer = setTimeout(() => {
-				void (async () => {
-					const authenticated = await hasCopilotCliAuthSafe();
-					if (cancelled) return;
-					setCopilotAuthenticated(authenticated);
-					if (!authenticated && getModelProvider() === "copilot") {
-						setOnboardingStep("copilot_auth");
-						setOnboardingActive(true);
-					}
-				})();
-			}, 0);
 			const hasCoreSettings = Boolean(prefs?.audioDeviceName && prefs?.modelId);
 
 			setLoadedPreferences(prefs);
 
 			const isFreshLaunch = prefs === null;
-			const hasProviderAuth = modelProvider === "openrouter" ? hasOpenRouterKey : hasCopilotAuth;
+			const hasProviderAuth =
+				modelProvider === "openrouter"
+					? hasOpenRouterKey
+					: modelProvider === "openai-codex"
+						? hasOpenAiCodexAuth
+						: hasCopilotAuth;
 			const needsOnboarding = !hasProviderAuth || !hasOpenAiKey || !hasExaKey;
 
 			if (isFreshLaunch) {
@@ -221,7 +225,12 @@ export function useAppPreferencesBootstrap(
 			} else if (needsOnboarding) {
 				let startStep: OnboardingStep = "provider";
 				if (!hasProviderAuth) {
-					startStep = modelProvider === "openrouter" ? "openrouter_key" : "copilot_auth";
+					startStep =
+						modelProvider === "openrouter"
+							? "openrouter_key"
+							: modelProvider === "openai-codex"
+								? "openai_codex_auth"
+								: "copilot_auth";
 				} else if (!hasOpenAiKey) {
 					startStep = "openai_key";
 				} else if (!hasExaKey) {
@@ -242,9 +251,6 @@ export function useAppPreferencesBootstrap(
 
 		return () => {
 			cancelled = true;
-			if (copilotAuthCheckTimer) {
-				clearTimeout(copilotAuthCheckTimer);
-			}
 		};
 	}, [
 		manager,
@@ -263,6 +269,7 @@ export function useAppPreferencesBootstrap(
 		setLoadedPreferences,
 		setOnboardingActive,
 		setOnboardingStep,
+		setOpenAiCodexAuthenticated,
 		setCopilotAuthenticated,
 		setPreferencesLoaded,
 	]);

@@ -18,6 +18,7 @@ export const AVAILABLE_OPENROUTER_MODELS: ModelOption[] = [
 
 // Default model IDs
 export const DEFAULT_OPENROUTER_MODEL_ID = "z-ai/glm-4.7";
+export const DEFAULT_OPENAI_CODEX_MODEL_ID = "gpt-5.4";
 export const DEFAULT_COPILOT_MODEL_ID = "claude-sonnet-4.5";
 export const DEFAULT_MODEL_ID = DEFAULT_OPENROUTER_MODEL_ID;
 export const DEFAULT_MODEL_PROVIDER: LlmProvider = "openrouter";
@@ -29,6 +30,7 @@ export const AVAILABLE_MODELS = AVAILABLE_OPENROUTER_MODELS;
 let currentModelProvider: LlmProvider = DEFAULT_MODEL_PROVIDER;
 const currentModelIdByProvider: Record<LlmProvider, string> = {
 	openrouter: DEFAULT_OPENROUTER_MODEL_ID,
+	"openai-codex": DEFAULT_OPENAI_CODEX_MODEL_ID,
 	copilot: DEFAULT_COPILOT_MODEL_ID,
 };
 let currentOpenRouterProviderTag: string | undefined;

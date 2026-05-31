@@ -15,7 +15,7 @@ import type {
 } from "../types";
 import { debug } from "../utils/debug-logger";
 import { buildMemoryInjection, getMemoryManager, isMemoryAvailable } from "./memory";
-import { TRANSCRIPTION_MODEL } from "./model-config";
+import { TRANSCRIPTION_MODEL, getModelProvider } from "./model-config";
 import { getProviderAdapter } from "./providers/registry";
 import { type InteractionMode } from "./system-prompt";
 import { setSubagentProgressEmitter } from "./tools/subagents";
@@ -26,6 +26,10 @@ const openai = createOpenAI({});
 
 function isMemoryPipelineUsableForCurrentProvider(): boolean {
 	if (!isMemoryAvailable()) {
+		return false;
+	}
+
+	if (getModelProvider() === "copilot" || getModelProvider() === "openai-codex") {
 		return false;
 	}
 

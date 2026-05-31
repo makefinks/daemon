@@ -5,10 +5,9 @@
 
 import { ConsolePosition, createCliRenderer, decodePasteBytes } from "@opentui/core";
 import { createRoot } from "@opentui/react";
-import { destroyMcpManager } from "./ai/mcp/mcp-manager";
 import { App } from "./app/App";
-import { destroyDaemonManager } from "./state/daemon-state";
 import { COLORS } from "./ui/constants";
+import { cleanupAppRuntime, registerAppRuntime, shutdownApp } from "./utils/app-shutdown";
 import { debug } from "./utils/debug-logger";
 
 // Main entry point
@@ -37,16 +36,16 @@ renderer.keyInput.on("paste", (event) => {
 	});
 });
 
-// Cleanup on exit
-process.on("exit", () => {
-	destroyDaemonManager();
-	destroyMcpManager();
-});
+const root = createRoot(renderer);
+registerAppRuntime({ renderer, root });
 
 process.on("SIGINT", () => {
-	destroyDaemonManager();
-	destroyMcpManager();
-	process.exit(0);
+	shutdownApp(0);
 });
 
-createRoot(renderer).render(<App />);
+process.on("exit", () => {
+	// Best-effort cleanup for non-interactive exits as well.
+	cleanupAppRuntime();
+});
+
+root.render(<App />);

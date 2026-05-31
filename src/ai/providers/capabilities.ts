@@ -6,6 +6,9 @@ const PROVIDER_CAPABILITIES: Record<LlmProvider, ProviderCapabilities> = {
 	openrouter: {
 		supportsSubagentTool: true,
 	},
+	"openai-codex": {
+		supportsSubagentTool: true,
+	},
 	copilot: {
 		supportsSubagentTool: false,
 	},

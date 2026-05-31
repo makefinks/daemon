@@ -15,6 +15,8 @@ export interface BootstrapControllerResult {
 
 	onboardingStep: OnboardingStep;
 	setOnboardingStep: (step: OnboardingStep) => void;
+	openAiCodexAuthenticated: boolean;
+	setOpenAiCodexAuthenticated: (authenticated: boolean) => void;
 	copilotAuthenticated: boolean;
 	setCopilotAuthenticated: (authenticated: boolean) => void;
 
@@ -52,6 +54,7 @@ export function useBootstrapController({
 
 	const [loadedPreferences, setLoadedPreferences] = useState<AppPreferences | null>(null);
 	const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>("intro");
+	const [openAiCodexAuthenticated, setOpenAiCodexAuthenticated] = useState(false);
 	const [copilotAuthenticated, setCopilotAuthenticated] = useState(false);
 
 	const [devices, setDevices] = useState<AudioDevice[]>([]);
@@ -78,6 +81,8 @@ export function useBootstrapController({
 		setOnboardingActive,
 		onboardingStep,
 		setOnboardingStep,
+		openAiCodexAuthenticated,
+		setOpenAiCodexAuthenticated,
 		copilotAuthenticated,
 		setCopilotAuthenticated,
 		loadedPreferences,

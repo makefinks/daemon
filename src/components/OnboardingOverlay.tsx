@@ -6,7 +6,6 @@ import { handleOnboardingKey } from "../hooks/keyboard-handlers";
 import type { AppPreferences, AudioDevice, LlmProvider, ModelOption, OnboardingStep } from "../types";
 import { COLORS } from "../ui/constants";
 import { formatContextWindowK, formatPrice } from "../utils/formatters";
-import { ApiKeyInput } from "./ApiKeyInput";
 import { ApiKeyStep } from "./ApiKeyStep";
 
 const MODEL_COL_WIDTH = {
@@ -26,11 +25,17 @@ const API_KEY_CONFIGS = {
 		keyUrl: "https://openrouter.ai/keys",
 		optional: false,
 	},
+	openai_codex_auth: {
+		title: "OPENAI CODEX LOGIN REQUIRED",
+		description: "Sign in with your ChatGPT/Codex subscription to use OpenAI Codex inside DAEMON.",
+		envVarName: "OPENAI_CODEX_AUTH",
+		optional: false,
+	},
 	copilot_auth: {
 		title: "GITHUB COPILOT LOGIN REQUIRED",
-		description: "Authenticate with GitHub/Copilot CLI, then validate from here.",
+		description: "Authenticate with GitHub, then relaunch DAEMON to use Copilot.",
 		envVarName: "COPILOT_CLI_LOGIN",
-		keyUrl: "https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli",
+		keyUrl: "https://cli.github.com/manual/gh_auth_login",
 		optional: false,
 	},
 	openai_key: {
@@ -52,6 +57,27 @@ const API_KEY_CONFIGS = {
 	},
 } as const;
 
+function ActionPrompt({ label }: { label: string }) {
+	return (
+		<box
+			border={true}
+			borderStyle="single"
+			borderColor={COLORS.MENU_BORDER}
+			backgroundColor={COLORS.MENU_SELECTED_BG}
+			width="100%"
+			maxWidth={100}
+			paddingLeft={1}
+			paddingRight={1}
+			paddingTop={1}
+			paddingBottom={1}
+		>
+			<text>
+				<span fg={COLORS.DAEMON_LABEL}>{label}</span>
+			</text>
+		</box>
+	);
+}
+
 interface OnboardingOverlayProps {
 	step: OnboardingStep;
 	preferences: AppPreferences | null;
@@ -60,6 +86,7 @@ interface OnboardingOverlayProps {
 	currentOutputDevice?: string;
 	models: ModelOption[];
 	currentModelProvider: LlmProvider;
+	openAiCodexAuthenticated: boolean;
 	copilotAuthenticated: boolean;
 	currentModelId: string;
 	deviceLoadTimedOut?: boolean;
@@ -86,6 +113,7 @@ export function OnboardingOverlay({
 	currentOutputDevice,
 	models,
 	currentModelProvider,
+	openAiCodexAuthenticated,
 	copilotAuthenticated,
 	currentModelId,
 	deviceLoadTimedOut,
@@ -112,17 +140,18 @@ export function OnboardingOverlay({
 				label: "OpenRouter",
 				description: "API key based provider routing",
 			},
-			...(copilotAuthenticated
-				? ([
-						{
-							id: "copilot" as const,
-							label: "GitHub Copilot",
-							description: "GitHub auth + Copilot subscription",
-						},
-					] as const)
-				: []),
+			{
+				id: "openai-codex" as const,
+				label: "OpenAI Codex",
+				description: "Browser OAuth with ChatGPT/Codex subscription",
+			},
+			{
+				id: "copilot" as const,
+				label: "GitHub Copilot",
+				description: "GitHub auth + Copilot subscription",
+			},
 		],
-		[copilotAuthenticated]
+		[]
 	);
 
 	const initialProviderIdx = useMemo(() => {
@@ -168,6 +197,7 @@ export function OnboardingOverlay({
 				selectedDeviceIdx,
 				selectedModelIdx,
 				currentModelProvider,
+				openAiCodexAuthenticated,
 				copilotAuthenticated,
 				preferences,
 				setSelectedProviderIdx,
@@ -179,6 +209,7 @@ export function OnboardingOverlay({
 				setCurrentModelId,
 				setOnboardingStep,
 				completeOnboarding,
+				onSubmitAction: onKeySubmit,
 				persistPreferences,
 				currentModelId,
 				manager: { outputDeviceName: currentOutputDevice },
@@ -196,6 +227,7 @@ export function OnboardingOverlay({
 			selectedDeviceIdx,
 			selectedModelIdx,
 			currentModelProvider,
+			openAiCodexAuthenticated,
 			copilotAuthenticated,
 			preferences,
 			setCurrentModelProvider,
@@ -305,12 +337,17 @@ export function OnboardingOverlay({
 									</box>
 								);
 							})}
+							<box marginTop={1}>
+								<text>
+									<span fg={COLORS.REASONING_DIM}>
+										OpenAI Codex uses browser login and your ChatGPT plan allowances.
+									</span>
+								</text>
+							</box>
 							{!copilotAuthenticated && (
 								<box marginTop={1}>
 									<text>
-										<span fg={COLORS.REASONING_DIM}>
-											Copilot appears after `gh auth login` and `copilot login`.
-										</span>
+										<span fg={COLORS.REASONING_DIM}>Selecting Copilot will open GitHub auth guidance.</span>
 									</text>
 								</box>
 							)}
@@ -326,6 +363,37 @@ export function OnboardingOverlay({
 					/>
 				)}
 
+				{step === "openai_codex_auth" && (
+					<>
+						<box marginBottom={1}>
+							<text>
+								<span fg={COLORS.DAEMON_LABEL}>[ {API_KEY_CONFIGS.openai_codex_auth.title} ]</span>
+							</text>
+						</box>
+						<box marginBottom={1}>
+							<text>
+								<span fg={COLORS.MENU_TEXT}>
+									Press ENTER to open the browser and complete ChatGPT/Codex login.
+								</span>
+							</text>
+						</box>
+						<box marginBottom={1}>
+							<text>
+								<span fg={COLORS.REASONING_DIM}>
+									DAEMON stores OAuth tokens locally and refreshes them automatically.
+								</span>
+							</text>
+						</box>
+						<ActionPrompt
+							label={
+								openAiCodexAuthenticated
+									? "[ ENTER ] Continue"
+									: "[ ENTER ] Open browser for OpenAI Codex login"
+							}
+						/>
+					</>
+				)}
+
 				{step === "copilot_auth" && (
 					<>
 						<box marginBottom={1}>
@@ -336,30 +404,26 @@ export function OnboardingOverlay({
 						<box marginBottom={1}>
 							<text>
 								<span fg={COLORS.MENU_TEXT}>
-									Run `gh auth login` and `copilot login`, then press ENTER to validate.
+									Press ENTER to exit DAEMON, run `gh auth login`, then relaunch.
 								</span>
 							</text>
 						</box>
 						<box marginBottom={1}>
 							<text>
 								<span fg={COLORS.REASONING_DIM}>
-									Copilot token auth is disabled in DAEMON; logged-in CLI session is required.
+									GitHub auth must be available before Copilot can be used in DAEMON.
 								</span>
 							</text>
 						</box>
 						<box marginBottom={1}>
 							<text>
 								<span fg={COLORS.REASONING_DIM}>
-									Install/login guide: {API_KEY_CONFIGS.copilot_auth.keyUrl}
+									GitHub auth guide: https://cli.github.com/manual/gh_auth_login
 								</span>
 								<span fg={COLORS.USER_LABEL}> · Shift+O to open</span>
 							</text>
 						</box>
-						<ApiKeyInput
-							onSubmit={onKeySubmit}
-							placeholder="Press ENTER to validate Copilot login..."
-							textareaRef={apiKeyTextareaRef}
-						/>
+						<ActionPrompt label="[ ENTER ] Exit DAEMON and run GitHub auth" />
 					</>
 				)}
 

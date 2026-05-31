@@ -153,7 +153,7 @@ export interface TranscriptionResult {
 /**
  * LLM backend provider used for agent responses.
  */
-export type LlmProvider = "openrouter" | "copilot";
+export type LlmProvider = "openrouter" | "openai-codex" | "copilot";
 
 /**
  * Callbacks for streaming AI responses
@@ -262,6 +262,7 @@ export const BASH_APPROVAL_LEVELS: BashApprovalLevel[] = ["none", "dangerous", "
  * - intro: Welcome screen
  * - provider: Select backend provider
  * - openrouter_key: OpenRouter API key input (for AI models)
+ * - openai_codex_auth: OpenAI Codex browser login
  * - copilot_auth: GitHub Copilot authentication
  * - openai_key: OpenAI API key input (for transcription)
  * - exa_key: Exa API key input (for web search)
@@ -273,6 +274,7 @@ export type OnboardingStep =
 	| "intro"
 	| "provider"
 	| "openrouter_key"
+	| "openai_codex_auth"
 	| "copilot_auth"
 	| "openai_key"
 	| "exa_key"

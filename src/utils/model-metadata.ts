@@ -3,7 +3,8 @@
  * Provides context window size and pricing information.
  */
 
-import type { ModelPricing } from "../types";
+import type { LlmProvider, ModelPricing } from "../types";
+import { getOpenAiCodexModelMetadata } from "./openai-codex-models";
 import { debug } from "./debug-logger";
 import { getOpenRouterModelEndpointsMetadata } from "./openrouter-endpoints";
 import { mergePricingAverages } from "./openrouter-pricing";
@@ -80,6 +81,19 @@ async function fetchModelMetadata(modelId: string): Promise<ModelMetadata | null
  * @param modelId - The OpenRouter model ID (e.g., "google/gemini-2.5-flash-preview")
  */
 export async function getModelMetadata(modelId: string): Promise<ModelMetadata | null> {
+	return fetchModelMetadata(modelId);
+}
+
+export async function getModelMetadataForProvider(
+	modelId: string,
+	provider: LlmProvider
+): Promise<ModelMetadata | null> {
+	if (provider === "openai-codex") {
+		return getOpenAiCodexModelMetadata(modelId);
+	}
+	if (provider !== "openrouter") {
+		return null;
+	}
 	return fetchModelMetadata(modelId);
 }
 

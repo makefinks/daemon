@@ -74,7 +74,11 @@ export function parsePreferences(raw: unknown): AppPreferences | null {
 	if (typeof raw.modelId === "string") {
 		prefs.modelId = raw.modelId;
 	}
-	if (raw.modelProvider === "openrouter" || raw.modelProvider === "copilot") {
+	if (
+		raw.modelProvider === "openrouter" ||
+		raw.modelProvider === "openai-codex" ||
+		raw.modelProvider === "copilot"
+	) {
 		prefs.modelProvider = raw.modelProvider;
 	}
 	if (typeof raw.openRouterProviderTag === "string") {
@@ -97,7 +101,12 @@ export function parsePreferences(raw: unknown): AppPreferences | null {
 	) {
 		prefs.speechSpeed = raw.speechSpeed;
 	}
-	if (raw.reasoningEffort === "low" || raw.reasoningEffort === "medium" || raw.reasoningEffort === "high") {
+	if (
+		raw.reasoningEffort === "low" ||
+		raw.reasoningEffort === "medium" ||
+		raw.reasoningEffort === "high" ||
+		raw.reasoningEffort === "xhigh"
+	) {
 		prefs.reasoningEffort = raw.reasoningEffort;
 	}
 	if (typeof raw.openRouterApiKey === "string") {
