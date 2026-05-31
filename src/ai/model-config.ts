@@ -140,7 +140,7 @@ export function buildOpenRouterChatSettings(
 export const TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe-2025-12-15";
 
 // Default model for memory operations.
-export const DEFAULT_MEMORY_MODEL_OPENROUTER = "openai/gpt-5.4-nano";
+export const DEFAULT_MEMORY_MODEL_OPENROUTER = "deepseek/deepseek-v4-flash";
 
 /**
  * Get the model ID for memory operations (deduplication, extraction).
