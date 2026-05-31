@@ -73,6 +73,8 @@ export interface SubagentStep {
 export interface ToolCall {
 	name: string;
 	input: unknown;
+	/** Raw tool input JSON text accumulated during streaming */
+	inputText?: string;
 	toolCallId?: string;
 	/** For subagent tool calls - tracks nested tool invocations */
 	subagentSteps?: SubagentStep[];
@@ -162,6 +164,7 @@ export interface StreamCallbacks {
 	onToken?: (token: string) => void;
 	onReasoningToken?: (token: string) => void;
 	onToolCallStart?: (toolName: string, toolCallId: string) => void;
+	onToolCallInputDelta?: (toolCallId: string, delta: string) => void;
 	onToolCall?: (toolName: string, args: unknown, toolCallId?: string) => void;
 	onToolResult?: (toolName: string, result: unknown, toolCallId?: string) => void;
 	onToolApprovalRequest?: (request: ToolApprovalRequest) => void;

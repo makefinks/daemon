@@ -454,6 +454,23 @@ export function createToolInputStartHandler(
 }
 
 /**
+ * Create handler for tool input delta events (streaming tool args text).
+ */
+export function createToolInputDeltaHandler(refs: EventHandlerRefs, setters: EventHandlerSetters) {
+	return (toolCallId: string, delta: string) => {
+		if (typeof delta !== "string" || delta.length === 0) return;
+		const normalizedToolCallId = normalizeToolCallId(toolCallId);
+		if (!normalizedToolCallId) return;
+
+		const toolCall = refs.toolCallsByIdRef.current.get(normalizedToolCallId);
+		if (!toolCall) return;
+
+		toolCall.inputText = `${toolCall.inputText ?? ""}${delta}`;
+		setters.setCurrentContentBlocks([...refs.contentBlocksRef.current]);
+	};
+}
+
+/**
  * Create handler for tool invocation events.
  */
 export function createToolInvocationHandler(

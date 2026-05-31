@@ -8,9 +8,10 @@ interface ToolHeaderViewProps {
 	header: ToolHeader | null;
 	isRunning: boolean;
 	toolColor: string;
+	requestSize?: string | null;
 }
 
-export function ToolHeaderView({ toolName, header, isRunning, toolColor }: ToolHeaderViewProps) {
+export function ToolHeaderView({ toolName, header, isRunning, toolColor, requestSize }: ToolHeaderViewProps) {
 	const displayName = toolName.toUpperCase();
 	return (
 		<box flexDirection="row" alignItems="center" justifyContent="space-between" width="100%">
@@ -26,6 +27,7 @@ export function ToolHeaderView({ toolName, header, isRunning, toolColor }: ToolH
 						{` ${header.secondary}`}
 					</span>
 				)}
+				{requestSize && <span fg={COLORS.REASONING_DIM}>{` · ${requestSize}`}</span>}
 			</text>
 			{isRunning && <spinner name="dots" color={COLORS.STATUS_RUNNING} />}
 		</box>

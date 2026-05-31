@@ -222,6 +222,13 @@ export function formatContextWindowK(contextLength: number): string {
 	return `${asK}K`;
 }
 
+export function formatBytes(bytes: number): string {
+	if (!Number.isFinite(bytes) || bytes < 0) return "0 B";
+	if (bytes < 1024) return `${Math.floor(bytes)} B`;
+	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 /**
  * Format price per 1M tokens for display.
  */

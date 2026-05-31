@@ -32,6 +32,7 @@ import {
 	createTokenHandler,
 	createToolApprovalRequestHandler,
 	createToolApprovalResolvedHandler,
+	createToolInputDeltaHandler,
 	createToolInputStartHandler,
 	createToolInvocationHandler,
 	createToolResultHandler,
@@ -322,6 +323,7 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 		const handleReasoningToken = createReasoningTokenHandler(refs, setters);
 		const handleToken = createTokenHandler(refs, setters, deps);
 		const handleToolInputStart = createToolInputStartHandler(refs, setters, deps);
+		const handleToolInputDelta = createToolInputDeltaHandler(refs, setters);
 		const handleToolInvocation = createToolInvocationHandler(refs, setters, deps);
 		const handleToolApprovalRequest = createToolApprovalRequestHandler(refs, setters);
 		const handleToolApprovalResolved = createToolApprovalResolvedHandler(refs, setters);
@@ -342,6 +344,7 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 		daemonEvents.on("transcriptionUpdate", handleTranscription);
 		daemonEvents.on("reasoningToken", handleReasoningToken);
 		daemonEvents.on("toolInputStart", handleToolInputStart);
+		daemonEvents.on("toolInputDelta", handleToolInputDelta);
 		daemonEvents.on("toolInvocation", handleToolInvocation);
 		daemonEvents.on("toolApprovalRequest", handleToolApprovalRequest);
 		daemonEvents.on("toolApprovalResolved", handleToolApprovalResolved);
@@ -370,6 +373,7 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 			daemonEvents.off("transcriptionUpdate", handleTranscription);
 			daemonEvents.off("reasoningToken", handleReasoningToken);
 			daemonEvents.off("toolInputStart", handleToolInputStart);
+			daemonEvents.off("toolInputDelta", handleToolInputDelta);
 			daemonEvents.off("toolInvocation", handleToolInvocation);
 			daemonEvents.off("toolApprovalRequest", handleToolApprovalRequest);
 			daemonEvents.off("toolApprovalResolved", handleToolApprovalResolved);

@@ -18,6 +18,7 @@ export type DaemonStateEvents = {
 	ttsLevel: (level: number) => void;
 	reasoningToken: (token: string) => void;
 	toolInputStart: (toolName: string, toolCallId: string) => void;
+	toolInputDelta: (toolCallId: string, delta: string) => void;
 	toolInvocation: (toolName: string, input: unknown, toolCallId?: string) => void;
 	toolResult: (toolName: string, result: unknown, toolCallId?: string) => void;
 	toolComplete: (toolCallId: string, status: ToolCallStatus) => void;

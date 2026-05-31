@@ -134,6 +134,8 @@ async function streamOpenAiCodexResponse(
 				callbacks.onToken?.(part.text);
 			} else if (part.type === "tool-input-start") {
 				callbacks.onToolCallStart?.(part.toolName, part.id);
+			} else if (part.type === "tool-input-delta") {
+				callbacks.onToolCallInputDelta?.(part.id, part.delta);
 			} else if (part.type === "tool-call") {
 				callbacks.onToolCall?.(part.toolName, part.input, part.toolCallId);
 			} else if (part.type === "tool-result") {

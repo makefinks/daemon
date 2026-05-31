@@ -54,6 +54,10 @@ export class AgentTurnRunner {
 				if (!isActive()) return;
 				callbacks.onToolCallStart?.(toolName, toolCallId);
 			},
+			onToolCallInputDelta: (toolCallId, delta) => {
+				if (!isActive()) return;
+				callbacks.onToolCallInputDelta?.(toolCallId, delta);
+			},
 			onToolCall: (toolName, args, toolCallId) => {
 				if (!isActive()) return;
 				callbacks.onToolCall?.(toolName, args, toolCallId);

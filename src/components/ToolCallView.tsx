@@ -3,7 +3,7 @@ import { getMcpManager } from "../ai/mcp/mcp-manager";
 import { useToolApprovalForCall } from "../hooks/use-tool-approval";
 import type { ToolCall } from "../types";
 import { COLORS } from "../ui/constants";
-import { formatToolInputLines } from "../utils/formatters";
+import { formatBytes, formatToolInputLines } from "../utils/formatters";
 import { formatGenericToolOutputPreview } from "../utils/tool-output-preview";
 import { ApprovalPicker } from "./ApprovalPicker";
 import {
@@ -21,6 +21,25 @@ interface ToolCallViewProps {
 	call: ToolCall;
 	result?: unknown;
 	showOutput?: boolean;
+}
+
+const textEncoder = new TextEncoder();
+
+function getUtf8ByteLength(value: string): number {
+	return textEncoder.encode(value).length;
+}
+
+function getSerializedInputByteLength(input: unknown): number | null {
+	if (input === undefined) return null;
+	if (typeof input === "string") return getUtf8ByteLength(input);
+
+	try {
+		const serialized = JSON.stringify(input);
+		if (typeof serialized !== "string") return null;
+		return getUtf8ByteLength(serialized);
+	} catch {
+		return null;
+	}
 }
 
 function ApprovalResultBadge({ result }: { result: "approved" | "denied" }) {
@@ -88,6 +107,15 @@ export function ToolCallView({ call, result, showOutput = true }: ToolCallViewPr
 		};
 	}, [call.input, result, call, layout, mcpMeta]);
 
+	const requestSize = useMemo(() => {
+		if (typeof call.inputText === "string" && call.inputText.length > 0) {
+			return formatBytes(getUtf8ByteLength(call.inputText));
+		}
+		const inputByteLength = getSerializedInputByteLength(call.input);
+		if (inputByteLength === null) return null;
+		return formatBytes(inputByteLength);
+	}, [call.inputText, call.input]);
+
 	const resultPreviewLines = useMemo(() => {
 		if (!showOutput) return null;
 		const formatted = layout.formatResult?.(result) ?? null;
@@ -121,7 +149,13 @@ export function ToolCallView({ call, result, showOutput = true }: ToolCallViewPr
 			paddingBottom={0}
 			width="100%"
 		>
-			<ToolHeaderView toolName={toolName} header={header} isRunning={isRunning} toolColor={toolColor} />
+			<ToolHeaderView
+				toolName={toolName}
+				header={header}
+				isRunning={isRunning}
+				toolColor={toolColor}
+				requestSize={requestSize}
+			/>
 
 			{customBody}
 

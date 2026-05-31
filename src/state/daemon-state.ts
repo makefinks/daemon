@@ -307,6 +307,7 @@ class DaemonStateManager {
 				{
 					onReasoningToken: (token) => this.emitEvent("reasoningToken", token),
 					onToolCallStart: (toolName, toolCallId) => this.emitEvent("toolInputStart", toolName, toolCallId),
+					onToolCallInputDelta: (toolCallId, delta) => this.emitEvent("toolInputDelta", toolCallId, delta),
 					onToolCall: (toolName, args, toolCallId) =>
 						this.emitEvent("toolInvocation", toolName, args, toolCallId),
 					onToolResult: (toolName, resultValue, toolCallId) =>
