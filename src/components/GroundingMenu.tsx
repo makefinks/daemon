@@ -6,6 +6,9 @@ import type { GroundedStatement, GroundingMap } from "../types";
 import { COLORS } from "../ui/constants";
 
 const QUOTE_INDENT = 2;
+const QUOTE_MARKER_WIDTH = 2;
+const QUOTE_SUFFIX_WIDTH = 2;
+const STATEMENT_MARKER_WIDTH = 2;
 
 const ITEM_PADDING_TOP = 1;
 const ITEM_PADDING_BOTTOM = 1;
@@ -79,8 +82,8 @@ export function GroundingMenu({
 		const cw = menuWidth - 6;
 		return {
 			contentWidth: cw,
-			statementWidth: cw - 2,
-			quoteWidth: cw - QUOTE_INDENT - 4,
+			statementWidth: cw - 2 - STATEMENT_MARKER_WIDTH,
+			quoteWidth: cw - 2 - QUOTE_INDENT - QUOTE_MARKER_WIDTH - QUOTE_SUFFIX_WIDTH,
 		};
 	}, [menuWidth]);
 
@@ -253,24 +256,40 @@ export function GroundingMenu({
 										marginBottom={1}
 									>
 										{statementLines.map((line, i) => (
-											<text key={`s-${i}`}>
-												<span fg={isSelected ? COLORS.DAEMON_TEXT : COLORS.USER_TEXT}>
-													{i === 0 && isSelected ? "▶ " : "  "}
-													{line}
-												</span>
-											</text>
+											<box key={`s-${i}`} flexDirection="row">
+												<box width={STATEMENT_MARKER_WIDTH}>
+													<text>
+														<span fg={isSelected ? COLORS.DAEMON_TEXT : COLORS.USER_TEXT}>
+															{i === 0 && isSelected ? "▶" : ""}
+														</span>
+													</text>
+												</box>
+												<text width={statementWidth}>
+													<span fg={isSelected ? COLORS.DAEMON_TEXT : COLORS.USER_TEXT}>{line}</span>
+												</text>
+											</box>
 										))}
 
 										{quoteLines.length > 0 && (
 											<box marginTop={1} marginLeft={QUOTE_INDENT} flexDirection="column">
 												{quoteLines.map((line, i) => (
-													<text key={`q-${i}`}>
-														<span fg={COLORS.REASONING_DIM}>
-															{i === 0 ? "❝ " : "  "}
-															{line}
-															{i === quoteLines.length - 1 ? " ❞" : ""}
-														</span>
-													</text>
+													<box key={`q-${i}`} flexDirection="row">
+														<box width={QUOTE_MARKER_WIDTH}>
+															<text>
+																<span fg={COLORS.REASONING_DIM}>{i === 0 ? "❝" : ""}</span>
+															</text>
+														</box>
+														<text width={quoteWidth}>
+															<span fg={COLORS.REASONING_DIM}>{line}</span>
+														</text>
+														<box width={QUOTE_SUFFIX_WIDTH}>
+															<text>
+																<span fg={COLORS.REASONING_DIM}>
+																	{i === quoteLines.length - 1 ? " ❞" : ""}
+																</span>
+															</text>
+														</box>
+													</box>
 												))}
 											</box>
 										)}
