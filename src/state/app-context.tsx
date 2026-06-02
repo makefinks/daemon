@@ -132,6 +132,7 @@ export interface SessionCallbacks {
 
 export interface GroundingCallbacks {
 	onGroundingSelect: (index: number) => void;
+	onGroundingCopyHighlight: (index: number) => void;
 	onGroundingIndexChange: (index: number) => void;
 }
 

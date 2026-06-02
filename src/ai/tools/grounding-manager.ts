@@ -16,7 +16,7 @@ const groundingSourceSchema = z.object({
 		.min(1)
 		.max(150)
 		.describe(
-			"A short phrase or subphrase (MUST BE COPIED VERBATIM) from the source text for deep-linking. Max 150 characters."
+			"Browser highlight anchor only. Must be one contiguous verbatim substring from the source text. Do not normalize whitespace or join text across line breaks; if evidence spans a line break, choose a shorter phrase from one side. Prefer 6-15 words that are likely unique. Avoid URLs unless the URL itself appears as a contiguous text segment. Max 150 characters."
 		),
 });
 

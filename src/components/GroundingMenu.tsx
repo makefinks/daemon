@@ -1,6 +1,6 @@
-import type { ScrollBoxRenderable } from "@opentui/core";
-import { useRenderer } from "@opentui/react";
-import { useEffect, useMemo, useRef } from "react";
+import type { KeyEvent, ScrollBoxRenderable } from "@opentui/core";
+import { useKeyboard, useRenderer } from "@opentui/react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useMenuKeyboard } from "../hooks/use-menu-keyboard";
 import type { GroundedStatement, GroundingMap } from "../types";
 import { COLORS } from "../ui/constants";
@@ -58,6 +58,7 @@ interface GroundingMenuProps {
 	initialIndex?: number;
 	onClose: () => void;
 	onSelect: (index: number) => void;
+	onCopyHighlight: (index: number) => void;
 	onSelectedIndexChange?: (index: number) => void;
 }
 
@@ -66,6 +67,7 @@ export function GroundingMenu({
 	initialIndex = 0,
 	onClose,
 	onSelect,
+	onCopyHighlight,
 	onSelectedIndexChange,
 }: GroundingMenuProps) {
 	const items = groundingMap.items;
@@ -91,6 +93,20 @@ export function GroundingMenu({
 		onClose,
 		onSelect,
 	});
+
+	const handleCopyKey = useCallback(
+		(key: KeyEvent) => {
+			if (key.eventType !== "press") return;
+			if (items.length === 0) return;
+			if (key.sequence !== "c" && key.sequence !== "C") return;
+
+			onCopyHighlight(selectedIndex);
+			key.preventDefault();
+		},
+		[items.length, onCopyHighlight, selectedIndex]
+	);
+
+	useKeyboard(handleCopyKey);
 
 	const layoutItems = useMemo<LayoutItem[]>(() => {
 		return items.map((item: GroundedStatement) => {
@@ -211,8 +227,12 @@ export function GroundingMenu({
 					<box flexGrow={1} />
 					<text>
 						<span fg={COLORS.USER_LABEL}>
-							<span fg={COLORS.DAEMON_LABEL}>ENTER</span> open · <span fg={COLORS.DAEMON_LABEL}>ESC</span>{" "}
-							close
+							<span fg={COLORS.DAEMON_LABEL}>ENTER</span>
+							<span> open · </span>
+							<span fg={COLORS.DAEMON_LABEL}>C</span>
+							<span> copy highlight · </span>
+							<span fg={COLORS.DAEMON_LABEL}>ESC</span>
+							<span> close</span>
 						</span>
 					</text>
 				</box>

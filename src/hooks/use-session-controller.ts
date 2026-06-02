@@ -23,6 +23,7 @@ export interface SessionControllerResult {
 	groundingSelectedIndex: number;
 	setGroundingSelectedIndex: (idx: number) => void;
 	onGroundingSelect: (idx: number) => void;
+	onGroundingCopyHighlight: (idx: number) => void;
 	onGroundingIndexChange: (idx: number) => void;
 }
 
@@ -53,6 +54,7 @@ export function useSessionController({
 		groundingSelectedIndex,
 		setGroundingSelectedIndex,
 		onGroundingSelect,
+		onGroundingCopyHighlight,
 		onGroundingIndexChange,
 	} = useGroundingMenuController({ sessionId: currentSessionId, latestGroundingMap });
 
@@ -74,6 +76,7 @@ export function useSessionController({
 		groundingSelectedIndex,
 		setGroundingSelectedIndex,
 		onGroundingSelect,
+		onGroundingCopyHighlight,
 		onGroundingIndexChange,
 	};
 }

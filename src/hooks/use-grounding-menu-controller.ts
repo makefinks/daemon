@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "@opentui-ui/toast/react";
 import type { GroundingMap } from "../types";
+import { writeClipboardText } from "../utils/clipboard";
 import { openUrlInBrowser } from "../utils/preferences";
 import { buildTextFragmentUrl } from "../utils/text-fragment";
 
@@ -41,11 +43,33 @@ export function useGroundingMenuController(params: {
 		[openGroundingSource]
 	);
 
+	const handleCopyHighlight = useCallback(
+		async (index: number) => {
+			if (!latestGroundingMap) return;
+			const item = latestGroundingMap.items[index];
+			const textFragment = item?.source.textFragment?.trim();
+
+			if (!textFragment) {
+				toast.info("No highlight available for this source");
+				return;
+			}
+
+			const didCopy = await writeClipboardText(textFragment);
+			if (didCopy) {
+				toast.info("Highlight copied to clipboard");
+			} else {
+				toast.warning("Could not copy highlight");
+			}
+		},
+		[latestGroundingMap]
+	);
+
 	return {
 		groundingInitialIndex: initialIndex,
 		groundingSelectedIndex: selectedIndex,
 		setGroundingSelectedIndex: setSelectedIndex,
 		onGroundingSelect: handleSelect,
+		onGroundingCopyHighlight: handleCopyHighlight,
 		onGroundingIndexChange: setSelectedIndex,
 	};
 }

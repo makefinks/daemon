@@ -227,8 +227,14 @@ Fetch multiple URLs in one call:
   - If answering from your training knowledge alone (no web tools used) -> grounding not needed.
 
   **Text fragment rules**
-  - \`source.textFragment\` must be a **contiguous verbatim substring** from the page content you were shown.
-  - Do not include newlines, bullets, numbering, or markdown/table artifacts.
+  - \`source.quote\` is human-readable evidence and may include multiple lines if the source text does.
+  - \`source.textFragment\` is a browser highlight anchor only.
+  - \`source.textFragment\` must be one **contiguous verbatim substring** from the page content you were shown.
+  - Do not normalize whitespace, rewrite punctuation, or join text across line breaks.
+  - If the evidence spans a line break, choose a shorter fragment from one side of the line break.
+  - Prefer 6-15 words that are likely unique on the page.
+  - Avoid URLs unless the URL itself appears as a contiguous text segment.
+  - Do not include newlines, bullets, numbering, or markdown/table artifacts in \`source.textFragment\`.
 `,
 	runBash: `
   ### 'runBash' (local shell)

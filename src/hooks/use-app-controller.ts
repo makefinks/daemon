@@ -564,6 +564,7 @@ export function useAppController({
 		},
 		groundingCallbacks: {
 			onGroundingSelect: session.onGroundingSelect,
+			onGroundingCopyHighlight: session.onGroundingCopyHighlight,
 			onGroundingIndexChange: session.onGroundingIndexChange,
 		},
 		onboardingCallbacks: {
