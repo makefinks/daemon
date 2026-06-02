@@ -16,8 +16,6 @@ const ITEM_MARGIN_BOTTOM = 1;
 const MARGIN_QUOTE = 1;
 const MARGIN_SOURCE = 1;
 const SOURCE_LINE_HEIGHT = 1;
-const DEBUG_FRAGMENTS =
-	process.env.DAEMON_DEBUG_FRAGMENTS === "true" || process.env.DAEMON_DEBUG_FRAGMENTS === "1";
 
 function truncateText(text: string, maxLen: number): string {
 	if (text.length <= maxLen) return text;
@@ -50,7 +48,7 @@ interface LayoutItem {
 	item: GroundedStatement;
 	statementLines: string[];
 	quoteLines: string[];
-	fragmentLines: string[];
+	textFragment: string;
 	sourceDomain: string;
 	height: number;
 }
@@ -106,10 +104,7 @@ export function GroundingMenu({
 				quoteLines[3] = truncateText(lastLine, quoteWidth - 3);
 			}
 
-			let fragmentLines: string[] = [];
-			if (DEBUG_FRAGMENTS && item.source.textFragment) {
-				fragmentLines = wrapText(`[Fragment] ${item.source.textFragment}`, quoteWidth);
-			}
+			const textFragment = item.source.textFragment?.trim() ?? "";
 
 			let sourceDomain = "";
 			try {
@@ -126,11 +121,6 @@ export function GroundingMenu({
 				h += quoteLines.length;
 			}
 
-			if (fragmentLines.length > 0) {
-				h += MARGIN_QUOTE;
-				h += fragmentLines.length;
-			}
-
 			h += MARGIN_SOURCE + SOURCE_LINE_HEIGHT;
 			h += ITEM_PADDING_BOTTOM;
 
@@ -138,7 +128,7 @@ export function GroundingMenu({
 				item,
 				statementLines,
 				quoteLines,
-				fragmentLines,
+				textFragment,
 				sourceDomain,
 				height: h,
 			};
@@ -245,7 +235,7 @@ export function GroundingMenu({
 						<box flexDirection="column" paddingBottom={1}>
 							{layoutItems.map((layout, idx) => {
 								const isSelected = idx === selectedIndex;
-								const { item, statementLines, quoteLines, fragmentLines, sourceDomain } = layout;
+								const { item, statementLines, quoteLines, textFragment, sourceDomain } = layout;
 
 								return (
 									<box
@@ -294,21 +284,17 @@ export function GroundingMenu({
 											</box>
 										)}
 
-										{fragmentLines.length > 0 && (
-											<box marginTop={1} marginLeft={QUOTE_INDENT} flexDirection="column">
-												{fragmentLines.map((line, i) => (
-													<text key={`f-${i}`}>
-														<span fg={COLORS.DAEMON_ERROR}>{line}</span>
-													</text>
-												))}
-											</box>
-										)}
-
 										<box marginTop={1} marginLeft={2}>
 											<text>
 												<span fg={isSelected ? COLORS.DAEMON_LABEL : COLORS.REASONING_DIM}>
 													[{idx + 1}] ↗ {sourceDomain}
 												</span>
+												{textFragment && (
+													<span fg={COLORS.REASONING_DIM}>
+														{" · highlight: "}
+														{truncateText(textFragment, 70)}
+													</span>
+												)}
 												{item.source.title && (
 													<span fg={COLORS.REASONING_DIM}>
 														{" · "}
