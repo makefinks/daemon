@@ -21,7 +21,7 @@ import { useSessionController } from "./use-session-controller";
 import { getDaemonManager } from "../state/daemon-state";
 import { deleteSession } from "../state/session-store";
 import { DaemonState } from "../types";
-import { STARTUP_BANNER_DURATION_MS, STARTUP_IDLE_CHROME_LEAD_MS } from "../ui/startup";
+import { STARTUP_MENU_FADE_DELAY_MS, STARTUP_MENU_FADE_DURATION_MS } from "../ui/startup";
 
 export interface AppControllerResult {
 	handleCopyOnSelectMouseUp: () => void;
@@ -35,6 +35,7 @@ export interface AppControllerResult {
 		showBanner: boolean;
 		animateBanner: boolean;
 		startupAnimationActive: boolean;
+		renderAvatar: boolean;
 	};
 	isListeningDim: boolean;
 	listeningDimTop: number;
@@ -65,6 +66,7 @@ export function useAppController({
 	// Track if this is initial app load for startup animation
 	const [isInitialLoad, setIsInitialLoad] = useState(true);
 	const [startupIntroDone, setStartupIntroDone] = useState(false);
+	const [startupMenuFadeProgress, setStartupMenuFadeProgress] = useState(0);
 
 	// Update terminal size state on resize to trigger re-render
 	useOnResize((width, height) => {
@@ -148,15 +150,7 @@ export function useAppController({
 	const onboardingComplete = preferencesLoaded && !bootstrap.onboardingActive;
 
 	useEffect(() => {
-		if (!onboardingComplete) {
-			setStartupIntroDone(false);
-			return;
-		}
-		// Delay idle UI chrome (status/hotkeys) so the banner can resolve first.
-		const delayMs = Math.max(0, STARTUP_BANNER_DURATION_MS - STARTUP_IDLE_CHROME_LEAD_MS);
-		setStartupIntroDone(false);
-		const t = setTimeout(() => setStartupIntroDone(true), delayMs);
-		return () => clearTimeout(t);
+		setStartupIntroDone(onboardingComplete);
 	}, [onboardingComplete]);
 
 	const daemon = useDaemonRuntimeController({
@@ -457,6 +451,34 @@ export function useAppController({
 
 	const startupAnimationActive = onboardingComplete && isInitialLoad;
 
+	useEffect(() => {
+		if (!startupAnimationActive || daemon.hasInteracted) {
+			setStartupMenuFadeProgress(1);
+			return;
+		}
+
+		setStartupMenuFadeProgress(0);
+		let interval: ReturnType<typeof setInterval> | null = null;
+		const timeout = setTimeout(() => {
+			const start = performance.now();
+			interval = setInterval(() => {
+				const progress = Math.min(1, (performance.now() - start) / STARTUP_MENU_FADE_DURATION_MS);
+				setStartupMenuFadeProgress(progress);
+				if (progress >= 1 && interval) {
+					clearInterval(interval);
+					interval = null;
+				}
+			}, 33);
+		}, STARTUP_MENU_FADE_DELAY_MS);
+
+		return () => {
+			clearTimeout(timeout);
+			if (interval) {
+				clearInterval(interval);
+			}
+		};
+	}, [daemon.hasInteracted, startupAnimationActive]);
+
 	const appContextValue = useAppContextBuilder({
 		menus: {
 			showDeviceMenu,
@@ -587,6 +609,7 @@ export function useAppController({
 				onboardingComplete && !daemon.hasInteracted && terminalSize.height >= 30 && terminalSize.width >= 100,
 			animateBanner: startupAnimationActive,
 			startupAnimationActive,
+			renderAvatar: preferencesLoaded,
 		},
 		isListeningDim,
 		listeningDimTop: statusBarHeight,
@@ -640,6 +663,7 @@ export function useAppController({
 			sessionTitle: sessionTitle ?? "",
 			isVoiceOutputEnabled: interactionMode === "voice",
 			startupIntroDone,
+			startupMenuFadeProgress,
 		},
 		appContextValue,
 		overlaysProps: {

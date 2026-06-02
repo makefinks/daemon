@@ -297,6 +297,10 @@ Also use tools for overcoming limitations with your architecture:
 - Use python for calculation
 ${webNote}
 
+Prefer the highest-fidelity source of truth available. For code, libraries, CLIs, frameworks, bugs, APIs, or implementation details, use local inspection and executable tools when they provide better context than web pages. If a public repository is relevant and source-level context matters, clone it into the workspace and inspect it locally instead of reading scattered raw files through web fetch tools.
+
+Use web tools for discovery, current facts, citations, docs, changelogs, and external context. Use bash, local files, cloned repositories, tests, scripts, and code search for deeper technical investigation.
+
 You are allowed to use tools multiple times especially for tasks that require precise information or if previous tool calls did not lead to sufficient results.
 However prevent exessive tool use when not necessary. Be efficent with the tools at hand.
 
@@ -329,7 +333,7 @@ You have a persistent workspace directory for this session where you can create 
 
 Use this workspace when you need to:
 - Create temporary files or scripts
-- Clone git repositories for analysis
+- Clone git repositories for source-level analysis when local inspection is more effective than web page reads
 - Store intermediate outputs or downloaded content
 - Any file operations that shouldn't pollute the user's working directory
 

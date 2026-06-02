@@ -16,6 +16,7 @@ export interface AvatarLayerProps {
 	showBanner?: boolean;
 	animateBanner?: boolean;
 	startupAnimationActive?: boolean;
+	renderAvatar?: boolean;
 }
 
 function AvatarLayerImpl(props: AvatarLayerProps) {
@@ -29,6 +30,7 @@ function AvatarLayerImpl(props: AvatarLayerProps) {
 		showBanner = false,
 		animateBanner = false,
 		startupAnimationActive = false,
+		renderAvatar = true,
 	} = props;
 
 	// Use glitchy banner animation when animateBanner is true
@@ -102,25 +104,27 @@ function AvatarLayerImpl(props: AvatarLayerProps) {
 					))}
 				</box>
 			)}
-			<box
-				position="absolute"
-				top={0}
-				left={0}
-				width="100%"
-				height="100%"
-				alignItems="center"
-				justifyContent="center"
-				zIndex={zIndex}
-			>
-				<daemon-avatar
-					id="daemon-avatar"
-					live
-					width={width}
-					height={height}
-					respectAlpha={true}
-					ref={handleAvatarRef}
-				/>
-			</box>
+			{renderAvatar && (
+				<box
+					position="absolute"
+					top={0}
+					left={0}
+					width="100%"
+					height="100%"
+					alignItems="center"
+					justifyContent="center"
+					zIndex={zIndex}
+				>
+					<daemon-avatar
+						id="daemon-avatar"
+						live
+						width={width}
+						height={height}
+						respectAlpha={true}
+						ref={handleAvatarRef}
+					/>
+				</box>
+			)}
 		</>
 	);
 }

@@ -81,6 +81,7 @@ export interface SpawnState {
 	progress: number;
 	elapsed: number;
 	complete: boolean;
+	settled: boolean;
 	glitchIntensity: number;
 }
 
@@ -183,6 +184,7 @@ export function createInitialState(): RigState {
 			progress: 0,
 			elapsed: 0,
 			complete: false,
+			settled: false,
 			glitchIntensity: 1,
 		},
 		theme: {

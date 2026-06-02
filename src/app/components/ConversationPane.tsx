@@ -79,6 +79,7 @@ export interface ConversationPaneProps {
 	sessionTitle?: string;
 	isVoiceOutputEnabled?: boolean;
 	startupIntroDone?: boolean;
+	startupMenuFadeProgress?: number;
 }
 
 function ConversationPaneImpl(props: ConversationPaneProps) {
@@ -101,6 +102,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 		sessionTitle,
 		isVoiceOutputEnabled,
 		startupIntroDone = true,
+		startupMenuFadeProgress = 1,
 	} = props;
 
 	const { conversationHistory, currentTranscription, currentContentBlocks } = conversation;
@@ -193,6 +195,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 					modelName={modelName}
 					sessionTitle={sessionTitle}
 					hasInteracted={hasInteracted}
+					fadeProgress={startupMenuFadeProgress}
 				/>
 			)}
 
@@ -212,6 +215,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 							statusColor={statusColor}
 							errorText={apiKeyMissingError || error}
 							modelName={modelName}
+							fadeProgress={startupMenuFadeProgress}
 						/>
 
 						{isVoiceOutputEnabled && daemonState === DaemonState.IDLE && (
