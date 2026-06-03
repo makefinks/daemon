@@ -4,7 +4,7 @@ import { getAppConfigDir } from "./preferences";
 
 const CONFIG_FILE = "config.json";
 
-export type McpTransportType = "http" | "sse";
+export type McpTransportType = "http" | "sse" | "stdio";
 
 export interface McpServerConfig {
 	/** Optional stable id. If omitted, derived from URL. */
@@ -12,7 +12,15 @@ export interface McpServerConfig {
 	/** Transport type for the MCP server. */
 	type: McpTransportType;
 	/** MCP endpoint URL. */
-	url: string;
+	url?: string;
+	/** Command to spawn for stdio MCP servers. */
+	command?: string;
+	/** Arguments passed to the stdio command. */
+	args?: string[];
+	/** Working directory for stdio MCP servers. */
+	cwd?: string;
+	/** Extra environment variables for stdio MCP servers. */
+	env?: Record<string, string>;
 }
 
 export interface ManualConfig {
@@ -78,10 +86,24 @@ function parseManualConfig(raw: Record<string, unknown>): ManualConfig {
 			if (typeof entry !== "object" || entry === null) continue;
 			const obj = entry as Record<string, unknown>;
 			const type = obj.type;
-			const url = obj.url;
-			if (type !== "http" && type !== "sse") continue;
-			if (typeof url !== "string" || url.trim().length === 0) continue;
+			if (type !== "http" && type !== "sse" && type !== "stdio") continue;
 			const id = typeof obj.id === "string" && obj.id.trim().length > 0 ? obj.id.trim() : undefined;
+
+			if (type === "stdio") {
+				const command =
+					typeof obj.command === "string" && obj.command.trim().length > 0 ? obj.command.trim() : null;
+				if (!command) continue;
+				const args = Array.isArray(obj.args)
+					? obj.args.filter((arg): arg is string => typeof arg === "string")
+					: undefined;
+				const cwd = typeof obj.cwd === "string" && obj.cwd.trim().length > 0 ? obj.cwd.trim() : undefined;
+				const env = parseStringRecord(obj.env);
+				servers.push({ id, type, command, args, cwd, env });
+				continue;
+			}
+
+			const url = obj.url;
+			if (typeof url !== "string" || url.trim().length === 0) continue;
 			servers.push({ id, type, url: url.trim() });
 		}
 		if (servers.length > 0) {
@@ -90,6 +112,15 @@ function parseManualConfig(raw: Record<string, unknown>): ManualConfig {
 	}
 
 	return config;
+}
+
+function parseStringRecord(raw: unknown): Record<string, string> | undefined {
+	if (typeof raw !== "object" || raw === null) return undefined;
+	const out: Record<string, string> = {};
+	for (const [key, value] of Object.entries(raw)) {
+		if (typeof value === "string") out[key] = value;
+	}
+	return out;
 }
 
 export function clearConfigCache(): void {

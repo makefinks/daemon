@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
 
-import { type MCPClient, createMCPClient } from "@ai-sdk/mcp";
+import { type MCPClient, type MCPClientConfig, createMCPClient } from "@ai-sdk/mcp";
+import { Experimental_StdioMCPTransport } from "@ai-sdk/mcp/mcp-stdio";
 import type { ToolSet } from "ai";
 
 import { type McpServerConfig, type McpTransportType, loadManualConfig } from "../../utils/config";
@@ -12,7 +13,8 @@ export type McpServerLifecycleStatus = "idle" | "loading" | "ready" | "error";
 export interface McpServerStatus {
 	id: string;
 	type: McpTransportType;
-	url: string;
+	url?: string;
+	command?: string;
 	status: McpServerLifecycleStatus;
 	toolCount: number;
 	error?: string;
@@ -27,7 +29,11 @@ export interface McpToolMeta {
 type McpServerResolvedConfig = {
 	id: string;
 	type: McpTransportType;
-	url: string;
+	url?: string;
+	command?: string;
+	args?: string[];
+	cwd?: string;
+	env?: Record<string, string>;
 };
 
 const MAX_TOOL_NAME_LENGTH = 64;
@@ -66,6 +72,11 @@ function ensureUniqueId(base: string, used: Set<string>): string {
 	}
 	used.add(candidate);
 	return candidate;
+}
+
+function deriveServerIdFromCommand(command: string): string {
+	const parts = command.split(/[\\/]/);
+	return parts[parts.length - 1] || "stdio";
 }
 
 function buildInternalToolName(serverId: string, toolName: string, used: Set<string>): string {
@@ -118,8 +129,25 @@ function resolveServerConfigs(raw: McpServerConfig[] | undefined): McpServerReso
 	for (const entry of raw) {
 		if (!entry || typeof entry !== "object") continue;
 		const type = entry.type;
+		if (type !== "http" && type !== "sse" && type !== "stdio") continue;
+
+		if (type === "stdio") {
+			const command = entry.command?.trim();
+			if (!command) continue;
+			const derivedId = entry.id?.trim() ? entry.id.trim() : deriveServerIdFromCommand(command);
+			out.push({
+				id: ensureUniqueId(derivedId, usedIds),
+				type,
+				command,
+				args: entry.args,
+				cwd: entry.cwd,
+				env: entry.env,
+			});
+			continue;
+		}
+
 		const url = entry.url;
-		if ((type !== "http" && type !== "sse") || typeof url !== "string" || url.trim().length === 0) continue;
+		if (typeof url !== "string" || url.trim().length === 0) continue;
 		const derivedId = entry.id?.trim() ? entry.id.trim() : deriveServerIdFromUrl(url.trim());
 		const id = derivedId
 			? ensureUniqueId(derivedId, usedIds)
@@ -128,6 +156,29 @@ function resolveServerConfigs(raw: McpServerConfig[] | undefined): McpServerReso
 	}
 
 	return out;
+}
+
+function createTransport(server: McpServerResolvedConfig): MCPClientConfig["transport"] {
+	if (server.type === "stdio") {
+		if (!server.command) {
+			throw new Error("stdio MCP server is missing command");
+		}
+		return new Experimental_StdioMCPTransport({
+			command: server.command,
+			args: server.args,
+			cwd: server.cwd,
+			env: server.env,
+		});
+	}
+
+	if (!server.url) {
+		throw new Error(`${server.type} MCP server is missing url`);
+	}
+
+	return {
+		type: server.type,
+		url: server.url,
+	};
 }
 
 class McpManager extends EventEmitter {
@@ -212,6 +263,7 @@ class McpManager extends EventEmitter {
 			id: server.id,
 			type: server.type,
 			url: server.url,
+			command: server.command,
 			status: "loading" as const,
 			toolCount: 0,
 		}));
@@ -243,6 +295,7 @@ class McpManager extends EventEmitter {
 			id: server.id,
 			type: server.type,
 			url: server.url,
+			command: server.command,
 			status: "loading",
 			toolCount: 0,
 		});
@@ -250,10 +303,7 @@ class McpManager extends EventEmitter {
 		let client: MCPClient | null = null;
 		try {
 			client = await createMCPClient({
-				transport: {
-					type: server.type,
-					url: server.url,
-				},
+				transport: createTransport(server),
 			});
 
 			const tools = await client.tools();
@@ -288,6 +338,7 @@ class McpManager extends EventEmitter {
 				id: server.id,
 				type: server.type,
 				url: server.url,
+				command: server.command,
 				status: "ready",
 				toolCount: internalNames.size,
 			});
@@ -295,6 +346,7 @@ class McpManager extends EventEmitter {
 				id: server.id,
 				type: server.type,
 				url: server.url,
+				command: server.command,
 				toolCount: internalNames.size,
 				ms: Date.now() - startedAt,
 			});
@@ -306,6 +358,7 @@ class McpManager extends EventEmitter {
 				id: server.id,
 				type: server.type,
 				url: server.url,
+				command: server.command,
 				status: "error",
 				toolCount: 0,
 				error: err.message,
@@ -314,6 +367,7 @@ class McpManager extends EventEmitter {
 				id: server.id,
 				type: server.type,
 				url: server.url,
+				command: server.command,
 				message: err.message,
 			});
 			if (client) {
