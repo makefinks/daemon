@@ -20,6 +20,8 @@ import type { LlmProviderAdapter, ProviderStreamRequest, ProviderStreamResult } 
 const openrouter = createOpenRouter();
 const MAX_AGENT_STEPS = 100;
 
+let streamRunCounter = 0;
+
 function normalizeStreamError(error: unknown): Error {
 	if (error instanceof Error) return error;
 	if (error && typeof error === "object" && "message" in error) {
@@ -27,6 +29,22 @@ function normalizeStreamError(error: unknown): Error {
 		if (typeof message === "string") return new Error(message);
 	}
 	return new Error(String(error));
+}
+
+function summarizeValue(value: unknown): Record<string, unknown> {
+	const type = Array.isArray(value) ? "array" : typeof value;
+	let jsonLength: number | undefined;
+	let preview: string | undefined;
+
+	try {
+		const json = JSON.stringify(value);
+		jsonLength = json.length;
+		preview = json.length > 500 ? `${json.slice(0, 500)}...` : json;
+	} catch {
+		preview = String(value).slice(0, 500);
+	}
+
+	return { type, jsonLength, preview };
 }
 
 async function createDaemonAgent(
@@ -82,14 +100,33 @@ async function streamOpenRouterResponse(
 
 	const agent = await createDaemonAgent(interactionMode, reasoningEffort, memoryInjection);
 
+	const streamRunId = ++streamRunCounter;
 	let currentMessages = messages;
 	let fullText = "";
 	let streamError: Error | null = null;
 	let allResponseMessages: ModelMessage[] = [];
+	let stepIndex = 0;
+
+	debug.info("agent-stream-start", {
+		streamRunId,
+		model: getResponseModel(),
+		provider: "openrouter",
+		conversationMessages: conversationHistory.length,
+		userMessageLength: userMessage.length,
+		interactionMode,
+		reasoningEffort,
+	});
 
 	while (true) {
+		stepIndex += 1;
 		const stream = await agent.stream({
 			messages: currentMessages,
+		});
+
+		debug.info("agent-stream-step-start", {
+			streamRunId,
+			stepIndex,
+			messageCount: currentMessages.length,
 		});
 
 		const pendingApprovals: ToolApprovalRequest[] = [];
@@ -115,19 +152,41 @@ async function streamOpenRouterResponse(
 				fullText += part.text;
 				callbacks.onToken?.(part.text);
 			} else if (part.type === "tool-input-start") {
+				toolDebug.info("tool-input-start", {
+					streamRunId,
+					stepIndex,
+					toolName: part.toolName,
+					toolCallId: part.id,
+				});
 				callbacks.onToolCallStart?.(part.toolName, part.id);
 			} else if (part.type === "tool-input-delta") {
 				callbacks.onToolCallInputDelta?.(part.id, part.delta);
 			} else if (part.type === "tool-call") {
+				toolDebug.info("tool-call", {
+					streamRunId,
+					stepIndex,
+					toolName: part.toolName,
+					toolCallId: part.toolCallId,
+					input: summarizeValue(part.input),
+				});
 				callbacks.onToolCall?.(part.toolName, part.input, part.toolCallId);
 			} else if (part.type === "tool-result") {
+				toolDebug.info("tool-result", {
+					streamRunId,
+					stepIndex,
+					toolName: part.toolName,
+					toolCallId: part.toolCallId,
+					output: summarizeValue(part.output),
+				});
 				callbacks.onToolResult?.(part.toolName, part.output, part.toolCallId);
 			} else if (part.type === "tool-error") {
 				const errorMessage = part.error instanceof Error ? part.error.message : String(part.error);
 				toolDebug.error("tool-error", {
+					streamRunId,
+					stepIndex,
 					toolName: part.toolName,
 					toolCallId: part.toolCallId,
-					input: part.input,
+					input: summarizeValue(part.input),
 					error: errorMessage,
 				});
 				callbacks.onToolResult?.(part.toolName, { error: errorMessage, input: part.input }, part.toolCallId);
@@ -157,13 +216,44 @@ async function streamOpenRouterResponse(
 		}
 
 		if (streamError) {
+			debug.error("agent-stream-step-failed", {
+				streamRunId,
+				stepIndex,
+				message: streamError.message,
+				fullTextLength: fullText.length,
+			});
 			return null;
 		}
 
-		const rawResponseMessages = await stream.response.then((response) => response.messages);
+		let rawResponseMessages: ModelMessage[];
+		try {
+			rawResponseMessages = await stream.response.then((response) => response.messages);
+		} catch (error) {
+			const err = normalizeStreamError(error);
+			streamError = err;
+			debug.error("agent-stream-response-error", {
+				streamRunId,
+				stepIndex,
+				message: err.message,
+				stack: err.stack,
+				fullTextLength: fullText.length,
+				responseMessageCount: allResponseMessages.length,
+			});
+			callbacks.onError?.(err);
+			return null;
+		}
 		const responseMessages = sanitizeMessagesForInput(rawResponseMessages);
 		allResponseMessages = [...allResponseMessages, ...responseMessages];
 		currentMessages = [...currentMessages, ...responseMessages];
+		debug.info("agent-stream-step-complete", {
+			streamRunId,
+			stepIndex,
+			rawResponseMessages: rawResponseMessages.length,
+			responseMessages: responseMessages.length,
+			allResponseMessages: allResponseMessages.length,
+			fullTextLength: fullText.length,
+			pendingApprovals: pendingApprovals.length,
+		});
 
 		if (pendingApprovals.length > 0 && callbacks.onAwaitingApprovals) {
 			const { toolMessage } = await coordinateToolApprovals({
@@ -190,6 +280,14 @@ async function streamOpenRouterResponse(
 		callbacks.onError?.(new Error("Model returned empty response. Check API key and model availability."));
 		return null;
 	}
+
+	debug.info("agent-stream-complete", {
+		streamRunId,
+		steps: stepIndex,
+		fullTextLength: fullText.length,
+		responseMessages: allResponseMessages.length,
+		finalTextLength: finalText.length,
+	});
 
 	return {
 		fullText,

@@ -371,7 +371,16 @@ class DaemonStateManager {
 				turnId,
 				message: err.message,
 				stack: err.stack,
+				partialResponseLength: this._response.length,
 			});
+			if (this._state === DaemonState.RESPONDING) {
+				messageDebug.info("agent-turn-error-finalizing-partial", {
+					turnId,
+					message: err.message,
+					partialResponse: this._response,
+				});
+				this.emitEvent("cancelled");
+			}
 			this.emitEvent("error", err);
 			this.setState(DaemonState.IDLE);
 		}
