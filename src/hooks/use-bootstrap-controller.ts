@@ -1,12 +1,13 @@
 import type { TextareaRenderable } from "@opentui/core";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { MutableRefObject } from "react";
 
 import { useAppAudioDevicesLoader } from "./use-app-audio-devices-loader";
 import { useVoiceDependenciesNotification } from "./use-voice-dependencies-notification";
 
 import type { AppPreferences, AudioDevice, OnboardingStep } from "../types";
-import { getSoxInstallHint, isSoxAvailable } from "../voice/audio-recorder";
+import { detectVoiceDependencies } from "../utils/voice-dependencies";
+import { getSoxInstallHint } from "../voice/audio-recorder";
 
 export interface BootstrapControllerResult {
 	onboardingActive: boolean;
@@ -60,8 +61,8 @@ export function useBootstrapController({
 	const [currentOutputDevice, setCurrentOutputDevice] = useState<string | undefined>(undefined);
 	const [deviceLoadTimedOut, setDeviceLoadTimedOut] = useState(false);
 
-	const soxAvailable = useMemo(() => isSoxAvailable(), []);
-	const soxInstallHint = useMemo(() => getSoxInstallHint(), []);
+	const [soxAvailable, setSoxAvailable] = useState(true);
+	const [soxInstallHint, setSoxInstallHint] = useState(() => getSoxInstallHint());
 
 	const apiKeyTextareaRef = useRef<TextareaRenderable | null>(null);
 
@@ -73,6 +74,26 @@ export function useBootstrapController({
 		setCurrentDevice,
 		setDeviceLoadTimedOut,
 	});
+
+	useEffect(() => {
+		let cancelled = false;
+
+		void detectVoiceDependencies()
+			.then((dependencies) => {
+				if (cancelled) return;
+				setSoxAvailable(dependencies.sox.available);
+				if (dependencies.sox.hint) {
+					setSoxInstallHint(dependencies.sox.hint);
+				}
+			})
+			.catch(() => {
+				if (!cancelled) setSoxAvailable(false);
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	}, []);
 
 	return {
 		onboardingActive,

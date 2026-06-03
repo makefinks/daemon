@@ -1,26 +1,29 @@
 #!/usr/bin/env node
 
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const args = process.argv.slice(2);
 const bunCmd = process.platform === "win32" ? "bun.exe" : "bun";
-const bunCheck = spawnSync(bunCmd, ["--version"], { stdio: "ignore" });
-
-if (bunCheck.error || bunCheck.status !== 0) {
-	console.error("DAEMON requires Bun. Install it from https://bun.sh and try again.");
-	process.exit(1);
-}
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const entry = path.join(packageRoot, "src", "index.tsx");
-const result = spawnSync(bunCmd, [entry, ...args], { stdio: "inherit" });
+const child = spawn(bunCmd, [entry, ...args], { stdio: "inherit" });
 
-if (result.error) {
-	const error = result.error instanceof Error ? result.error : new Error(String(result.error));
-	console.error(error.message);
+child.once("error", (error) => {
+	if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+		console.error("DAEMON requires Bun. Install it from https://bun.sh and try again.");
+	} else {
+		console.error(error.message);
+	}
 	process.exit(1);
-}
+});
 
-process.exit(result.status ?? 0);
+child.once("exit", (code, signal) => {
+	if (signal) {
+		process.kill(process.pid, signal);
+		return;
+	}
+	process.exit(code ?? 0);
+});
