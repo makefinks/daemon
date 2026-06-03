@@ -17,6 +17,7 @@ export interface IntensityState {
 export interface AudioState {
 	current: number;
 	target: number;
+	sustain: number;
 	surge: number;
 	wavePhase: number;
 }
@@ -131,6 +132,7 @@ export function createInitialState(): RigState {
 		audio: {
 			current: 0,
 			target: 0,
+			sustain: 0,
 			surge: 0,
 			wavePhase: 0,
 		},

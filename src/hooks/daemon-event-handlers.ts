@@ -243,7 +243,8 @@ export function createTtsLevelHandler(refs: EventHandlerRefs, managerState: () =
 		const avatar = refs.avatarRef.current;
 		if (!avatar) return;
 		if (managerState() !== DaemonState.SPEAKING) return;
-		avatar.setAudioLevel(level);
+		const boosted = Math.min(1, Math.pow(level, 0.85) * 1.15);
+		avatar.setAudioLevel(boosted);
 	};
 }
 

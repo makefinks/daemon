@@ -3,6 +3,15 @@ import { EventEmitter } from "node:events";
 import { OpenAITTSStream, type OpenAITTSOptions } from "./openai-tts-stream";
 import { debug } from "../../utils/debug-logger";
 
+const PCM_SAMPLE_RATE = 24000;
+const PCM_BYTES_PER_SAMPLE = 2;
+const AUDIO_LEVEL_TICK_MS = 16;
+
+interface AudioLevelFrame {
+	level: number;
+	durationMs: number;
+}
+
 export interface TTSPlayerOptions {
 	openai?: OpenAITTSOptions;
 	outputDeviceName?: string;
@@ -25,6 +34,9 @@ export class TTSPlayer extends EventEmitter {
 	private abortController: AbortController | null = null;
 	private audioLevelSmoothed = 0;
 	private audioLevelLastEmitMs = 0;
+	private audioLevelTimer: ReturnType<typeof setInterval> | null = null;
+	private audioLevelQueue: AudioLevelFrame[] = [];
+	private audioLevelFrameRemainingMs = 0;
 
 	constructor(options: TTSPlayerOptions = {}) {
 		super();
@@ -46,13 +58,13 @@ export class TTSPlayer extends EventEmitter {
 		return this._isSpeaking;
 	}
 
-	private emitAudioLevelFromChunk(chunk: Buffer): void {
-		if (chunk.length < 2) return;
+	private computeAudioLevelFromChunk(chunk: Buffer): AudioLevelFrame | null {
+		if (chunk.length < PCM_BYTES_PER_SAMPLE) return null;
 
 		let samples = 0;
 		let sumSquares = 0;
 
-		const sampleCount = Math.floor(chunk.length / 2);
+		const sampleCount = Math.floor(chunk.length / PCM_BYTES_PER_SAMPLE);
 		const view = new Int16Array(chunk.buffer, chunk.byteOffset, sampleCount);
 		for (let i = 0; i < view.length; i++) {
 			const v = view[i] ?? 0;
@@ -60,22 +72,77 @@ export class TTSPlayer extends EventEmitter {
 			sumSquares += f * f;
 			samples++;
 		}
-		if (!samples) return;
+		if (!samples) return null;
 
 		const rms = Math.sqrt(sumSquares / samples);
-		const noiseFloor = 0.01;
-		const gain = 8;
+		const noiseFloor = 0.004;
+		const gain = 18;
 		const rawLevel = Math.max(0, (rms - noiseFloor) * gain);
 		const level = Math.min(1, rawLevel);
+		const durationMs = (samples / PCM_SAMPLE_RATE) * 1000;
+
+		return { level, durationMs };
+	}
+
+	private startAudioLevelTimer(): void {
+		if (this.audioLevelTimer) return;
+		this.audioLevelLastEmitMs = Date.now();
+		this.audioLevelTimer = setInterval(() => this.emitNextPlaybackAudioLevel(), AUDIO_LEVEL_TICK_MS);
+	}
+
+	private stopAudioLevelTimer(): void {
+		if (this.audioLevelTimer) {
+			clearInterval(this.audioLevelTimer);
+			this.audioLevelTimer = null;
+		}
+		this.audioLevelQueue = [];
+		this.audioLevelFrameRemainingMs = 0;
+		this.audioLevelSmoothed = 0;
+	}
+
+	private emitNextPlaybackAudioLevel(): void {
+		const now = Date.now();
+		let elapsedMs = now - this.audioLevelLastEmitMs;
+		this.audioLevelLastEmitMs = now;
+		if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) elapsedMs = AUDIO_LEVEL_TICK_MS;
+		elapsedMs = Math.min(100, elapsedMs);
+
+		let weightedLevel = 0;
+		let consumedMs = 0;
+
+		while (elapsedMs > 0) {
+			const frame = this.audioLevelQueue[0];
+			if (!frame) break;
+
+			if (this.audioLevelFrameRemainingMs <= 0) {
+				this.audioLevelFrameRemainingMs = frame.durationMs;
+			}
+
+			const takeMs = Math.min(elapsedMs, this.audioLevelFrameRemainingMs);
+			weightedLevel += frame.level * takeMs;
+			consumedMs += takeMs;
+			elapsedMs -= takeMs;
+			this.audioLevelFrameRemainingMs -= takeMs;
+
+			if (this.audioLevelFrameRemainingMs <= 0.001) {
+				this.audioLevelQueue.shift();
+				this.audioLevelFrameRemainingMs = 0;
+			}
+		}
+
+		const level = consumedMs > 0 ? weightedLevel / consumedMs : 0;
 
 		const prev = this.audioLevelSmoothed;
-		const alpha = level > prev ? 0.55 : 0.15;
+		const alpha = level > prev ? 0.7 : 0.25;
 		this.audioLevelSmoothed = prev + (level - prev) * alpha;
-
-		const now = Date.now();
-		if (now - this.audioLevelLastEmitMs < 16) return;
-		this.audioLevelLastEmitMs = now;
 		this.emit("audioLevel", this.audioLevelSmoothed);
+	}
+
+	private enqueueAudioLevelFromChunk(chunk: Buffer): void {
+		const frame = this.computeAudioLevelFromChunk(chunk);
+		if (!frame || frame.durationMs <= 0) return;
+		this.audioLevelQueue.push(frame);
+		this.startAudioLevelTimer();
 	}
 
 	async speak(text: string, signal?: AbortSignal): Promise<void> {
@@ -85,8 +152,7 @@ export class TTSPlayer extends EventEmitter {
 
 		this._isSpeaking = true;
 		this.audioChunksReceived = 0;
-		this.audioLevelSmoothed = 0;
-		this.audioLevelLastEmitMs = 0;
+		this.stopAudioLevelTimer();
 		this.emit("speaking");
 
 		this.abortController = new AbortController();
@@ -102,6 +168,7 @@ export class TTSPlayer extends EventEmitter {
 		return new Promise<void>((resolve, reject) => {
 			const cleanup = () => {
 				this._isSpeaking = false;
+				this.stopAudioLevelTimer();
 				this.emit("done");
 				resolve();
 			};
@@ -148,7 +215,7 @@ export class TTSPlayer extends EventEmitter {
 					if (this.options.debug && this.audioChunksReceived === 1) {
 						debug.info("tts-player-first-audio-chunk");
 					}
-					this.emitAudioLevelFromChunk(chunk);
+					this.enqueueAudioLevelFromChunk(chunk);
 					if (this.player?.stdin?.writable) {
 						this.player.stdin.write(chunk);
 					}
@@ -214,6 +281,7 @@ export class TTSPlayer extends EventEmitter {
 			}
 			this.player = null;
 		}
+		this.stopAudioLevelTimer();
 
 		if (this._isSpeaking) {
 			this._isSpeaking = false;
