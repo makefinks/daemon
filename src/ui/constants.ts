@@ -10,7 +10,7 @@ export const STATUS_TEXT: Record<DaemonState, string> = {
 	[DaemonState.IDLE]: "SPACE speak · SHIFT+TAB type · M models · S settings · L sessions · ? hotkeys",
 	[DaemonState.LISTENING]: "LISTENING · SPACE stop · ESC cancel",
 	[DaemonState.TRANSCRIBING]: "PROCESSING VOICE... · ESC cancel",
-	[DaemonState.RESPONDING]: "DAEMON SPEAKS... · ESC cancel · T reasoning",
+	[DaemonState.RESPONDING]: "DAEMON SPEAKS... · ESC cancel · R reasoning",
 	[DaemonState.SPEAKING]: "DAEMON SPEAKS... · ESC stop",
 	[DaemonState.TYPING]: "TYPE MODE · ENTER submit · ESC cancel",
 };
