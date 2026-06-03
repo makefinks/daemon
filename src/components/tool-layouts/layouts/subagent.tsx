@@ -69,7 +69,6 @@ function abbreviateToolName(name: string): string {
 	const abbreviations: Record<string, string> = {
 		webSearch: "search",
 		fetchUrls: "fetch",
-		renderUrl: "render",
 		runBash: "bash",
 		todoManager: "todo",
 		readFile: "read",
@@ -92,9 +91,9 @@ function formatStepLabel(step: { toolName: string; input?: unknown }): string {
 		return toolLabel;
 	}
 
-	if (step.toolName === "fetchUrls" || step.toolName === "renderUrl") {
+	if (step.toolName === "fetchUrls") {
 		const url = extractUrl(step.input);
-		if (step.toolName === "fetchUrls" && isRecord(step.input) && Array.isArray(step.input.requests)) {
+		if (isRecord(step.input) && Array.isArray(step.input.requests)) {
 			const count = step.input.requests.filter(
 				(item: unknown) => isRecord(item) && typeof item.url === "string"
 			).length;
@@ -103,9 +102,6 @@ function formatStepLabel(step: { toolName: string; input?: unknown }): string {
 				return `${toolLabel}: ${truncateLabel(url, MAX_URL_LENGTH)}${suffix}`;
 			}
 			return toolLabel;
-		}
-		if (url) {
-			return `${toolLabel}: ${truncateLabel(url, MAX_URL_LENGTH)}`;
 		}
 		return toolLabel;
 	}

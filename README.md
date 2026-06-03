@@ -94,8 +94,8 @@ DAEMON can persist user-specific facts across sessions using [mem0](https://gith
 | Web Search | Exa-based search and fetch for grounded, up-to-date info. |
 | Grounding | Text-fragment grounding with a dedicated UI. |
 | Bash Execution | Bash integration with approval scoping for potentially dangerous commands. |
-| JS Page Rendering | Optional Playwright renderer for SPA content. |
-| MCP | Model Context Protocol tools  |
+| Browser Tools | Built-in Chrome DevTools MCP for rendered pages, browser inspection, and frontend debugging. |
+| MCP | Model Context Protocol tools. |
 
 ## 📦 Install (npm)
 
@@ -157,23 +157,11 @@ sudo dnf install sox sox-plugins-freeworld
 sudo pacman -S sox
 ```
 
-## 🧩 Optional: JS-rendered page support (`renderUrl`)
-
-DAEMON defaults to Exa-based `fetchUrls` for retrieving web page text. For JavaScript-heavy sites (SPAs) where `fetchUrls` returns "shell-only" content, DAEMON can optionally use a local Playwright Chromium renderer via the `renderUrl` tool.
-
-This feature is **optional** and intentionally not installed by default (browser downloads are large). The render tool is not available to DAEMON without the installation below.
-
-```bash
-# 1) Install Playwright globally
-npm i -g playwright
-
-# 2) Install Chromium browser binaries
-npx playwright install chromium
-```
 ## 🔌 MCP server setup (Model Context Protocol)
 
 DAEMON can load MCP tools from external servers and expose them to the agent at runtime.
-MCP servers are configured via a local config file.
+Chrome DevTools MCP ships as a built-in default server and can be toggled from the **Tools** menu.
+Additional MCP servers are configured via a local config file.
 
 Default config path:
 
@@ -192,6 +180,12 @@ Example config:
     {
       "type": "sse",
       "url": "https://example.com/mcp/sse"
+    },
+    {
+      "id": "custom-stdio",
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "some-mcp-server@latest"]
     }
   ]
 }
@@ -199,7 +193,10 @@ Example config:
 
 Notes:
 
-- `type` must be `http` or `sse`.
-- `url` is the MCP endpoint URL for the server.
+- The built-in Chrome DevTools server uses `npx -y chrome-devtools-mcp@latest` and launches Chrome with US English locale headers by default.
+- `type` must be `http`, `sse`, or `stdio`.
+- `url` is required for `http` and `sse` servers.
+- `command` is required for `stdio` servers, and `args`, `cwd`, and `env` are optional.
 - `id` is optional; if omitted, DAEMON derives one from the host.
-- MCP server status and tools appear in the **Tools** menu once configured.
+- Defining a server with `id: "chrome-devtools"` overrides the built-in Chrome DevTools config.
+- MCP server status, source, and enablement appear in the **Tools** menu.

@@ -294,12 +294,13 @@ export type ToolToggleId =
 	| "runBash"
 	| "webSearch"
 	| "fetchUrls"
-	| "renderUrl"
 	| "todoManager"
 	| "groundingManager"
 	| "subagent";
 
 export type ToolToggles = Record<ToolToggleId, boolean>;
+
+export type McpServerToggles = Record<string, boolean>;
 
 export const DEFAULT_TOOL_TOGGLES: ToolToggles = {
 	readFile: true,
@@ -307,7 +308,6 @@ export const DEFAULT_TOOL_TOGGLES: ToolToggles = {
 	runBash: true,
 	webSearch: true,
 	fetchUrls: true,
-	renderUrl: true,
 	todoManager: true,
 	groundingManager: true,
 	subagent: true,
@@ -350,6 +350,8 @@ export interface AppPreferences {
 	bashApprovalLevel?: BashApprovalLevel;
 	/** Tool toggles (on/off) */
 	toolToggles?: ToolToggles;
+	/** MCP server toggles by server id (missing means enabled) */
+	mcpServerToggles?: McpServerToggles;
 	/** Recent user inputs for up/down history navigation (max 20) */
 	inputHistory?: string[];
 }

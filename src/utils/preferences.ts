@@ -137,6 +137,16 @@ export function parsePreferences(raw: unknown): AppPreferences | null {
 		}
 		prefs.toolToggles = next as AppPreferences["toolToggles"];
 	}
+	if (isRecord(raw.mcpServerToggles)) {
+		const record = raw.mcpServerToggles;
+		const next: Record<string, boolean> = {};
+		for (const [k, v] of Object.entries(record)) {
+			if (typeof v === "boolean") {
+				next[k] = v;
+			}
+		}
+		prefs.mcpServerToggles = next;
+	}
 	if (
 		raw.bashApprovalLevel === "none" ||
 		raw.bashApprovalLevel === "dangerous" ||

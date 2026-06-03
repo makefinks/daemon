@@ -13,7 +13,6 @@ export interface ToolAvailability {
 	runBash: boolean;
 	webSearch: boolean;
 	fetchUrls: boolean;
-	renderUrl: boolean;
 	todoManager: boolean;
 	groundingManager: boolean;
 	subagent: boolean;
@@ -23,6 +22,7 @@ export interface SystemPromptOptions {
 	mode?: InteractionMode;
 	currentDate?: Date;
 	toolAvailability?: Partial<ToolAvailability>;
+	mcpToolGuidance?: string[];
 	workspacePath?: string;
 	memoryInjection?: string;
 }
@@ -46,12 +46,13 @@ export function buildDaemonSystemPrompt(options: SystemPromptOptions = {}): stri
 		mode = "text",
 		currentDate = new Date(),
 		toolAvailability,
+		mcpToolGuidance,
 		workspacePath,
 		memoryInjection,
 	} = options;
 	const currentDateString = formatLocalIsoDate(currentDate);
 	const availability = normalizeToolAvailability(toolAvailability);
-	const toolDefinitions = buildToolDefinitions(availability);
+	const toolDefinitions = buildToolDefinitions(availability, mcpToolGuidance);
 	const workspaceSection = workspacePath ? buildWorkspaceSection(workspacePath) : "";
 	const memorySection = memoryInjection ? buildMemorySection(memoryInjection) : "";
 
@@ -69,7 +70,6 @@ function normalizeToolAvailability(toolAvailability?: Partial<ToolAvailability>)
 		runBash: toolAvailability?.runBash ?? true,
 		webSearch: toolAvailability?.webSearch ?? true,
 		fetchUrls: toolAvailability?.fetchUrls ?? true,
-		renderUrl: toolAvailability?.renderUrl ?? true,
 		todoManager: toolAvailability?.todoManager ?? true,
 		groundingManager: toolAvailability?.groundingManager ?? true,
 		subagent: toolAvailability?.subagent ?? true,
@@ -198,18 +198,6 @@ Fetch multiple URLs in one call:
 </tool-input>
 </multi-url-example>
 `,
-	renderUrl: `
-  ### 'renderUrl'
-  Use this tool to extract content from **JavaScript-rendered** pages (SPAs) when \`fetchUrls\` returns suspiciously short, shell-like, or nav-only text.
-
-  Rules:
-  - Prefer \`fetchUrls\` first (faster, cheaper).
-  - If the page appears JS-heavy or fetchUrls returns "shell-only" text, use \`renderUrl\` to render locally and extract the text.
-
-  Pagination mirrors \`fetchUrls\`:
-  - Start with \`lineLimit\` (default 80) from the start.
-  - For pagination, provide both \`lineOffset\` and \`lineLimit\`.
-`,
 	groundingManager: `
   ### 'groundingManager' (source attribution)
   Manages a list of grounded statements (facts supported by sources).
@@ -271,18 +259,28 @@ Fetch multiple URLs in one call:
 `,
 } as const;
 
-function buildToolDefinitions(availability: ToolAvailability): string {
+function buildMcpToolGuidanceSection(guidance: string[] | undefined): string {
+	const blocks = (guidance ?? []).map((block) => block.trim()).filter((block) => block.length > 0);
+	if (blocks.length === 0) return "";
+
+	return `
+## Default MCP Tools
+${blocks.join("\n\n")}
+`;
+}
+
+function buildToolDefinitions(availability: ToolAvailability, mcpToolGuidance?: string[]): string {
 	const blocks: string[] = [];
 
 	if (availability.todoManager) blocks.push(TOOL_SECTIONS.todoManager);
 	if (availability.webSearch) blocks.push(TOOL_SECTIONS.webSearch);
 	if (availability.fetchUrls) blocks.push(TOOL_SECTIONS.fetchUrls);
-	if (availability.renderUrl) blocks.push(TOOL_SECTIONS.renderUrl);
 	if (availability.groundingManager) blocks.push(TOOL_SECTIONS.groundingManager);
 	if (availability.runBash) blocks.push(TOOL_SECTIONS.runBash);
 	if (availability.readFile) blocks.push(TOOL_SECTIONS.readFile);
 	if (availability.writeFile) blocks.push(TOOL_SECTIONS.writeFile);
 	if (availability.subagent) blocks.push(TOOL_SECTIONS.subagent);
+	const mcpGuidanceSection = buildMcpToolGuidanceSection(mcpToolGuidance);
 
 	const webNote =
 		availability.webSearch || availability.fetchUrls
@@ -308,6 +306,7 @@ Here is an overview of your tools:
 <tool_overview>
 ${blocks.join("\n")}
 </tool_overview>
+${mcpGuidanceSection}
 `;
 }
 

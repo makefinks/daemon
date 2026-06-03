@@ -81,6 +81,21 @@ describe("parsePreferences", () => {
 		expect(result?.updatedAt).toBe("2024-01-02T00:00:00.000Z");
 	});
 
+	it("includes MCP server toggles", () => {
+		const result = parsePreferences({
+			mcpServerToggles: {
+				"chrome-devtools": false,
+				"local-mcp": true,
+				invalid: "yes",
+			},
+		});
+
+		expect(result?.mcpServerToggles).toEqual({
+			"chrome-devtools": false,
+			"local-mcp": true,
+		});
+	});
+
 	describe("optional fields", () => {
 		describe("modelProvider", () => {
 			it("includes valid modelProvider values", () => {

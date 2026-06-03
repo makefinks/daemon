@@ -129,7 +129,7 @@ export function deriveUrlMenuItems(params: {
 
 	for (const [blockIndex, block] of allBlocks.entries()) {
 		if (block.type !== "tool") continue;
-		if (block.call.name !== "fetchUrls" && block.call.name !== "renderUrl") continue;
+		if (block.call.name !== "fetchUrls") continue;
 
 		const input = block.call.input as { url?: string; requests?: Array<{ url?: string }> } | undefined;
 		const urls: string[] = [];

@@ -5,16 +5,20 @@ import { type MCPClient, type MCPClientConfig, createMCPClient } from "@ai-sdk/m
 import { Experimental_StdioMCPTransport } from "@ai-sdk/mcp/mcp-stdio";
 import type { ToolSet } from "ai";
 
+import type { McpServerToggles } from "../../types";
 import { type McpServerConfig, type McpTransportType, loadManualConfig } from "../../utils/config";
 import { debug } from "../../utils/debug-logger";
+import { DEFAULT_MCP_SERVER_META, DEFAULT_MCP_SERVERS, isDefaultMcpServer } from "./default-servers";
 
-export type McpServerLifecycleStatus = "idle" | "loading" | "ready" | "error";
+export type McpServerLifecycleStatus = "idle" | "loading" | "ready" | "error" | "disabled";
 
 export interface McpServerStatus {
 	id: string;
 	type: McpTransportType;
 	url?: string;
 	command?: string;
+	isDefault: boolean;
+	enabled: boolean;
 	status: McpServerLifecycleStatus;
 	toolCount: number;
 	error?: string;
@@ -34,6 +38,7 @@ type McpServerResolvedConfig = {
 	args?: string[];
 	cwd?: string;
 	env?: Record<string, string>;
+	isDefault: boolean;
 };
 
 const MAX_TOOL_NAME_LENGTH = 64;
@@ -121,7 +126,10 @@ function buildInternalToolName(serverId: string, toolName: string, used: Set<str
 	return next;
 }
 
-function resolveServerConfigs(raw: McpServerConfig[] | undefined): McpServerResolvedConfig[] {
+function resolveServerConfigs(
+	raw: McpServerConfig[] | undefined,
+	defaultIds = new Set<string>()
+): McpServerResolvedConfig[] {
 	if (!raw || raw.length === 0) return [];
 	const usedIds = new Set<string>();
 	const out: McpServerResolvedConfig[] = [];
@@ -135,13 +143,15 @@ function resolveServerConfigs(raw: McpServerConfig[] | undefined): McpServerReso
 			const command = entry.command?.trim();
 			if (!command) continue;
 			const derivedId = entry.id?.trim() ? entry.id.trim() : deriveServerIdFromCommand(command);
+			const id = ensureUniqueId(derivedId, usedIds);
 			out.push({
-				id: ensureUniqueId(derivedId, usedIds),
+				id,
 				type,
 				command,
 				args: entry.args,
 				cwd: entry.cwd,
 				env: entry.env,
+				isDefault: defaultIds.has(id),
 			});
 			continue;
 		}
@@ -152,10 +162,31 @@ function resolveServerConfigs(raw: McpServerConfig[] | undefined): McpServerReso
 		const id = derivedId
 			? ensureUniqueId(derivedId, usedIds)
 			: ensureUniqueId(`server-${out.length + 1}`, usedIds);
-		out.push({ id, type, url: url.trim() });
+		out.push({ id, type, url: url.trim(), isDefault: defaultIds.has(id) });
 	}
 
 	return out;
+}
+
+function mergeServerConfigs(
+	defaults: McpServerConfig[],
+	configured: McpServerConfig[] | undefined
+): McpServerConfig[] {
+	const byId = new Map<string, McpServerConfig>();
+
+	for (const server of defaults) {
+		if (server.id) byId.set(server.id, server);
+	}
+
+	for (const server of configured ?? []) {
+		if (server.id) {
+			byId.set(server.id, server);
+			continue;
+		}
+		byId.set(`__anonymous_${byId.size}`, server);
+	}
+
+	return [...byId.values()];
 }
 
 function createTransport(server: McpServerResolvedConfig): MCPClientConfig["transport"] {
@@ -168,6 +199,7 @@ function createTransport(server: McpServerResolvedConfig): MCPClientConfig["tran
 			args: server.args,
 			cwd: server.cwd,
 			env: server.env,
+			stderr: "ignore",
 		});
 	}
 
@@ -184,6 +216,7 @@ function createTransport(server: McpServerResolvedConfig): MCPClientConfig["tran
 class McpManager extends EventEmitter {
 	private started = false;
 	private loadRunId = 0;
+	private serverToggles: McpServerToggles = {};
 
 	private servers: McpServerStatus[] = [];
 	private mergedTools: ToolSet = {};
@@ -201,6 +234,15 @@ class McpManager extends EventEmitter {
 		});
 	}
 
+	setServerToggles(toggles: McpServerToggles): void {
+		this.serverToggles = { ...toggles };
+	}
+
+	reload(): void {
+		this.started = true;
+		void this.loadFromConfig();
+	}
+
 	getServersSnapshot(): McpServerStatus[] {
 		return this.servers.map((s) => ({ ...s }));
 	}
@@ -211,6 +253,13 @@ class McpManager extends EventEmitter {
 
 	getToolMeta(toolName: string): McpToolMeta | null {
 		return this.toolMetaByName.get(toolName) ?? null;
+	}
+
+	getPromptGuidanceSnapshot(): string[] {
+		return this.servers
+			.filter((server) => server.enabled && server.isDefault && server.status === "ready")
+			.map((server) => DEFAULT_MCP_SERVER_META[server.id]?.promptGuidance)
+			.filter((guidance): guidance is string => Boolean(guidance?.trim()));
 	}
 
 	async closeAll(): Promise<void> {
@@ -257,19 +306,37 @@ class McpManager extends EventEmitter {
 	private async loadFromConfig(): Promise<void> {
 		const runId = ++this.loadRunId;
 		const config = loadManualConfig();
-		const servers = resolveServerConfigs(config.mcpServers);
+		const defaultIds = new Set(
+			DEFAULT_MCP_SERVERS.map((server) => server.id).filter((id): id is string => Boolean(id))
+		);
+		const servers = resolveServerConfigs(
+			mergeServerConfigs(DEFAULT_MCP_SERVERS, config.mcpServers),
+			defaultIds
+		);
+		const enabledServers = servers.filter((server) => this.serverToggles[server.id] !== false);
+		const enabledIds = new Set(enabledServers.map((server) => server.id));
+
+		for (const [serverId, client] of this.clientsByServer.entries()) {
+			if (enabledIds.has(serverId)) continue;
+			this.clientsByServer.delete(serverId);
+			this.clearServerTools(serverId);
+			client.close().catch(() => {});
+		}
+		this.rebuildMergedTools();
 
 		this.servers = servers.map((server) => ({
 			id: server.id,
 			type: server.type,
 			url: server.url,
 			command: server.command,
-			status: "loading" as const,
+			isDefault: server.isDefault || isDefaultMcpServer(server.id),
+			enabled: enabledIds.has(server.id),
+			status: enabledIds.has(server.id) ? ("loading" as const) : ("disabled" as const),
 			toolCount: 0,
 		}));
 		this.emitUpdate();
 
-		if (servers.length === 0) {
+		if (enabledServers.length === 0) {
 			this.mergedTools = {};
 			this.toolMetaByName.clear();
 			this.internalNamesByServer.clear();
@@ -279,7 +346,7 @@ class McpManager extends EventEmitter {
 		}
 
 		await Promise.allSettled(
-			servers.map(async (server) => {
+			enabledServers.map(async (server) => {
 				if (runId !== this.loadRunId) return;
 				await this.loadSingleServer(server, runId);
 			})
@@ -296,6 +363,8 @@ class McpManager extends EventEmitter {
 			type: server.type,
 			url: server.url,
 			command: server.command,
+			isDefault: server.isDefault || isDefaultMcpServer(server.id),
+			enabled: true,
 			status: "loading",
 			toolCount: 0,
 		});
@@ -305,8 +374,17 @@ class McpManager extends EventEmitter {
 			client = await createMCPClient({
 				transport: createTransport(server),
 			});
+			if (runId !== this.loadRunId) {
+				await client.close();
+				return;
+			}
 
 			const tools = await client.tools();
+			if (runId !== this.loadRunId) {
+				await client.close();
+				return;
+			}
+
 			const usedNames = new Set<string>(this.toolMetaByName.keys());
 			const remapped: Record<string, unknown> = {};
 			const internalNames = new Set<string>();
@@ -339,6 +417,8 @@ class McpManager extends EventEmitter {
 				type: server.type,
 				url: server.url,
 				command: server.command,
+				isDefault: server.isDefault || isDefaultMcpServer(server.id),
+				enabled: true,
 				status: "ready",
 				toolCount: internalNames.size,
 			});
@@ -359,6 +439,8 @@ class McpManager extends EventEmitter {
 				type: server.type,
 				url: server.url,
 				command: server.command,
+				isDefault: server.isDefault || isDefaultMcpServer(server.id),
+				enabled: true,
 				status: "error",
 				toolCount: 0,
 				error: err.message,

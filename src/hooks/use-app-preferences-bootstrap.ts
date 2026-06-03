@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { startMcpManager } from "../ai/mcp/mcp-manager";
+import { getMcpManager, startMcpManager } from "../ai/mcp/mcp-manager";
 import { hasCopilotCliAuthSafe } from "../ai/copilot-client";
 import { hasOpenAiCodexAuthSafe } from "../ai/openai-codex-auth";
 import {
@@ -14,6 +14,7 @@ import type {
 	AppPreferences,
 	BashApprovalLevel,
 	LlmProvider,
+	McpServerToggles,
 	OnboardingStep,
 	ReasoningEffort,
 	SpeechSpeed,
@@ -34,6 +35,7 @@ export interface UseAppPreferencesBootstrapParams {
 		bashApprovalLevel: BashApprovalLevel;
 		memoryEnabled: boolean;
 		toolToggles?: ToolToggles;
+		mcpServerToggles?: McpServerToggles;
 		audioDeviceName?: string;
 		outputDeviceName?: string;
 	};
@@ -114,9 +116,6 @@ export function useAppPreferencesBootstrap(
 				process.env.EXA_API_KEY = prefs.exaApiKey;
 			}
 
-			// Start MCP discovery in the background (non-blocking)
-			startMcpManager();
-
 			const modelProvider: LlmProvider = prefs?.modelProvider ?? "openrouter";
 			setModelProvider(modelProvider);
 			invalidateDaemonToolsCache();
@@ -180,6 +179,13 @@ export function useAppPreferencesBootstrap(
 			} else {
 				manager.toolToggles = { ...DEFAULT_TOOL_TOGGLES };
 			}
+
+			manager.mcpServerToggles = prefs?.mcpServerToggles ?? {};
+			const mcpManager = getMcpManager();
+			mcpManager.setServerToggles(manager.mcpServerToggles);
+
+			// Start MCP discovery in the background (non-blocking)
+			startMcpManager();
 
 			if (prefs?.showFullReasoning !== undefined) {
 				setShowFullReasoning(prefs.showFullReasoning);

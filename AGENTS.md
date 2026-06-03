@@ -13,7 +13,6 @@ DAEMON is a terminal-based AI agent with sci-fi aesthetics. It supports both **t
 - `bun test <pattern>` - Run tests
 - `bun run preview:avatar` - Render PNG frames to `tmp/avatar-preview/`
 - `bun run preview:avatar:mp4` - Render an MP4 preview to `tmp/avatar-preview.mp4` (requires `ffmpeg`)
-- `bun run setup:browsers` - Install Playwright Chromium binaries (optional; see JS-rendered page support)
 
 Note: Use the `bun run` scripts above for Biome. Avoid `bunx biome` (there’s a different npm package named `biome`).
 
@@ -22,19 +21,6 @@ Note: Use the `bun run` scripts above for Biome. Avoid `bunx biome` (there’s a
 - `ffmpeg` is required for:
   - TTS “effects” pipeline (voice output processing)
   - `preview:avatar:mp4` stitching
-
-## Optional: JS-rendered page support (`renderUrl`)
-DAEMON defaults to Exa-based `fetchUrls` for retrieving web page text. For JavaScript-heavy sites (SPAs) where `fetchUrls` returns "shell-only" content, DAEMON can optionally use a local Playwright Chromium renderer via the `renderUrl` tool.
-
-This feature is optional and not installed by default. If Playwright/Chromium aren't installed, DAEMON hides the `renderUrl` tool. A startup toast only appears if Playwright is installed but the Chromium binaries are missing.
-
-Install steps (local development):
-- `bun add -d playwright`
-- `bun run setup:browsers`
-
-Install steps (global install via npm/bun):
-- `npm i -g playwright` (or `bun add -g playwright`)
-- `npx playwright install chromium`
 
 ## Environment / API Keys
 DAEMON reads keys from environment variables, and can also store them in local preferences and apply them to `process.env` at runtime.
@@ -74,7 +60,7 @@ Audio tuning (optional):
   - `src/voice/`: Audio recording + speech synthesis (`src/voice/audio-recorder.ts`, `src/voice/tts/`)
   - `src/avatar/`: Avatar renderables + rig/animation logic
   - `src/utils/`: Shared utilities (preferences, debug logging, OpenRouter model helpers)
-  - `src/scripts/`: One-off setup/dev scripts (e.g., Playwright browser setup)
+  - `src/scripts/`: One-off setup/dev scripts
   - `src/cli.ts`: CLI entrypoint (build target for published package)
   - `src/avatar-preview.ts`: Avatar preview renderer (PNG/MP4 output)
 - Imports: External packages first, then internal. Prefer relative imports inside the same feature area; the `src/*` path alias is available for cross-tree imports.

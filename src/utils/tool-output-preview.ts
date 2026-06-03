@@ -233,35 +233,6 @@ function formatExaFetchResult(result: unknown): string | null {
 	return lines.length > 2 ? lines.join("\n") : null;
 }
 
-function formatRenderUrlResult(result: unknown): string | null {
-	if (!isRecord(result)) return null;
-	if (result.success === false && typeof result.error === "string") {
-		return `error: ${result.error}`;
-	}
-	if (result.success !== true) return null;
-
-	const url = typeof result.url === "string" ? result.url : "(unknown url)";
-	const lineOffset = typeof result.lineOffset === "number" ? result.lineOffset : undefined;
-	const lineLimit = typeof result.lineLimit === "number" ? result.lineLimit : undefined;
-	const remainingLines = typeof result.remainingLines === "number" ? result.remainingLines : null;
-	const rangeParts: string[] = [];
-	if (lineOffset !== undefined) rangeParts.push(`lineOffset=${lineOffset}`);
-	if (lineLimit !== undefined) rangeParts.push(`lineLimit=${lineLimit}`);
-	rangeParts.push(remainingLines === null ? "remainingLines=unknown" : `remainingLines=${remainingLines}`);
-	const remainingSuffix = rangeParts.length > 0 ? ` (${rangeParts.join(", ")})` : "";
-
-	const header = `${url}${remainingSuffix}`;
-
-	const text = typeof result.text === "string" ? result.text : "";
-	if (!text.trim()) return header;
-
-	const snippet = normalizeWhitespace(text)
-		.replace(/\n{3,}/g, "\n\n")
-		.trim();
-
-	return `${header}\n${snippet}`;
-}
-
 function formatReadFileResult(result: unknown): string | null {
 	if (!isRecord(result)) return null;
 	if (result.success === false && typeof result.error === "string") {
@@ -301,6 +272,7 @@ type McpContentLike = {
 	text?: unknown;
 	content?: unknown;
 	data?: unknown;
+	mimeType?: unknown;
 };
 
 function extractMcpContentText(item: unknown): string {
@@ -309,6 +281,9 @@ function extractMcpContentText(item: unknown): string {
 	if (typeof it.text === "string") return it.text;
 	if (typeof it.content === "string") return it.content;
 	if (typeof it.type === "string" && it.type === "text" && typeof it.data === "string") return it.data;
+	if (typeof it.type === "string" && it.type === "image" && typeof it.mimeType === "string") {
+		return `[Image: ${it.mimeType}]`;
+	}
 	return "";
 }
 
@@ -354,7 +329,6 @@ export function formatToolOutputPreview(toolName: string, result: unknown): stri
 	if (toolName === "runBash") raw = formatBashResult(result);
 	if (toolName === "webSearch") raw = formatExaSearchResult(result);
 	if (toolName === "fetchUrls") raw = formatExaFetchResult(result);
-	if (toolName === "renderUrl") raw = formatRenderUrlResult(result);
 	if (toolName === "readFile") raw = formatReadFileResult(result);
 
 	if (!raw) {

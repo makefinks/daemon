@@ -7,6 +7,7 @@ import { debug, toolDebug } from "../../utils/debug-logger";
 import { getOpenRouterReportedCost } from "../../utils/openrouter-reported-cost";
 import { getWorkspacePath } from "../../utils/workspace-manager";
 import { extractFinalAssistantText } from "../message-utils";
+import { getMcpManager } from "../mcp/mcp-manager";
 import { buildOpenRouterChatSettings, getResponseModel } from "../model-config";
 import { sanitizeMessagesForInput } from "../sanitize-messages";
 import { buildDaemonSystemPrompt } from "../system-prompt";
@@ -44,12 +45,14 @@ async function createDaemonAgent(
 		getCachedToolAvailability() ?? (await resolveToolAvailability(getDaemonManager().toolToggles));
 
 	const workspacePath = sessionId ? getWorkspacePath(sessionId) : undefined;
+	const mcpToolGuidance = getMcpManager().getPromptGuidanceSnapshot();
 
 	return new ToolLoopAgent({
 		model: openrouter.chat(getResponseModel(), modelConfig),
 		instructions: buildDaemonSystemPrompt({
 			mode: interactionMode,
 			toolAvailability: createToolAvailabilitySnapshot(toolAvailability),
+			mcpToolGuidance,
 			workspacePath,
 			memoryInjection,
 		}),

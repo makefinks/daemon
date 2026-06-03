@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { type McpServerStatus, getMcpManager } from "../ai/mcp/mcp-manager";
+import { DEFAULT_MCP_SERVER_META } from "../ai/mcp/default-servers";
 import { invalidateDaemonToolsCache } from "../ai/tools/index";
 import { invalidateSubagentToolsCache } from "../ai/tools/subagents";
 import {
@@ -11,13 +12,13 @@ import {
 } from "../ai/tools/tool-registry";
 import { useMenuKeyboard } from "../hooks/use-menu-keyboard";
 import { getDaemonManager } from "../state/daemon-state";
-import type { ToolToggleId, ToolToggles } from "../types";
+import type { AppPreferences, McpServerToggles, ToolToggleId, ToolToggles } from "../types";
 import { DEFAULT_TOOL_TOGGLES } from "../types";
 import { COLORS } from "../ui/constants";
 import { getManualConfigPath } from "../utils/config";
 
 interface ToolsMenuProps {
-	persistPreferences: (updates: Partial<{ toolToggles: ToolToggles }>) => void;
+	persistPreferences: (updates: Partial<AppPreferences>) => void;
 	onClose: () => void;
 }
 
@@ -38,8 +39,6 @@ function getToolLabel(id: ToolToggleId): string {
 			return "webSearch";
 		case "fetchUrls":
 			return "fetchUrls";
-		case "renderUrl":
-			return "renderUrl";
 		case "todoManager":
 			return "todoManager";
 		case "groundingManager":
@@ -54,6 +53,7 @@ function getToolLabel(id: ToolToggleId): string {
 export function ToolsMenu({ persistPreferences, onClose }: ToolsMenuProps) {
 	const manager = getDaemonManager();
 	const [toggles, setToggles] = useState<ToolToggles>(manager.toolToggles ?? { ...DEFAULT_TOOL_TOGGLES });
+	const [mcpToggles, setMcpToggles] = useState<McpServerToggles>(manager.mcpServerToggles ?? {});
 	const [mcpServers, setMcpServers] = useState<McpServerStatus[]>(() => getMcpManager().getServersSnapshot());
 
 	const [toolAvailability, setToolAvailability] = useState<Record<ToolToggleId, MenuToolItem> | null>(null);
@@ -100,11 +100,35 @@ export function ToolsMenu({ persistPreferences, onClose }: ToolsMenuProps) {
 		return order.map((id) => toolAvailability[id]).filter((item): item is MenuToolItem => Boolean(item));
 	}, [toolAvailability]);
 
+	const selectableItemCount = items.length + mcpServers.length;
+
 	const { selectedIndex } = useMenuKeyboard({
-		itemCount: items.length,
+		itemCount: selectableItemCount,
 		onClose,
 		closeOnSelect: false,
 		onSelect: (idx) => {
+			if (idx >= items.length) {
+				const server = mcpServers[idx - items.length];
+				if (!server) return;
+
+				const current = manager.mcpServerToggles ?? {};
+				const isEnabled = current[server.id] !== false;
+				const next: McpServerToggles = {
+					...current,
+					[server.id]: !isEnabled,
+				};
+				manager.mcpServerToggles = next;
+				setMcpToggles(next);
+				persistPreferences({ mcpServerToggles: next });
+
+				const mcp = getMcpManager();
+				mcp.setServerToggles(next);
+				mcp.reload();
+				invalidateDaemonToolsCache();
+				invalidateSubagentToolsCache();
+				return;
+			}
+
 			const item = items[idx];
 			if (!item) return;
 
@@ -148,7 +172,9 @@ export function ToolsMenu({ persistPreferences, onClose }: ToolsMenuProps) {
 	}, [items, showReasonColumn]);
 
 	const statusWidth = 8;
-	const mcpStatusWidth = 8;
+	const mcpStatusWidth = 9;
+	const mcpSourceWidth = 10;
+	const mcpToolsWidth = 5;
 
 	function truncateText(text: string, maxLen: number): string {
 		if (text.length <= maxLen) return text;
@@ -158,8 +184,11 @@ export function ToolsMenu({ persistPreferences, onClose }: ToolsMenuProps) {
 	const mcpConfigPath = useMemo(() => getManualConfigPath(), []);
 
 	const mcpIdWidth = useMemo(() => {
-		const raw = mcpServers.reduce((max, server) => Math.max(max, server.id.length), 0);
-		return Math.min(Math.max(raw, 10), 28);
+		const raw = mcpServers.reduce((max, server) => {
+			const label = DEFAULT_MCP_SERVER_META[server.id]?.label ?? server.id;
+			return Math.max(max, label.length);
+		}, 0);
+		return Math.min(Math.max(raw + 2, 18), 32);
 	}, [mcpServers]);
 
 	return (
@@ -264,31 +293,55 @@ export function ToolsMenu({ persistPreferences, onClose }: ToolsMenuProps) {
 						</text>
 					) : (
 						<box flexDirection="column">
-							<box marginBottom={1}>
+							<box marginBottom={1} paddingLeft={1} paddingRight={1}>
 								<text>
 									<span fg={COLORS.REASONING_DIM}>
-										{`SERVER`.padEnd(mcpIdWidth)} {`STATUS`.padEnd(mcpStatusWidth)} TOOLS
+										{`  ${"SERVER".padEnd(mcpIdWidth)} ${"SOURCE".padEnd(mcpSourceWidth)} `}
+										{`STATUS`.padEnd(mcpStatusWidth)} {`TOOLS`.padStart(mcpToolsWidth)}
 									</span>
 								</text>
 							</box>
-							{mcpServers.map((server) => {
-								const statusLabel = server.status.toUpperCase();
-								const statusColor =
-									server.status === "ready"
+							{mcpServers.map((server, idx) => {
+								const isSelected = selectedIndex === items.length + idx;
+								const isEnabled = mcpToggles[server.id] !== false && server.enabled;
+								const statusLabel = !isEnabled
+									? "OFF"
+									: server.status === "loading"
+										? "LOADING"
+										: server.status === "error"
+											? "ERROR"
+											: "ON";
+								const sourceLabel = server.isDefault ? "DEFAULT" : "CUSTOM";
+								const statusColor = !isEnabled
+									? COLORS.REASONING_DIM
+									: server.status === "ready"
 										? COLORS.STATUS_COMPLETED
 										: server.status === "loading"
 											? COLORS.STATUS_RUNNING
 											: server.status === "error"
 												? COLORS.STATUS_FAILED
 												: COLORS.REASONING_DIM;
-								const idText = truncateText(server.id, mcpIdWidth).padEnd(mcpIdWidth);
-								const toolsText = String(server.toolCount).padStart(4);
-								const errorText = server.error ? truncateText(server.error, 60) : "";
+								const label = DEFAULT_MCP_SERVER_META[server.id]?.label ?? server.id;
+								const idText = truncateText(label, mcpIdWidth).padEnd(mcpIdWidth);
+								const sourceText = sourceLabel.padEnd(mcpSourceWidth);
+								const toolsText = String(server.toolCount).padStart(mcpToolsWidth);
+								const errorText = isEnabled && server.error ? truncateText(server.error, 60) : "";
+								const labelColor = isSelected ? COLORS.DAEMON_LABEL : COLORS.MENU_TEXT;
+								const sourceColor = server.isDefault ? COLORS.DAEMON_TEXT : COLORS.REASONING_DIM;
 
 								return (
-									<box key={server.id} flexDirection="column">
+									<box
+										key={server.id}
+										flexDirection="column"
+										backgroundColor={isSelected ? COLORS.MENU_SELECTED_BG : COLORS.MENU_BG}
+										paddingLeft={1}
+										paddingRight={1}
+									>
 										<text>
-											<span fg={COLORS.MENU_TEXT}>{idText}</span>
+											<span fg={labelColor}>{isSelected ? "▶ " : "  "}</span>
+											<span fg={labelColor}>{idText}</span>
+											<span fg={COLORS.REASONING_DIM}> </span>
+											<span fg={sourceColor}>{sourceText}</span>
 											<span fg={COLORS.REASONING_DIM}> </span>
 											<span fg={statusColor}>{statusLabel.padEnd(mcpStatusWidth)}</span>
 											<span fg={COLORS.REASONING_DIM}> {toolsText}</span>

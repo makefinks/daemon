@@ -3,7 +3,6 @@ import type { ToolSet } from "ai";
 import { fetchUrls } from "./fetch-urls";
 import { groundingManager } from "./grounding-manager";
 import { readFile } from "./read-file";
-import { renderUrl } from "./render-url";
 import { runBash } from "./run-bash";
 import { subagent } from "./subagents";
 import { todoManager } from "./todo-manager";
@@ -12,7 +11,6 @@ import { writeFile } from "./write-file";
 
 import { getProviderCapabilities } from "../providers/capabilities";
 import type { ToolToggleId, ToolToggles } from "../../types";
-import { detectLocalPlaywrightChromium } from "../../utils/js-rendering";
 
 export type ToolId = ToolToggleId;
 
@@ -46,7 +44,6 @@ const TOOL_REGISTRY: ToolEntry[] = [
 	{ id: "runBash", toggleKey: "runBash", tool: runBash },
 	{ id: "webSearch", toggleKey: "webSearch", tool: webSearch, gate: gateExa },
 	{ id: "fetchUrls", toggleKey: "fetchUrls", tool: fetchUrls, gate: gateExa },
-	{ id: "renderUrl", toggleKey: "renderUrl", tool: renderUrl, gate: gateRenderUrl },
 	{ id: "todoManager", toggleKey: "todoManager", tool: todoManager },
 	{ id: "groundingManager", toggleKey: "groundingManager", tool: groundingManager },
 	{ id: "subagent", toggleKey: "subagent", tool: subagent, gate: gateSubagent },
@@ -58,14 +55,6 @@ function gateExa(): Promise<ToolGateResult> {
 		envAvailable: hasKey,
 		disabledReason: hasKey ? undefined : "EXA_API_KEY not configured",
 	});
-}
-
-async function gateRenderUrl(): Promise<ToolGateResult> {
-	const capability = await detectLocalPlaywrightChromium();
-	return {
-		envAvailable: capability.available,
-		disabledReason: capability.available ? undefined : capability.reason,
-	};
 }
 
 function gateSubagent(): Promise<ToolGateResult> {
@@ -89,7 +78,6 @@ function normalizeToggles(toggles?: ToolToggles): ToolToggles {
 		runBash: toggles?.runBash ?? true,
 		webSearch: toggles?.webSearch ?? true,
 		fetchUrls: toggles?.fetchUrls ?? true,
-		renderUrl: toggles?.renderUrl ?? true,
 		todoManager: toggles?.todoManager ?? true,
 		groundingManager: toggles?.groundingManager ?? true,
 		subagent: toggles?.subagent ?? true,
@@ -188,7 +176,6 @@ export function getToolLabels(): Record<ToolId, string> {
 		runBash: "runBash",
 		webSearch: "webSearch",
 		fetchUrls: "fetchUrls",
-		renderUrl: "renderUrl",
 		todoManager: "todoManager",
 		groundingManager: "groundingManager",
 		subagent: "subagent",
@@ -202,7 +189,6 @@ export function getDefaultToolOrder(): ToolId[] {
 		"runBash",
 		"webSearch",
 		"fetchUrls",
-		"renderUrl",
 		"todoManager",
 		"groundingManager",
 		"subagent",
@@ -216,7 +202,6 @@ export function createToolAvailabilitySnapshot(availability: ToolAvailabilityMap
 		runBash: availability.runBash?.enabled ?? false,
 		webSearch: availability.webSearch?.enabled ?? false,
 		fetchUrls: availability.fetchUrls?.enabled ?? false,
-		renderUrl: availability.renderUrl?.enabled ?? false,
 		todoManager: availability.todoManager?.enabled ?? false,
 		groundingManager: availability.groundingManager?.enabled ?? false,
 		subagent: availability.subagent?.enabled ?? false,

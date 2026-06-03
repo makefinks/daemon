@@ -7,6 +7,7 @@ import { debug, toolDebug } from "../../utils/debug-logger";
 import { getWorkspacePath } from "../../utils/workspace-manager";
 import { OPENAI_CODEX_BASE_URL, openAiCodexAuthenticatedFetch } from "../openai-codex-fetch";
 import { extractFinalAssistantText } from "../message-utils";
+import { getMcpManager } from "../mcp/mcp-manager";
 import { getResponseModel } from "../model-config";
 import { sanitizeMessagesForInput } from "../sanitize-messages";
 import { buildDaemonSystemPrompt } from "../system-prompt";
@@ -63,12 +64,14 @@ async function createDaemonAgent(
 	const toolAvailability =
 		getCachedToolAvailability() ?? (await resolveToolAvailability(getDaemonManager().toolToggles));
 	const workspacePath = sessionId ? getWorkspacePath(sessionId) : undefined;
+	const mcpToolGuidance = getMcpManager().getPromptGuidanceSnapshot();
 
 	return new ToolLoopAgent({
 		model: openAiCodex.responses(getResponseModel()),
 		instructions: buildDaemonSystemPrompt({
 			mode: interactionMode,
 			toolAvailability: createToolAvailabilitySnapshot(toolAvailability),
+			mcpToolGuidance,
 			workspacePath,
 			memoryInjection,
 		}),

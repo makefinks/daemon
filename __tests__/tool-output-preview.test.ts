@@ -136,27 +136,6 @@ describe("formatToolOutputPreview", () => {
 		});
 	});
 
-	describe("renderUrl formatting", () => {
-		it("formats render result", () => {
-			const result = {
-				success: true,
-				url: "https://example.com",
-				text: "Rendered page text\n\nWith multiple lines",
-				remainingLines: 42,
-			};
-			const output = formatToolOutputPreview("renderUrl", result);
-			expect(output).toHaveLength(3);
-			expect(output?.[0]).toBe("https://example.com (remainingLines=42)");
-			expect(output?.[1]).toMatch(/Rendered page text/);
-		});
-
-		it("handles render errors", () => {
-			const result = { success: false, error: "Playwright missing" };
-			const output = formatToolOutputPreview("renderUrl", result);
-			expect(output).toEqual(["error: Playwright missing"]);
-		});
-	});
-
 	describe("readFile formatting", () => {
 		it("formats file read result", () => {
 			const result = {

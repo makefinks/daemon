@@ -8,6 +8,7 @@ import { transcribeAudio } from "../ai/daemon-ai";
 import type {
 	BashApprovalLevel,
 	InteractionMode,
+	McpServerToggles,
 	ModelMessage,
 	ReasoningEffort,
 	SpeechSpeed,
@@ -42,6 +43,7 @@ class DaemonStateManager {
 	private _reasoningEffort: ReasoningEffort = "medium";
 	private _bashApprovalLevel: BashApprovalLevel = "dangerous";
 	private _toolToggles: ToolToggles = { ...DEFAULT_TOOL_TOGGLES };
+	private _mcpServerToggles: McpServerToggles = {};
 	private _memoryEnabled = true;
 	private _outputDeviceName: string | undefined = undefined;
 	private _turnId = 0;
@@ -146,6 +148,14 @@ class DaemonStateManager {
 
 	set toolToggles(toggles: ToolToggles) {
 		this._toolToggles = toggles;
+	}
+
+	get mcpServerToggles(): McpServerToggles {
+		return this._mcpServerToggles;
+	}
+
+	set mcpServerToggles(toggles: McpServerToggles) {
+		this._mcpServerToggles = toggles;
 	}
 
 	get memoryEnabled(): boolean {

@@ -6,6 +6,7 @@ import type { ReasoningEffort, StreamCallbacks } from "../../types";
 import { debug, toolDebug } from "../../utils/debug-logger";
 import { getWorkspacePath } from "../../utils/workspace-manager";
 import { convertToolSetToCopilotTools, getOrCreateCopilotSession } from "../copilot-client";
+import { getMcpManager } from "../mcp/mcp-manager";
 import { getResponseModel } from "../model-config";
 import { buildDaemonSystemPrompt } from "../system-prompt";
 import { getCachedToolAvailability, getDaemonTools } from "../tools/index";
@@ -210,10 +211,12 @@ async function streamCopilotSession(params: {
 	const toolAvailability =
 		getCachedToolAvailability() ?? (await resolveToolAvailability(getDaemonManager().toolToggles));
 	const workspacePath = sessionId ? getWorkspacePath(sessionId) : undefined;
+	const mcpToolGuidance = getMcpManager().getPromptGuidanceSnapshot();
 
 	const systemPrompt = buildDaemonSystemPrompt({
 		mode: interactionMode,
 		toolAvailability: createToolAvailabilitySnapshot(toolAvailability),
+		mcpToolGuidance,
 		workspacePath,
 		memoryInjection,
 	});

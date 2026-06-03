@@ -37,7 +37,7 @@ export { buildInterruptedModelMessages };
 
 function getToolCategory(toolName: string): ToolCategory | "fast" | undefined {
 	if (toolName === "subagent") return "subagent";
-	if (toolName === "webSearch" || toolName === "fetchUrls" || toolName === "renderUrl") return "web";
+	if (toolName === "webSearch" || toolName === "fetchUrls") return "web";
 	if (toolName === "runBash" || toolName === "getSystemInfo") return "bash";
 	if (
 		toolName === "readFile" ||

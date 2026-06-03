@@ -3,7 +3,6 @@ import { useMemo, useRef, useState } from "react";
 import type { MutableRefObject } from "react";
 
 import { useAppAudioDevicesLoader } from "./use-app-audio-devices-loader";
-import { usePlaywrightNotification } from "./use-playwright-notification";
 import { useVoiceDependenciesNotification } from "./use-voice-dependencies-notification";
 
 import type { AppPreferences, AudioDevice, OnboardingStep } from "../types";
@@ -49,7 +48,6 @@ export function useBootstrapController({
 	showDeviceMenu: boolean;
 }): BootstrapControllerResult {
 	const [onboardingActive, setOnboardingActive] = useState(false);
-	usePlaywrightNotification({ enabled: !onboardingActive });
 	useVoiceDependenciesNotification({ enabled: !onboardingActive });
 
 	const [loadedPreferences, setLoadedPreferences] = useState<AppPreferences | null>(null);
