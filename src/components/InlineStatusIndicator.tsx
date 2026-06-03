@@ -1,5 +1,8 @@
+import { TextAttributes } from "@opentui/core";
 import { COLORS } from "../ui/constants";
 import { DaemonState } from "../types";
+import { getCurrentTodos } from "../ai/tools/todo-manager";
+import { ShimmerText } from "./ShimmerText";
 
 export interface InlineStatusProps {
 	daemonState: DaemonState;
@@ -21,6 +24,12 @@ function buildElapsedSuffix(responseElapsedMs: number): string {
 
 	const seconds = Math.max(1, Math.floor(responseElapsedMs / 1000));
 	return ` · ${seconds}s`;
+}
+
+function getCurrentTodoLabel(): string | null {
+	const todos = getCurrentTodos();
+	const inProgress = todos.find((t) => t.status === "in_progress");
+	return inProgress?.content ?? null;
 }
 
 function getInlineStatusConfig(args: {
@@ -94,12 +103,21 @@ export function InlineStatusIndicator({
 	}
 
 	const { spinnerName, label, color } = config;
+	const currentTodoLabel = getCurrentTodoLabel();
 
 	return (
 		<box flexDirection="row" alignItems="center" marginTop={1} marginBottom={1} paddingLeft={2}>
 			<spinner name={spinnerName} color={color} />
 			<text marginLeft={1}>
-				<span fg={color}>{label}</span>
+				<span fg={color} attributes={TextAttributes.BOLD}>
+					{label}
+				</span>
+				{currentTodoLabel && (
+					<>
+						<span fg={COLORS.REASONING_DIM}> — </span>
+						<ShimmerText text={currentTodoLabel} baseColor={color} attributes={TextAttributes.ITALIC} />
+					</>
+				)}
 			</text>
 		</box>
 	);

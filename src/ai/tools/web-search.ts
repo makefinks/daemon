@@ -25,9 +25,13 @@ function recencyToStartDate(recency: z.infer<typeof RecencyEnum>): string {
 
 export const webSearch = tool({
 	description:
-		"Searches the web for information. Returns metadata (title, URL, published date) for relevant web pages. Use this to discover URLs, then use fetchUrls to read contents.",
+		"Searches the web for information. Returns metadata (title, URL, published date) for relevant web pages. Use this to discover URLs, then use fetchUrls to read contents. Exa is a semantic search engine — use natural language queries describing the ideal page content. Do NOT use boolean operators (AND/OR/NOT), domain prefixes (site:), or other search-engine-specific syntax in the query string; the semantic engine handles relevance automatically. Use the includeDomains parameter instead of 'site:' syntax to scope results to specific domains.",
 	inputSchema: z.object({
-		query: z.string().describe("The search query to find relevant web pages for."),
+		query: z
+			.string()
+			.describe(
+				"Natural language search query describing the ideal page content. Do NOT use boolean operators, 'site:', or other search-engine-specific syntax — Exa is a semantic engine."
+			),
 		numResults: z
 			.number()
 			.min(1)
@@ -40,7 +44,9 @@ export const webSearch = tool({
 		includeDomains: z
 			.array(z.string())
 			.optional()
-			.describe("Limit search to specific domains (e.g., ['arxiv.org', 'github.com'])."),
+			.describe(
+				"Scope search to specific domains (e.g., ['arxiv.org', 'github.com']). Use this instead of 'site:' or similar operators in the query string."
+			),
 	}),
 	execute: async ({ query, numResults, recency, includeDomains }) => {
 		const exaClientResult = getExaClient();
