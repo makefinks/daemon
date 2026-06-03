@@ -34,6 +34,8 @@ export interface SceneElements {
 	coreMesh: THREE.Mesh;
 	glowMesh: THREE.Mesh;
 	glowMat: THREE.MeshBasicMaterial;
+	glowPos: THREE.BufferAttribute;
+	glowBasePositions: Float32Array;
 	eye: THREE.Mesh;
 	eyeMat: THREE.MeshBasicMaterial;
 	pupil: THREE.Mesh;
@@ -93,6 +95,8 @@ export function createSceneElements(
 		})
 	);
 	const glowMesh = new THREE.Mesh(glowGeo, glowMat);
+	const glowPos = glowGeo.attributes.position as THREE.BufferAttribute;
+	const glowBasePositions = new Float32Array(glowPos.array as ArrayLike<number>);
 	coreGroup.add(glowMesh);
 
 	// Eye and pupil
@@ -280,6 +284,8 @@ export function createSceneElements(
 		coreMesh,
 		glowMesh,
 		glowMat,
+		glowPos,
+		glowBasePositions,
 		eye,
 		eyeMat,
 		pupil,

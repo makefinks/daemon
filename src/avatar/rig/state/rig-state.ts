@@ -17,6 +17,8 @@ export interface IntensityState {
 export interface AudioState {
 	current: number;
 	target: number;
+	surge: number;
+	wavePhase: number;
 }
 
 export interface GlitchState {
@@ -129,6 +131,8 @@ export function createInitialState(): RigState {
 		audio: {
 			current: 0,
 			target: 0,
+			surge: 0,
+			wavePhase: 0,
 		},
 		glitch: {
 			timer: 0,

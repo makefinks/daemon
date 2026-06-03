@@ -21,6 +21,9 @@ export function updateSigils(elements: SceneElements, state: RigState, dt: numbe
 	const sigilBaseOpacity = 0.2 + intensity * 0.2 + tool.sigilBrightnessBoost * 0.5;
 	const sigilPulseAmount = 0.05 + intensity * 0.12;
 	elements.sigilMat.opacity = clamp01(
-		sigilBaseOpacity + Math.sin(phase.sigilPulse) * sigilPulseAmount + audio.current * 0.2
+		sigilBaseOpacity +
+			Math.sin(phase.sigilPulse) * sigilPulseAmount +
+			audio.current * 0.07 +
+			audio.surge * 0.08
 	);
 }

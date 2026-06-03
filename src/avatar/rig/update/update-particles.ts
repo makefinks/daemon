@@ -13,7 +13,7 @@ export function updateParticles(
 	const particleCount = elements.particleVelocities.length;
 
 	const glitchChance = allowGlitch ? 0.0002 + intensity * 0.006 : 0;
-	const audioJitterBoost = 1 + audio.current * 0.8;
+	const audioJitterBoost = 1 + audio.current * 0.25 + audio.surge * 0.3;
 	const particleSpeedMult = (0.3 + intensity * 1.2) * audioJitterBoost;
 
 	for (let i = 0; i < particleCount; i++) {
@@ -43,7 +43,9 @@ export function updateParticles(
 	elements.particlePos.needsUpdate = true;
 
 	const idleParticleBoost = particlePulse.brightness * 0.4;
-	elements.particleMat.opacity = clamp01(0.3 + intensity * 0.4 + audio.current * 0.25 + idleParticleBoost);
+	elements.particleMat.opacity = clamp01(
+		0.3 + intensity * 0.4 + audio.current * 0.08 + audio.surge * 0.08 + idleParticleBoost
+	);
 	elements.particleMat.size =
-		0.02 + intensity * 0.015 + audio.current * 0.01 + particlePulse.brightness * 0.02;
+		0.02 + intensity * 0.015 + audio.current * 0.003 + audio.surge * 0.005 + particlePulse.brightness * 0.02;
 }

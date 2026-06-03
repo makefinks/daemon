@@ -9,7 +9,7 @@ export function updateEye(elements: SceneElements, state: RigState, dt: number, 
 	phase.eyePulse += dt * eyeSpeed;
 	const eyePulseAmount = 0.1 + intensity * 0.3 + typing.pulse * 0.1;
 	const eyePulse = 0.9 + Math.sin(phase.eyePulse) * eyePulseAmount;
-	elements.eye.scale.setScalar(eyePulse * (1 + audio.current * 0.1));
+	elements.eye.scale.setScalar(eyePulse * (1 + audio.surge * 0.02));
 
 	const pupilSpeed = 2 + intensity * 5;
 	phase.pupilPulse += dt * pupilSpeed;
@@ -17,7 +17,7 @@ export function updateEye(elements: SceneElements, state: RigState, dt: number, 
 	const normalPupilBase = 0.8 + Math.sin(phase.pupilPulse) * pupilPulseAmount;
 	const reasoningPupilDilation = 1.4;
 	const pupilBase = normalPupilBase * (1 - reasoning.blend) + reasoningPupilDilation * reasoning.blend;
-	elements.pupil.scale.setScalar(pupilBase * (1 + audio.current * 0.08));
+	elements.pupil.scale.setScalar(pupilBase * (1 + audio.current * 0.015 + audio.surge * 0.02));
 
 	if (tool.flashTimer > 0) {
 		tool.flashTimer -= dt;
@@ -26,6 +26,6 @@ export function updateEye(elements: SceneElements, state: RigState, dt: number, 
 		elements.pupilMat.color.setHex(lerpColor(theme.current.eye, tool.flashColor, flashIntensity));
 	}
 
-	elements.eyeMat.opacity = clamp01(0.85 + intensity * 0.15 + audio.current * 0.15);
-	elements.pupilMat.opacity = clamp01(0.9 + intensity * 0.1 + audio.current * 0.1);
+	elements.eyeMat.opacity = clamp01(0.85 + intensity * 0.15 + audio.current * 0.04 + audio.surge * 0.04);
+	elements.pupilMat.opacity = clamp01(0.9 + intensity * 0.1 + audio.current * 0.03 + audio.surge * 0.04);
 }
