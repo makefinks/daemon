@@ -132,11 +132,15 @@ function AvatarLayerImpl(props: AvatarLayerProps) {
 					{bannerLines.map((line, i) => (
 						<text key={i}>
 							<span fg={bannerColors[i]}>{line}</span>
-							{i === bannerLines.length - 1 && (!animateBanner || glitchyBanner.complete) && (
-								<span fg={COLORS.REASONING_DIM}> v{APP_VERSION}</span>
-							)}
 						</text>
 					))}
+					{bannerLines.length > 0 && (!animateBanner || glitchyBanner.complete) && (
+						<text>
+							<span fg={COLORS.REASONING_DIM}>
+								{"v".concat(APP_VERSION).padStart(DAEMON_BANNER_LINES[0]!.length)}
+							</span>
+						</text>
+					)}
 				</box>
 			)}
 			{renderAvatar && (
