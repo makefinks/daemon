@@ -15,6 +15,8 @@ import {
 
 export type { ToolCategory } from "./daemon-avatar-rig";
 
+const AVATAR_PULSE_MS = 300;
+
 export class DaemonAvatarRenderable extends FrameBufferRenderable {
 	private three: ThreeCliRenderer | null = null;
 	private rig: DaemonRig | null = null;
@@ -31,6 +33,8 @@ export class DaemonAvatarRenderable extends FrameBufferRenderable {
 	private pendingIntensity: { value: number; immediate: boolean } | null = null;
 	private pendingAudioLevel: { value: number; immediate: boolean } | null = null;
 	private pendingSpawnAction: "reset" | "skip" | null = null;
+	private _pulseEndTime = 0;
+	private _pulseZoomPeak = 0.8;
 
 	private getDesiredAspectRatio(width: number, height: number): number {
 		if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return 1;
@@ -90,6 +94,14 @@ export class DaemonAvatarRenderable extends FrameBufferRenderable {
 		// Max Z=12.0 (Far away)
 		let targetZ = baseZ * scaleFactor;
 		targetZ = Math.max(4.0, Math.min(12.0, targetZ));
+
+		// Pulse zoom: briefly move camera closer (bigger avatar) then settle back
+		const pulseRemaining = this._pulseEndTime - performance.now();
+		if (pulseRemaining > 0) {
+			const pulseT = 1 - pulseRemaining / AVATAR_PULSE_MS; // 0 → 1
+			const pulseEased = Math.sin(pulseT * Math.PI); // 0 → 1 → 0
+			targetZ -= this._pulseZoomPeak * pulseEased;
+		}
 
 		this.rig.camera.position.z = targetZ;
 	}
@@ -332,6 +344,14 @@ export class DaemonAvatarRenderable extends FrameBufferRenderable {
 		if (this.rig) {
 			this.rig.triggerTypingPulse();
 		}
+	}
+
+	/**
+	 * Briefly zoom the camera closer so the avatar appears slightly larger,
+	 * then settle back. Synchronized with HUD pulse.
+	 */
+	public triggerPulse(): void {
+		this._pulseEndTime = performance.now() + AVATAR_PULSE_MS;
 	}
 
 	public resetSpawn(): void {

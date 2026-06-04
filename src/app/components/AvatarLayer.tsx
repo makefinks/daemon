@@ -91,6 +91,21 @@ function AvatarLayerImpl(props: AvatarLayerProps) {
 		}
 	}, [avatarRef, startupAnimationActive]);
 
+	// Avatar pulse trigger: zoom in briefly on TYPING/LISTENING transitions
+	const prevAvatarStateRef = useRef(daemonState);
+	useEffect(() => {
+		const prev = prevAvatarStateRef.current;
+		prevAvatarStateRef.current = daemonState;
+		const ref = avatarRef.current;
+		if (!ref) return;
+		if (
+			(daemonState === DaemonState.TYPING) !== (prev === DaemonState.TYPING) ||
+			(daemonState === DaemonState.LISTENING) !== (prev === DaemonState.LISTENING)
+		) {
+			ref.triggerPulse();
+		}
+	}, [daemonState, avatarRef]);
+
 	return (
 		<>
 			<AvatarHud
@@ -101,6 +116,7 @@ function AvatarLayerImpl(props: AvatarLayerProps) {
 				avatarHeight={height}
 				visible={renderAvatar && showHud}
 				staggeredReveal={startupAnimationActive}
+				daemonState={daemonState}
 			/>
 			{showBanner && (
 				<box
