@@ -64,7 +64,6 @@ export function StatusBar({
 	const borderColor = fadeColor(COLORS.STATUS_BORDER, fadeProgress);
 	const displayStatusColor = fadeColor(statusColor, fadeProgress);
 	const errorColor = fadeColor(COLORS.DAEMON_ERROR, fadeProgress);
-	const effortColor = fadeColor(COLORS.REASONING, fadeProgress);
 	const titleText = modelName
 		? reasoningEffortLabel
 			? `${modelName} · ${reasoningEffortLabel}`
@@ -92,11 +91,7 @@ export function StatusBar({
 						{modelName && (
 							<text>
 								<span fg={borderColor}>{modelName}</span>
-							</text>
-						)}
-						{reasoningEffortLabel && (
-							<text marginLeft={1}>
-								<span fg={effortColor}>EFFORT {reasoningEffortLabel}</span>
+								{reasoningEffortLabel && <span fg={borderColor}> · {reasoningEffortLabel}</span>}
 							</text>
 						)}
 					</box>

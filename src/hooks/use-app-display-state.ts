@@ -90,16 +90,16 @@ export function useAppDisplayState(params: UseAppDisplayStateParams): UseAppDisp
 	const statusText = useMemo(() => {
 		if (daemonState === DaemonState.RESPONDING) {
 			if (isToolCalling) {
-				return "DAEMON INVOKES TOOL... · ESC cancel · E effort · R reasoning";
+				return "DAEMON INVOKES TOOL... · ESC cancel · R reasoning";
 			}
 			return isReasoning
-				? "DAEMON REASONING... · ESC cancel · E effort · R reasoning"
-				: "DAEMON SPEAKS... · ESC cancel · E effort · R reasoning";
+				? "DAEMON REASONING... · ESC cancel · R reasoning"
+				: "DAEMON SPEAKS... · ESC cancel · R reasoning";
 		}
 		let baseStatus = STATUS_TEXT[daemonState];
 		if (daemonState === DaemonState.IDLE) {
 			if (hasInteracted) {
-				baseStatus = "SPACE speak · SHIFT+TAB type · E effort · N new · ? hotkeys";
+				baseStatus = "SPACE speak · SHIFT+TAB type · N new · ? hotkeys";
 			}
 		}
 		return baseStatus;
