@@ -30,6 +30,9 @@ export interface UseAppMenusReturn {
 
 	showMemoryMenu: boolean;
 	setShowMemoryMenu: React.Dispatch<React.SetStateAction<boolean>>;
+
+	showCopyMenu: boolean;
+	setShowCopyMenu: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export function useAppMenus(): UseAppMenusReturn {
@@ -43,6 +46,7 @@ export function useAppMenus(): UseAppMenusReturn {
 	const [showUrlMenu, setShowUrlMenu] = useState(false);
 	const [showToolsMenu, setShowToolsMenu] = useState(false);
 	const [showMemoryMenu, setShowMemoryMenu] = useState(false);
+	const [showCopyMenu, setShowCopyMenu] = useState(false);
 
 	return {
 		showDeviceMenu,
@@ -65,5 +69,7 @@ export function useAppMenus(): UseAppMenusReturn {
 		setShowToolsMenu,
 		showMemoryMenu,
 		setShowMemoryMenu,
+		showCopyMenu,
+		setShowCopyMenu,
 	};
 }

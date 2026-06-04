@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { CopyMenu } from "../../components/CopyMenu";
 import { DeviceMenu } from "../../components/DeviceMenu";
 import { GroundingMenu } from "../../components/GroundingMenu";
 import { HotkeysPane } from "../../components/HotkeysPane";
@@ -141,6 +142,14 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 			)}
 
 			{menus.showMemoryMenu && <MemoryMenu onClose={() => menus.setShowMemoryMenu(false)} />}
+
+			{menus.showCopyMenu && (
+				<CopyMenu
+					conversationHistory={conversationHistory}
+					currentContentBlocks={currentContentBlocks}
+					onClose={() => menus.setShowCopyMenu(false)}
+				/>
+			)}
 
 			{onboarding.onboardingActive && (
 				<OnboardingOverlay

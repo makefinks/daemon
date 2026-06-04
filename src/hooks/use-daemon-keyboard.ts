@@ -28,6 +28,7 @@ export interface KeyboardHandlerActions {
 	setShowUrlMenu: (show: boolean) => void;
 	setShowToolsMenu: (show: boolean) => void;
 	setShowMemoryMenu: (show: boolean) => void;
+	setShowCopyMenu: (show: boolean) => void;
 	setTypingInput: (input: string | ((prev: string) => string)) => void;
 	setCurrentTranscription: (text: string) => void;
 	setCurrentResponse: (text: string) => void;
@@ -66,6 +67,7 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 		actions.setShowUrlMenu(false);
 		actions.setShowToolsMenu(false);
 		actions.setShowMemoryMenu(false);
+		actions.setShowCopyMenu(false);
 	}, [actions]);
 
 	const handleKeyPress = useCallback(
@@ -244,6 +246,21 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 			) {
 				closeAllMenus();
 				actions.setShowToolsMenu(true);
+				key.preventDefault();
+				return;
+			}
+
+			// 'Y' key to open copy menu (in IDLE, SPEAKING, or RESPONDING state)
+			if (
+				(key.sequence === "y" || key.sequence === "Y") &&
+				key.eventType === "press" &&
+				(currentState === DaemonState.IDLE ||
+					currentState === DaemonState.SPEAKING ||
+					currentState === DaemonState.RESPONDING) &&
+				hasInteracted
+			) {
+				closeAllMenus();
+				actions.setShowCopyMenu(true);
 				key.preventDefault();
 				return;
 			}

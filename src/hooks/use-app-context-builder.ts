@@ -46,6 +46,8 @@ export interface UseAppContextBuilderParams {
 		setShowToolsMenu: React.Dispatch<React.SetStateAction<boolean>>;
 		showMemoryMenu: boolean;
 		setShowMemoryMenu: React.Dispatch<React.SetStateAction<boolean>>;
+		showCopyMenu: boolean;
+		setShowCopyMenu: React.Dispatch<React.SetStateAction<boolean>>;
 	};
 
 	device: {

@@ -38,6 +38,7 @@ export function HotkeysPane({ onClose }: HotkeysPaneProps) {
 			items: [
 				{ key: "R", label: "Toggle full reasoning previews" },
 				{ key: "O", label: "Toggle tool output previews" },
+				{ key: "Y", label: "Copy message / transcript" },
 				{ key: "N", label: "New session" },
 				{ key: "G", label: "Open Grounding Menu" },
 				{ key: "U", label: "Open URL Menu" },
