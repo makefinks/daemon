@@ -15,8 +15,12 @@ export interface AvatarHudProps {
 
 /** Label color — dim but legible */
 const LABEL_COLOR = "#303055";
+/** Label highlight — brighter pop-in color */
+const LABEL_HIGHLIGHT = "#8888CC";
 /** Value color — slightly brighter for contrast */
 const VALUE_COLOR = "#454570";
+/** Value highlight — brighter pop-in color */
+const VALUE_HIGHLIGHT = "#AAAADD";
 const HIDDEN_COLOR = "#050509";
 const HUD_STAGGER_MS = 130;
 const HUD_FADE_MS = 420;
@@ -124,8 +128,8 @@ function AvatarHudImpl(props: AvatarHudProps) {
 				const revealStartMs = STARTUP_AVATAR_SPAWN_DURATION_MS + index * HUD_STAGGER_MS;
 				const progress = staggeredReveal ? easeOutCubic((elapsedMs - revealStartMs) / HUD_FADE_MS) : 1;
 				if (progress <= 0) return null;
-				const labelColor = mixColor(HIDDEN_COLOR, LABEL_COLOR, progress);
-				const valueColor = mixColor(HIDDEN_COLOR, VALUE_COLOR, progress);
+				const labelColor = mixColor(LABEL_HIGHLIGHT, LABEL_COLOR, progress);
+				const valueColor = mixColor(VALUE_HIGHLIGHT, VALUE_COLOR, progress);
 				const radians = (item.angle * Math.PI) / 180;
 				const cos = Math.cos(radians);
 				const rightShift = cos >= 0 ? RIGHT_COLUMN_SHIFT : 0;
