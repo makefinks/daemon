@@ -259,9 +259,9 @@ function tryStringify(value: unknown): string {
 	if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint")
 		return String(value);
 	if (value === null) return "null";
-	if (value === undefined) return "undefined";
+	if (value === undefined) return "";
 	try {
-		return JSON.stringify(value, null, 2);
+		return JSON.stringify(value, null, 2) ?? "";
 	} catch {
 		return String(value);
 	}
