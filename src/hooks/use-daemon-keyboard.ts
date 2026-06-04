@@ -28,6 +28,7 @@ export interface KeyboardHandlerActions {
 	setShowGroundingMenu: (show: boolean) => void;
 	setShowUrlMenu: (show: boolean) => void;
 	setShowToolsMenu: (show: boolean) => void;
+	setShowSkillsMenu: (show: boolean) => void;
 	setShowMemoryMenu: (show: boolean) => void;
 	setShowCopyMenu: (show: boolean) => void;
 	setTypingInput: (input: string | ((prev: string) => string)) => void;
@@ -69,6 +70,7 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 		actions.setShowGroundingMenu(false);
 		actions.setShowUrlMenu(false);
 		actions.setShowToolsMenu(false);
+		actions.setShowSkillsMenu(false);
 		actions.setShowMemoryMenu(false);
 		actions.setShowCopyMenu(false);
 	}, [actions]);
@@ -249,6 +251,20 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 			) {
 				closeAllMenus();
 				actions.setShowToolsMenu(true);
+				key.preventDefault();
+				return;
+			}
+
+			// 'I' key to open skills menu (in IDLE, SPEAKING, or RESPONDING state)
+			if (
+				(key.sequence === "i" || key.sequence === "I") &&
+				key.eventType === "press" &&
+				(currentState === DaemonState.IDLE ||
+					currentState === DaemonState.SPEAKING ||
+					currentState === DaemonState.RESPONDING)
+			) {
+				closeAllMenus();
+				actions.setShowSkillsMenu(true);
 				key.preventDefault();
 				return;
 			}

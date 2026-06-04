@@ -18,8 +18,8 @@ export const AVAILABLE_OPENROUTER_MODELS: ModelOption[] = [
 ];
 
 // Default model IDs
-export const DEFAULT_OPENROUTER_MODEL_ID = "z-ai/glm-5.1";
-export const DEFAULT_OPENAI_CODEX_MODEL_ID = "gpt-5.4";
+export const DEFAULT_OPENROUTER_MODEL_ID = "deepseek/deepseek-v4-flash";
+export const DEFAULT_OPENAI_CODEX_MODEL_ID = "gpt-5.5";
 export const DEFAULT_COPILOT_MODEL_ID = "claude-sonnet-4.5";
 export const DEFAULT_MODEL_ID = DEFAULT_OPENROUTER_MODEL_ID;
 export const DEFAULT_MODEL_PROVIDER: LlmProvider = "openrouter";

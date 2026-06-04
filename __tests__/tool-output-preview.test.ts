@@ -182,6 +182,40 @@ describe("formatToolOutputPreview", () => {
 		});
 	});
 
+	describe("skill tool formatting", () => {
+		it("formats loaded skill summaries", () => {
+			const result = {
+				success: true,
+				name: "daemon-config",
+				description: "Explains DAEMON configuration.",
+				resources: {
+					references: ["references/a.md"],
+					scripts: [],
+					assets: ["assets/template.json"],
+				},
+			};
+
+			const output = formatToolOutputPreview("loadSkill", result);
+			expect(output).toEqual([
+				"loaded daemon-config",
+				"Explains DAEMON configuration.",
+				"1 references, 0 scripts, 1 assets",
+			]);
+		});
+
+		it("formats loaded skill resources", () => {
+			const result = {
+				success: true,
+				skillName: "daemon-config",
+				path: "references/config.md",
+				content: "line one\nline two",
+			};
+
+			const output = formatToolOutputPreview("loadSkillResource", result);
+			expect(output).toEqual(["references/config.md:", "line one", "line two"]);
+		});
+	});
+
 	describe("unknown tool and general errors", () => {
 		it("returns null for unknown tool with success result", () => {
 			const result = { success: true, data: "something" };

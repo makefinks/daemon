@@ -103,7 +103,7 @@ function AvatarHudImpl(props: AvatarHudProps) {
 	// Pre-format all values
 	const tokens = formatTokens(stats.totalTokens);
 	const tools = formatNumber(stats.totalToolCalls);
-	const turns = formatNumber(stats.totalTurns);
+	const skills = formatNumber(stats.totalSkills);
 	const sessions = formatNumber(stats.totalSessions);
 	const memories = formatNumber(stats.totalMemories);
 	const artifacts = formatNumber(stats.totalArtifacts);
@@ -112,12 +112,12 @@ function AvatarHudImpl(props: AvatarHudProps) {
 	const radiusX = Math.max(24, Math.floor(avatarWidth * 0.32));
 	const radiusY = Math.max(8, Math.floor(avatarHeight * 0.24));
 	// Left side: sessions, memories, tools
-	// Right side: tokens, turns, artifacts
+	// Right side: tokens, skills, artifacts
 	const items = [
 		{ label: "TOKENS", value: tokens, angle: -45, width: 18 },
-		{ label: "TURNS", value: turns, angle: 0, width: 16 },
+		{ label: "SESSIONS", value: sessions, angle: 0, width: 16 },
 		{ label: "ARTIFACTS", value: artifacts, angle: 45, width: 20 },
-		{ label: "SESSIONS", value: sessions, angle: 135, width: 18 },
+		{ label: "SKILLS", value: skills, angle: 135, width: 18 },
 		{ label: "MEMORIES", value: memories, angle: 180, width: 18 },
 		{ label: "TOOLS", value: tools, angle: -135, width: 16 },
 	];

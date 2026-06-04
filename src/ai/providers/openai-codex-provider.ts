@@ -10,6 +10,7 @@ import { extractFinalAssistantText } from "../message-utils";
 import { getMcpManager } from "../mcp/mcp-manager";
 import { getResponseModel } from "../model-config";
 import { sanitizeMessagesForInput } from "../sanitize-messages";
+import { getSkillCatalog } from "../skills/skill-manager";
 import { buildDaemonSystemPrompt } from "../system-prompt";
 import { coordinateToolApprovals } from "../tool-approval-coordinator";
 import { getCachedToolAvailability, getDaemonTools } from "../tools/index";
@@ -65,6 +66,7 @@ async function createDaemonAgent(
 		getCachedToolAvailability() ?? (await resolveToolAvailability(getDaemonManager().toolToggles));
 	const workspacePath = sessionId ? getWorkspacePath(sessionId) : undefined;
 	const mcpToolGuidance = getMcpManager().getPromptGuidanceSnapshot();
+	const skillCatalog = await getSkillCatalog();
 
 	return new ToolLoopAgent({
 		model: openAiCodex.responses(getResponseModel()),
@@ -74,6 +76,7 @@ async function createDaemonAgent(
 			mcpToolGuidance,
 			workspacePath,
 			memoryInjection,
+			skillCatalog,
 		}),
 		tools,
 		providerOptions: buildProviderOptions(reasoningEffort, sessionId ?? undefined),

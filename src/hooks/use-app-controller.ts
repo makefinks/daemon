@@ -22,9 +22,10 @@ import { daemonEvents } from "../state/daemon-events";
 import { getDaemonManager } from "../state/daemon-state";
 import { getMcpManager } from "../ai/mcp/mcp-manager";
 import { deleteSession } from "../state/session-store";
-import { getStats } from "../state/stats-store";
+import { getStats, setEnabledSkillCount } from "../state/stats-store";
 import { DaemonState, getReasoningEffortLevels } from "../types";
 import type { DaemonStats } from "../types";
+import { discoverAllSkills, isSkillEnabled } from "../ai/skills/skill-manager";
 import { STARTUP_MENU_FADE_DELAY_MS, STARTUP_MENU_FADE_DURATION_MS } from "../ui/startup";
 
 export interface AppControllerResult {
@@ -102,6 +103,8 @@ export function useAppController({
 		setShowUrlMenu,
 		showToolsMenu,
 		setShowToolsMenu,
+		showSkillsMenu,
+		setShowSkillsMenu,
 		showMemoryMenu,
 		setShowMemoryMenu,
 		showCopyMenu,
@@ -129,6 +132,32 @@ export function useAppController({
 		daemonEvents.on("toolTogglesChanged", onToggle);
 		return () => {
 			daemonEvents.off("toolTogglesChanged", onToggle);
+		};
+	}, []);
+
+	// Eagerly discover skills on boot to seed the HUD count
+	useEffect(() => {
+		let cancelled = false;
+		void discoverAllSkills().then((allSkills) => {
+			if (cancelled) return;
+			const toggles = getDaemonManager().skillToggles ?? {};
+			const enabled = allSkills.filter((s) => isSkillEnabled(s.name, toggles)).length;
+			setEnabledSkillCount(enabled);
+			setDaemonStats(getStats());
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
+	// Refresh skills count when skills are toggled
+	useEffect(() => {
+		const onToggle = () => {
+			setDaemonStats(getStats());
+		};
+		daemonEvents.on("skillTogglesChanged", onToggle);
+		return () => {
+			daemonEvents.off("skillTogglesChanged", onToggle);
 		};
 	}, []);
 
@@ -378,6 +407,7 @@ export function useAppController({
 			setShowGroundingMenu,
 			setShowUrlMenu,
 			setShowToolsMenu,
+			setShowSkillsMenu,
 			setShowMemoryMenu,
 			setShowCopyMenu,
 			setTypingInput: daemon.typing.setTypingInput,
@@ -405,6 +435,7 @@ export function useAppController({
 			setShowGroundingMenu,
 			setShowUrlMenu,
 			setShowToolsMenu,
+			setShowSkillsMenu,
 			setShowMemoryMenu,
 			setShowCopyMenu,
 			daemon.typing.setTypingInput,
@@ -433,6 +464,7 @@ export function useAppController({
 			showGroundingMenu,
 			showUrlMenu,
 			showToolsMenu,
+			showSkillsMenu,
 			showMemoryMenu,
 			showCopyMenu,
 			onboardingActive: bootstrap.onboardingActive,
@@ -447,6 +479,7 @@ export function useAppController({
 			setShowGroundingMenu,
 			setShowUrlMenu,
 			setShowToolsMenu,
+			setShowSkillsMenu,
 			setShowMemoryMenu,
 			setShowCopyMenu,
 		}
@@ -583,6 +616,8 @@ export function useAppController({
 			setShowUrlMenu,
 			showToolsMenu,
 			setShowToolsMenu,
+			showSkillsMenu,
+			setShowSkillsMenu,
 			showMemoryMenu,
 			setShowMemoryMenu,
 			showCopyMenu,

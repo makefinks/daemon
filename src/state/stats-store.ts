@@ -1,9 +1,10 @@
 /**
  * Event-driven stats store for HUD stats.
  *
- * Tokens, turns, artifacts, sessions, and memories are persisted in SQLite
- * (survive restarts). Tools is in-memory only — seeded from MCP snapshot at
- * startup and kept in sync via the MCP manager's "update" event.
+ * Tokens, artifacts, sessions, and memories are persisted in SQLite
+ * (survive restarts). Tools and skills are in-memory only — tools seeded from
+ * MCP snapshot at startup and kept in sync via the MCP manager's "update"
+ * event; skills computed from toggle state.
  *
  * No polling — every stat updates via callbacks when something changes.
  */
@@ -26,7 +27,6 @@ const FLUSH_DEBOUNCE_MS = 2_000;
 
 let cachedPersisted: {
 	totalTokens: number;
-	totalTurns: number;
 	totalArtifacts: number;
 	totalSessions: number;
 	totalMemories: number;
@@ -83,7 +83,6 @@ function writeStat(database: Database, key: string, value: number): void {
 
 function loadFromDb(): {
 	totalTokens: number;
-	totalTurns: number;
 	totalArtifacts: number;
 	totalSessions: number;
 	totalMemories: number;
@@ -92,7 +91,6 @@ function loadFromDb(): {
 		const database = ensureDb();
 		return {
 			totalTokens: readStat(database, "total_tokens"),
-			totalTurns: readStat(database, "total_turns"),
 			totalArtifacts: readStat(database, "total_artifacts"),
 			totalSessions: readStat(database, "total_sessions"),
 			totalMemories: readStat(database, "total_memories"),
@@ -100,13 +98,12 @@ function loadFromDb(): {
 	} catch (error) {
 		const err = error instanceof Error ? error : new Error(String(error));
 		debug.error("stats-load-failed", { message: err.message });
-		return { totalTokens: 0, totalTurns: 0, totalArtifacts: 0, totalSessions: 0, totalMemories: 0 };
+		return { totalTokens: 0, totalArtifacts: 0, totalSessions: 0, totalMemories: 0 };
 	}
 }
 
 function ensureLoaded(): {
 	totalTokens: number;
-	totalTurns: number;
 	totalArtifacts: number;
 	totalSessions: number;
 	totalMemories: number;
@@ -131,7 +128,6 @@ function flushToDb(): void {
 		const database = ensureDb();
 		const p = cachedPersisted;
 		writeStat(database, "total_tokens", p.totalTokens);
-		writeStat(database, "total_turns", p.totalTurns);
 		writeStat(database, "total_artifacts", p.totalArtifacts);
 		writeStat(database, "total_sessions", p.totalSessions);
 		writeStat(database, "total_memories", p.totalMemories);
@@ -157,11 +153,11 @@ export function getStats(): DaemonStats {
 	const p = ensureLoaded();
 	return {
 		totalTokens: p.totalTokens,
-		totalTurns: p.totalTurns,
 		totalArtifacts: p.totalArtifacts,
 		totalSessions: p.totalSessions,
 		totalToolCalls: computeToolCount(),
 		totalMemories: p.totalMemories,
+		totalSkills: cachedEnabledSkillCount,
 	};
 }
 
@@ -181,18 +177,19 @@ function computeToolCount(): number {
 	}
 }
 
+// ── In-memory-only skills count (not persisted) ──
+
+let cachedEnabledSkillCount = 0;
+
+export function setEnabledSkillCount(count: number): void {
+	cachedEnabledSkillCount = count;
+}
+
 // ── Increment / decrement functions ──
 
 export function incrementTokens(n: number): void {
 	if (n <= 0) return;
 	ensureLoaded().totalTokens += n;
-	dirty = true;
-	scheduleFlush();
-}
-
-export function incrementTurns(n: number): void {
-	if (n <= 0) return;
-	ensureLoaded().totalTurns += n;
 	dirty = true;
 	scheduleFlush();
 }

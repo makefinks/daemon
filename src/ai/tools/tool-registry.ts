@@ -2,6 +2,8 @@ import type { ToolSet } from "ai";
 
 import { fetchUrls } from "./fetch-urls";
 import { groundingManager } from "./grounding-manager";
+import { loadSkill } from "./load-skill";
+import { loadSkillResource } from "./load-skill-resource";
 import { readFile } from "./read-file";
 import { runBash } from "./run-bash";
 import { subagent } from "./subagents";
@@ -42,6 +44,8 @@ export const TOOL_REGISTRY: ToolEntry[] = [
 	{ id: "readFile", toggleKey: "readFile", tool: readFile },
 	{ id: "writeFile", toggleKey: "writeFile", tool: writeFile },
 	{ id: "runBash", toggleKey: "runBash", tool: runBash },
+	{ id: "loadSkill", toggleKey: "loadSkill", tool: loadSkill },
+	{ id: "loadSkillResource", toggleKey: "loadSkillResource", tool: loadSkillResource },
 	{ id: "webSearch", toggleKey: "webSearch", tool: webSearch, gate: gateExa },
 	{ id: "fetchUrls", toggleKey: "fetchUrls", tool: fetchUrls, gate: gateExa },
 	{ id: "todoManager", toggleKey: "todoManager", tool: todoManager },
@@ -76,6 +80,8 @@ function normalizeToggles(toggles?: ToolToggles): ToolToggles {
 		readFile: toggles?.readFile ?? true,
 		writeFile: toggles?.writeFile ?? true,
 		runBash: toggles?.runBash ?? true,
+		loadSkill: toggles?.loadSkill ?? true,
+		loadSkillResource: toggles?.loadSkillResource ?? true,
 		webSearch: toggles?.webSearch ?? true,
 		fetchUrls: toggles?.fetchUrls ?? true,
 		todoManager: toggles?.todoManager ?? true,
@@ -174,6 +180,8 @@ export function getToolLabels(): Record<ToolId, string> {
 		readFile: "readFile",
 		writeFile: "writeFile",
 		runBash: "runBash",
+		loadSkill: "loadSkill",
+		loadSkillResource: "loadSkillResource",
 		webSearch: "webSearch",
 		fetchUrls: "fetchUrls",
 		todoManager: "todoManager",
@@ -187,6 +195,8 @@ export function getDefaultToolOrder(): ToolId[] {
 		"readFile",
 		"writeFile",
 		"runBash",
+		"loadSkill",
+		"loadSkillResource",
 		"webSearch",
 		"fetchUrls",
 		"todoManager",
@@ -200,6 +210,8 @@ export function createToolAvailabilitySnapshot(availability: ToolAvailabilityMap
 		readFile: availability.readFile?.enabled ?? false,
 		writeFile: availability.writeFile?.enabled ?? false,
 		runBash: availability.runBash?.enabled ?? false,
+		loadSkill: availability.loadSkill?.enabled ?? false,
+		loadSkillResource: availability.loadSkillResource?.enabled ?? false,
 		webSearch: availability.webSearch?.enabled ?? false,
 		fetchUrls: availability.fetchUrls?.enabled ?? false,
 		todoManager: availability.todoManager?.enabled ?? false,

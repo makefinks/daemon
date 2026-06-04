@@ -28,6 +28,9 @@ export interface UseAppMenusReturn {
 	showToolsMenu: boolean;
 	setShowToolsMenu: React.Dispatch<React.SetStateAction<boolean>>;
 
+	showSkillsMenu: boolean;
+	setShowSkillsMenu: React.Dispatch<React.SetStateAction<boolean>>;
+
 	showMemoryMenu: boolean;
 	setShowMemoryMenu: React.Dispatch<React.SetStateAction<boolean>>;
 
@@ -45,6 +48,7 @@ export function useAppMenus(): UseAppMenusReturn {
 	const [showGroundingMenu, setShowGroundingMenu] = useState(false);
 	const [showUrlMenu, setShowUrlMenu] = useState(false);
 	const [showToolsMenu, setShowToolsMenu] = useState(false);
+	const [showSkillsMenu, setShowSkillsMenu] = useState(false);
 	const [showMemoryMenu, setShowMemoryMenu] = useState(false);
 	const [showCopyMenu, setShowCopyMenu] = useState(false);
 
@@ -67,6 +71,8 @@ export function useAppMenus(): UseAppMenusReturn {
 		setShowUrlMenu,
 		showToolsMenu,
 		setShowToolsMenu,
+		showSkillsMenu,
+		setShowSkillsMenu,
 		showMemoryMenu,
 		setShowMemoryMenu,
 		showCopyMenu,

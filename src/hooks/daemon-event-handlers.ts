@@ -14,7 +14,6 @@ import {
 	incrementMemories,
 	incrementSessions,
 	incrementTokens,
-	incrementTurns,
 	decrementMemories,
 	decrementSessions,
 	decrementArtifacts,
@@ -53,7 +52,9 @@ function getToolCategory(toolName: string): ToolCategory | "fast" | undefined {
 		toolName === "readFile" ||
 		toolName === "getFragmentCandidates" ||
 		toolName === "todoManager" ||
-		toolName === "groundingManager"
+		toolName === "groundingManager" ||
+		toolName === "loadSkill" ||
+		toolName === "loadSkillResource"
 	)
 		return "fast";
 	return undefined;
@@ -279,7 +280,6 @@ export function createUserMessageHandler(
 ) {
 	return (text: string) => {
 		if (!text.trim()) return;
-		incrementTurns(1);
 
 		deps.addToHistory(text);
 

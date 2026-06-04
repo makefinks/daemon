@@ -51,6 +51,7 @@ export function HotkeysPane({ onClose }: HotkeysPaneProps) {
 			items: [
 				{ key: "B", label: "Memories" },
 				{ key: "D", label: "Devices" },
+				{ key: "I", label: "Skills" },
 				{ key: "M", label: "Models" },
 				{ key: "P", label: "Providers" },
 				{ key: "L", label: "Sessions" },

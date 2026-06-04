@@ -292,6 +292,8 @@ export type ToolToggleId =
 	| "readFile"
 	| "writeFile"
 	| "runBash"
+	| "loadSkill"
+	| "loadSkillResource"
 	| "webSearch"
 	| "fetchUrls"
 	| "todoManager"
@@ -301,11 +303,14 @@ export type ToolToggleId =
 export type ToolToggles = Record<ToolToggleId, boolean>;
 
 export type McpServerToggles = Record<string, boolean>;
+export type SkillToggles = Record<string, boolean>;
 
 export const DEFAULT_TOOL_TOGGLES: ToolToggles = {
 	readFile: true,
 	writeFile: true,
 	runBash: true,
+	loadSkill: true,
+	loadSkillResource: true,
 	webSearch: true,
 	fetchUrls: true,
 	todoManager: true,
@@ -352,6 +357,8 @@ export interface AppPreferences {
 	toolToggles?: ToolToggles;
 	/** MCP server toggles by server id (missing means enabled) */
 	mcpServerToggles?: McpServerToggles;
+	/** Agent Skill toggles by skill name (missing means enabled) */
+	skillToggles?: SkillToggles;
 	/** Recent user inputs for up/down history navigation (max 20) */
 	inputHistory?: string[];
 }
@@ -528,6 +535,6 @@ export interface DaemonStats {
 	totalSessions: number;
 	totalToolCalls: number;
 	totalMemories: number;
-	totalTurns: number;
+	totalSkills: number;
 	totalArtifacts: number;
 }

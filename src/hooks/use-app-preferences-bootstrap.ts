@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { getMcpManager, startMcpManager } from "../ai/mcp/mcp-manager";
 import { hasCopilotCliAuthSafe } from "../ai/copilot-client";
 import { hasOpenAiCodexAuthSafe } from "../ai/openai-codex-auth";
+import { setSkillToggles } from "../ai/skills/skill-manager";
 import {
 	getResponseModelForProvider,
 	setModelProvider,
@@ -36,6 +37,7 @@ export interface UseAppPreferencesBootstrapParams {
 		memoryEnabled: boolean;
 		toolToggles?: ToolToggles;
 		mcpServerToggles?: McpServerToggles;
+		skillToggles?: AppPreferences["skillToggles"];
 		audioDeviceName?: string;
 		outputDeviceName?: string;
 	};
@@ -181,6 +183,8 @@ export function useAppPreferencesBootstrap(
 			}
 
 			manager.mcpServerToggles = prefs?.mcpServerToggles ?? {};
+			manager.skillToggles = prefs?.skillToggles ?? {};
+			setSkillToggles(manager.skillToggles);
 			const mcpManager = getMcpManager();
 			mcpManager.setServerToggles(manager.mcpServerToggles);
 

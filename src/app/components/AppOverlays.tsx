@@ -9,6 +9,7 @@ import { OnboardingOverlay } from "../../components/OnboardingOverlay";
 import { ProviderMenu } from "../../components/ProviderMenu";
 import { SessionMenu } from "../../components/SessionMenu";
 import { SettingsMenu } from "../../components/SettingsMenu";
+import { SkillsMenu } from "../../components/SkillsMenu";
 import { ToolsMenu } from "../../components/ToolsMenu";
 import { UrlMenu } from "../../components/UrlMenu";
 import { useUrlMenuItems } from "../../hooks/use-url-menu-items";
@@ -137,6 +138,13 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 			{menus.showToolsMenu && (
 				<ToolsMenu
 					onClose={() => menus.setShowToolsMenu(false)}
+					persistPreferences={(updates) => settings.persistPreferences(updates)}
+				/>
+			)}
+
+			{menus.showSkillsMenu && (
+				<SkillsMenu
+					onClose={() => menus.setShowSkillsMenu(false)}
 					persistPreferences={(updates) => settings.persistPreferences(updates)}
 				/>
 			)}

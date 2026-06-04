@@ -8,6 +8,7 @@ import { getWorkspacePath } from "../../utils/workspace-manager";
 import { convertToolSetToCopilotTools, getOrCreateCopilotSession } from "../copilot-client";
 import { getMcpManager } from "../mcp/mcp-manager";
 import { getResponseModel } from "../model-config";
+import { getSkillCatalog } from "../skills/skill-manager";
 import { buildDaemonSystemPrompt } from "../system-prompt";
 import { getCachedToolAvailability, getDaemonTools } from "../tools/index";
 import { createToolAvailabilitySnapshot, resolveToolAvailability } from "../tools/tool-registry";
@@ -212,6 +213,7 @@ async function streamCopilotSession(params: {
 		getCachedToolAvailability() ?? (await resolveToolAvailability(getDaemonManager().toolToggles));
 	const workspacePath = sessionId ? getWorkspacePath(sessionId) : undefined;
 	const mcpToolGuidance = getMcpManager().getPromptGuidanceSnapshot();
+	const skillCatalog = await getSkillCatalog();
 
 	const systemPrompt = buildDaemonSystemPrompt({
 		mode: interactionMode,
@@ -219,6 +221,7 @@ async function streamCopilotSession(params: {
 		mcpToolGuidance,
 		workspacePath,
 		memoryInjection,
+		skillCatalog,
 	});
 
 	const baseSessionConfig = {

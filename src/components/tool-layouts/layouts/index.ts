@@ -7,3 +7,4 @@ import "./subagent";
 import "./todo";
 import "./system-info";
 import "./grounding";
+import "./skills";

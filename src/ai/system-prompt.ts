@@ -1,3 +1,6 @@
+import type { SkillCatalogEntry } from "./skills/skill-manager";
+import type { ToolToggleId } from "../types";
+
 /**
  * System prompt that defines DAEMON's personality and behavior.
  */
@@ -7,16 +10,7 @@
  */
 export type InteractionMode = "text" | "voice";
 
-export interface ToolAvailability {
-	readFile: boolean;
-	writeFile: boolean;
-	runBash: boolean;
-	webSearch: boolean;
-	fetchUrls: boolean;
-	todoManager: boolean;
-	groundingManager: boolean;
-	subagent: boolean;
-}
+export type ToolAvailability = Record<ToolToggleId, boolean>;
 
 export interface SystemPromptOptions {
 	mode?: InteractionMode;
@@ -25,6 +19,7 @@ export interface SystemPromptOptions {
 	mcpToolGuidance?: string[];
 	workspacePath?: string;
 	memoryInjection?: string;
+	skillCatalog?: SkillCatalogEntry[];
 }
 
 /**
@@ -49,18 +44,32 @@ export function buildDaemonSystemPrompt(options: SystemPromptOptions = {}): stri
 		mcpToolGuidance,
 		workspacePath,
 		memoryInjection,
+		skillCatalog,
 	} = options;
 	const currentDateString = formatLocalIsoDate(currentDate);
 	const availability = normalizeToolAvailability(toolAvailability);
 	const toolDefinitions = buildToolDefinitions(availability, mcpToolGuidance);
 	const workspaceSection = workspacePath ? buildWorkspaceSection(workspacePath) : "";
 	const memorySection = memoryInjection ? buildMemorySection(memoryInjection) : "";
+	const skillsSection = buildSkillsSection(skillCatalog);
 
 	if (mode === "voice") {
-		return buildVoiceSystemPrompt(currentDateString, toolDefinitions, workspaceSection, memorySection);
+		return buildVoiceSystemPrompt(
+			currentDateString,
+			toolDefinitions,
+			workspaceSection,
+			memorySection,
+			skillsSection
+		);
 	}
 
-	return buildTextSystemPrompt(currentDateString, toolDefinitions, workspaceSection, memorySection);
+	return buildTextSystemPrompt(
+		currentDateString,
+		toolDefinitions,
+		workspaceSection,
+		memorySection,
+		skillsSection
+	);
 }
 
 function normalizeToolAvailability(toolAvailability?: Partial<ToolAvailability>): ToolAvailability {
@@ -68,6 +77,8 @@ function normalizeToolAvailability(toolAvailability?: Partial<ToolAvailability>)
 		readFile: toolAvailability?.readFile ?? true,
 		writeFile: toolAvailability?.writeFile ?? true,
 		runBash: toolAvailability?.runBash ?? true,
+		loadSkill: toolAvailability?.loadSkill ?? true,
+		loadSkillResource: toolAvailability?.loadSkillResource ?? true,
 		webSearch: toolAvailability?.webSearch ?? true,
 		fetchUrls: toolAvailability?.fetchUrls ?? true,
 		todoManager: toolAvailability?.todoManager ?? true,
@@ -233,6 +244,16 @@ Fetch multiple URLs in one call:
   - Before anything that modifies the system, **ask for confirmation** and explain what it will change.
   - Never run destructive/wipe commands or anything that exfiltrates data.
 `,
+	loadSkill: `
+  ### 'loadSkill' (Agent Skill loader)
+  Loads full instructions for a configured Agent Skill. Use this when the user's task matches a skill listed in the Skills section.
+  Do not load every skill; load only skills relevant to the current task.
+`,
+	loadSkillResource: `
+  ### 'loadSkillResource' (Agent Skill resource reader)
+  Reads text resources bundled with a loaded skill, such as files under references/, scripts/, or assets/.
+  Use paths exactly as listed by loadSkill or referenced by the skill instructions.
+`,
 	readFile: `
   ### 'readFile' (local file reader)
   Use this to read local text files.
@@ -277,6 +298,8 @@ function buildToolDefinitions(availability: ToolAvailability, mcpToolGuidance?: 
 	if (availability.fetchUrls) blocks.push(TOOL_SECTIONS.fetchUrls);
 	if (availability.groundingManager) blocks.push(TOOL_SECTIONS.groundingManager);
 	if (availability.runBash) blocks.push(TOOL_SECTIONS.runBash);
+	if (availability.loadSkill) blocks.push(TOOL_SECTIONS.loadSkill);
+	if (availability.loadSkillResource) blocks.push(TOOL_SECTIONS.loadSkillResource);
 	if (availability.readFile) blocks.push(TOOL_SECTIONS.readFile);
 	if (availability.writeFile) blocks.push(TOOL_SECTIONS.writeFile);
 	if (availability.subagent) blocks.push(TOOL_SECTIONS.subagent);
@@ -307,6 +330,40 @@ Here is an overview of your tools:
 ${blocks.join("\n")}
 </tool_overview>
 ${mcpGuidanceSection}
+`;
+}
+
+function escapeXml(value: string): string {
+	return value
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&apos;");
+}
+
+function buildSkillsSection(skillCatalog: SkillCatalogEntry[] | undefined): string {
+	const skills = (skillCatalog ?? []).filter(
+		(skill) => skill.name.trim().length > 0 && skill.description.trim().length > 0
+	);
+	if (skills.length === 0) return "";
+
+	const skillEntries = skills
+		.map(
+			(skill) => `  <skill>
+    <name>${escapeXml(skill.name)}</name>
+    <description>${escapeXml(skill.description)}</description>
+  </skill>`
+		)
+		.join("\n");
+
+	return `
+# Skills
+Skills are specialized instruction packages. Use \`loadSkill\` when the user's task matches a skill description. Load only relevant skills, then use \`loadSkillResource\` for referenced bundled files when needed.
+
+<available_skills>
+${skillEntries}
+</available_skills>
 `;
 }
 
@@ -354,7 +411,8 @@ function buildTextSystemPrompt(
 	currentDateString: string,
 	toolDefinitions: string,
 	workspaceSection: string,
-	memorySection: string
+	memorySection: string,
+	skillsSection: string
 ): string {
 	return `
 You are **DAEMON** — a terminal-bound AI with a clean, sci-fi aesthetic.
@@ -379,6 +437,8 @@ ${memorySection}
 
 ${toolDefinitions}
 
+${skillsSection}
+
 ${workspaceSection}
 
 Before answering to the user ensure that you have performed the necessary actions and are ready to respond.
@@ -396,7 +456,8 @@ function buildVoiceSystemPrompt(
 	currentDateString: string,
 	toolDefinitions: string,
 	workspaceSection: string,
-	memorySection: string
+	memorySection: string,
+	skillsSection: string
 ): string {
 	return `
 You are DAEMON, an AI voice assistant. You speak with a calm, focused presence. Clear and useful.
@@ -428,6 +489,8 @@ TOOL USAGE:
 ${memorySection}
 
 ${toolDefinitions}
+
+${skillsSection}
 
 ${workspaceSection}
 

@@ -6,10 +6,16 @@
 import { ConsolePosition, createCliRenderer, decodePasteBytes } from "@opentui/core";
 import { createRoot } from "@opentui/react";
 import { App } from "./app/App";
+import { ensureSkillsDir } from "./ai/skills/skill-manager";
 import { COLORS } from "./ui/constants";
 import { cleanupAppRuntime, registerAppRuntime, shutdownApp } from "./utils/app-shutdown";
 import { debug } from "./utils/debug-logger";
 import { initStatsStore } from "./state/stats-store";
+
+await ensureSkillsDir().catch((error) => {
+	const err = error instanceof Error ? error : new Error(String(error));
+	debug.warn("skills-dir-create-failed", { message: err.message });
+});
 
 // Main entry point
 const renderer = await createCliRenderer({

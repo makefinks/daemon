@@ -96,6 +96,21 @@ describe("parsePreferences", () => {
 		});
 	});
 
+	it("includes skill toggles", () => {
+		const result = parsePreferences({
+			skillToggles: {
+				"daemon-config": true,
+				"draft-skill": false,
+				invalid: "yes",
+			},
+		});
+
+		expect(result?.skillToggles).toEqual({
+			"daemon-config": true,
+			"draft-skill": false,
+		});
+	});
+
 	describe("optional fields", () => {
 		describe("modelProvider", () => {
 			it("includes valid modelProvider values", () => {

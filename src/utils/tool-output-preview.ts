@@ -254,6 +254,38 @@ function formatReadFileResult(result: unknown): string | null {
 	return `${path}${range}:\n${content}`;
 }
 
+function formatLoadSkillResult(result: unknown): string | null {
+	if (!isRecord(result)) return null;
+	if (result.success === false && typeof result.error === "string") {
+		return `error: ${result.error}`;
+	}
+	if (result.success !== true) return null;
+
+	const name = typeof result.name === "string" && result.name.trim() ? result.name.trim() : "skill";
+	const description = typeof result.description === "string" ? result.description.trim() : "";
+	const resources = isRecord(result.resources) ? result.resources : {};
+	const references = Array.isArray(resources.references) ? resources.references.length : 0;
+	const scripts = Array.isArray(resources.scripts) ? resources.scripts.length : 0;
+	const assets = Array.isArray(resources.assets) ? resources.assets.length : 0;
+	const lines = [`loaded ${name}`];
+	if (description) lines.push(description);
+	lines.push(`${references} references, ${scripts} scripts, ${assets} assets`);
+	return lines.join("\n");
+}
+
+function formatLoadSkillResourceResult(result: unknown): string | null {
+	if (!isRecord(result)) return null;
+	if (result.success === false && typeof result.error === "string") {
+		return `error: ${result.error}`;
+	}
+	if (result.success !== true) return null;
+
+	const path = typeof result.path === "string" && result.path.trim() ? result.path.trim() : "resource";
+	const content = typeof result.content === "string" ? result.content.trim() : "";
+	if (!content) return path;
+	return `${path}:\n${content}`;
+}
+
 function tryStringify(value: unknown): string {
 	if (typeof value === "string") return value;
 	if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint")
@@ -330,6 +362,8 @@ export function formatToolOutputPreview(toolName: string, result: unknown): stri
 	if (toolName === "webSearch") raw = formatExaSearchResult(result);
 	if (toolName === "fetchUrls") raw = formatExaFetchResult(result);
 	if (toolName === "readFile") raw = formatReadFileResult(result);
+	if (toolName === "loadSkill") raw = formatLoadSkillResult(result);
+	if (toolName === "loadSkillResource") raw = formatLoadSkillResourceResult(result);
 
 	if (!raw) {
 		if (isRecord(result) && result.success === false && typeof result.error === "string") {

@@ -46,6 +46,7 @@ export type DaemonStateEvents = {
 	cancelled: () => void;
 	error: (error: Error) => void;
 	toolTogglesChanged: () => void;
+	skillTogglesChanged: () => void;
 };
 
 class DaemonEventBus extends EventEmitter {

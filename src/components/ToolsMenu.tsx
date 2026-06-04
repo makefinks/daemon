@@ -231,7 +231,7 @@ export function ToolsMenu({ persistPreferences, onClose }: ToolsMenuProps) {
 					</text>
 				</box>
 
-				<box marginBottom={1}>
+				<box marginBottom={1} paddingLeft={1}>
 					<text>
 						<span fg={COLORS.REASONING_DIM}>
 							{`  ${"TOOL".padEnd(labelWidth)} ${"STATUS".padEnd(statusWidth)}${showReasonColumn ? " REASON" : ""}`}

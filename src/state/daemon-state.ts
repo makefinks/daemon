@@ -11,6 +11,7 @@ import type {
 	McpServerToggles,
 	ModelMessage,
 	ReasoningEffort,
+	SkillToggles,
 	SpeechSpeed,
 	ToolToggles,
 	VoiceInteractionType,
@@ -44,6 +45,7 @@ class DaemonStateManager {
 	private _bashApprovalLevel: BashApprovalLevel = "dangerous";
 	private _toolToggles: ToolToggles = { ...DEFAULT_TOOL_TOGGLES };
 	private _mcpServerToggles: McpServerToggles = {};
+	private _skillToggles: SkillToggles = {};
 	private _memoryEnabled = true;
 	private _outputDeviceName: string | undefined = undefined;
 	private _turnId = 0;
@@ -156,6 +158,14 @@ class DaemonStateManager {
 
 	set mcpServerToggles(toggles: McpServerToggles) {
 		this._mcpServerToggles = toggles;
+	}
+
+	get skillToggles(): SkillToggles {
+		return this._skillToggles;
+	}
+
+	set skillToggles(toggles: SkillToggles) {
+		this._skillToggles = toggles;
 	}
 
 	get memoryEnabled(): boolean {
