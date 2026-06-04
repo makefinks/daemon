@@ -7,9 +7,10 @@ export function updateEye(elements: SceneElements, state: RigState, dt: number, 
 
 	const eyeSpeed = 1.5 + intensity * 4;
 	phase.eyePulse += dt * eyeSpeed;
+	const effortPulse = Math.pow(reasoning.powerPulse, 1.35);
 	const eyePulseAmount = 0.1 + intensity * 0.3 + typing.pulse * 0.1;
 	const eyePulse = 0.9 + Math.sin(phase.eyePulse) * eyePulseAmount;
-	elements.eye.scale.setScalar(eyePulse * (1 + audio.surge * 0.02));
+	elements.eye.scale.setScalar(eyePulse * (1 + audio.surge * 0.02) * (1 - effortPulse * 0.34));
 
 	const pupilSpeed = 2 + intensity * 5;
 	phase.pupilPulse += dt * pupilSpeed;
@@ -17,7 +18,9 @@ export function updateEye(elements: SceneElements, state: RigState, dt: number, 
 	const normalPupilBase = 0.8 + Math.sin(phase.pupilPulse) * pupilPulseAmount;
 	const reasoningPupilDilation = 1.4;
 	const pupilBase = normalPupilBase * (1 - reasoning.blend) + reasoningPupilDilation * reasoning.blend;
-	elements.pupil.scale.setScalar(pupilBase * (1 + audio.current * 0.015 + audio.surge * 0.02));
+	elements.pupil.scale.setScalar(
+		pupilBase * (1 + audio.current * 0.015 + audio.surge * 0.02) * (1 - effortPulse * 0.42)
+	);
 
 	if (tool.flashTimer > 0) {
 		tool.flashTimer -= dt;

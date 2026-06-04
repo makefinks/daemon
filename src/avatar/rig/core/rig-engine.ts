@@ -169,6 +169,12 @@ export class RigEngine {
 		this.state.reasoning.active = active;
 	}
 
+	public triggerReasoningEffortPulse(): void {
+		this.state.reasoning.powerPulse = 1;
+		this.state.reasoning.powerPulseAge = 0;
+		this.state.reasoning.powerPulseSeed = (this.state.reasoning.powerPulseSeed + 1) % 17;
+	}
+
 	public setTypingMode(active: boolean): void {
 		this.state.typing.active = active;
 	}

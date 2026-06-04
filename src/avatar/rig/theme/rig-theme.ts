@@ -3,7 +3,7 @@ import type { RigState } from "../state/rig-state";
 import { lerpColor } from "../utils/math";
 
 export function updateThemeColors(elements: SceneElements, state: RigState, dt: number): void {
-	const { theme, typing, tool } = state;
+	const { theme, typing, tool, reasoning } = state;
 
 	const t = dt * 4;
 	theme.current.primary = lerpColor(theme.current.primary, theme.target.primary, t);
@@ -17,6 +17,11 @@ export function updateThemeColors(elements: SceneElements, state: RigState, dt: 
 		const flashStrength = Math.pow(typing.pulse, 1.5) * 0.5;
 		displayPrimary = lerpColor(displayPrimary, 0xffffff, flashStrength);
 		displayEye = lerpColor(displayEye, 0xff8888, flashStrength * 0.3);
+	}
+
+	if (reasoning.powerPulse > 0.01) {
+		const effortDarken = Math.pow(reasoning.powerPulse, 1.35) * 0.38;
+		displayEye = lerpColor(displayEye, 0x000000, effortDarken);
 	}
 
 	elements.glowMat.color.setHex(displayPrimary);

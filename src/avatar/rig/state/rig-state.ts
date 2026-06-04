@@ -40,6 +40,9 @@ export interface ToolState {
 export interface ReasoningState {
 	active: boolean;
 	blend: number;
+	powerPulse: number;
+	powerPulseAge: number;
+	powerPulseSeed: number;
 }
 
 export interface TypingState {
@@ -152,6 +155,9 @@ export function createInitialState(): RigState {
 		reasoning: {
 			active: false,
 			blend: 0,
+			powerPulse: 0,
+			powerPulseAge: 0,
+			powerPulseSeed: 0,
 		},
 		typing: {
 			active: false,

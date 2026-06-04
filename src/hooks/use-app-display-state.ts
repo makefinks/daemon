@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { DaemonState } from "../types";
-import type { ContentBlock, LlmProvider, ModelOption, SessionInfo } from "../types";
+import { DaemonState, REASONING_EFFORT_LABELS } from "../types";
+import type { ContentBlock, LlmProvider, ModelOption, ReasoningEffort, SessionInfo } from "../types";
 import { COLORS, STATE_COLOR_HEX, STATUS_TEXT } from "../ui/constants";
 import { formatElapsedTime } from "../utils/formatters";
 import type { ModelMetadata } from "../utils/model-metadata";
@@ -19,6 +19,8 @@ export interface UseAppDisplayStateParams {
 	modelMetadata: ModelMetadata | null;
 	curatedModels: ModelOption[];
 	availableModels: ModelOption[];
+	reasoningEffort: ReasoningEffort;
+	supportsReasoning: boolean;
 	preferencesLoaded: boolean;
 
 	currentSessionId: string | null;
@@ -36,6 +38,7 @@ export interface UseAppDisplayStateReturn {
 	showWorkingSpinner: boolean;
 	workingSpinnerLabel: string;
 	modelName: string | undefined;
+	reasoningEffortLabel: string | undefined;
 	sessionTitle: string | undefined;
 	avatarWidth: number;
 	avatarHeight: number;
@@ -65,6 +68,8 @@ export function useAppDisplayState(params: UseAppDisplayStateParams): UseAppDisp
 		modelMetadata,
 		curatedModels,
 		availableModels,
+		reasoningEffort,
+		supportsReasoning,
 		preferencesLoaded,
 		currentSessionId,
 		sessionMenuItems,
@@ -85,16 +90,16 @@ export function useAppDisplayState(params: UseAppDisplayStateParams): UseAppDisp
 	const statusText = useMemo(() => {
 		if (daemonState === DaemonState.RESPONDING) {
 			if (isToolCalling) {
-				return "DAEMON INVOKES TOOL... · ESC cancel · R reasoning";
+				return "DAEMON INVOKES TOOL... · ESC cancel · E effort · R reasoning";
 			}
 			return isReasoning
-				? "DAEMON REASONING... · ESC cancel · R reasoning"
-				: "DAEMON SPEAKS... · ESC cancel · R reasoning";
+				? "DAEMON REASONING... · ESC cancel · E effort · R reasoning"
+				: "DAEMON SPEAKS... · ESC cancel · E effort · R reasoning";
 		}
 		let baseStatus = STATUS_TEXT[daemonState];
 		if (daemonState === DaemonState.IDLE) {
 			if (hasInteracted) {
-				baseStatus = "SPACE speak · SHIFT+TAB type · N new · ? hotkeys";
+				baseStatus = "SPACE speak · SHIFT+TAB type · E effort · N new · ? hotkeys";
 			}
 		}
 		return baseStatus;
@@ -151,6 +156,9 @@ export function useAppDisplayState(params: UseAppDisplayStateParams): UseAppDisp
 		return session?.title;
 	}, [currentSessionId, sessionMenuItems]);
 
+	const reasoningEffortLabel =
+		preferencesLoaded && supportsReasoning ? REASONING_EFFORT_LABELS[reasoningEffort] : undefined;
+
 	const avatarWidth = useMemo(
 		() =>
 			Math.max(
@@ -181,6 +189,7 @@ export function useAppDisplayState(params: UseAppDisplayStateParams): UseAppDisp
 		showWorkingSpinner,
 		workingSpinnerLabel,
 		modelName,
+		reasoningEffortLabel,
 		sessionTitle,
 		avatarWidth,
 		avatarHeight,

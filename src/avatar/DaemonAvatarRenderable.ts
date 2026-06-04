@@ -316,6 +316,12 @@ export class DaemonAvatarRenderable extends FrameBufferRenderable {
 		}
 	}
 
+	public triggerReasoningEffortPulse(): void {
+		if (this.rig) {
+			this.rig.triggerReasoningEffortPulse();
+		}
+	}
+
 	public setTypingMode(active: boolean): void {
 		if (this.rig) {
 			this.rig.setTypingMode(active);

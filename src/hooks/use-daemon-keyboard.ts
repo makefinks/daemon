@@ -14,6 +14,7 @@ export interface KeyboardHandlerState {
 	showFullReasoning: boolean;
 	showToolOutput: boolean;
 	currentModelProvider: LlmProvider;
+	supportsReasoning: boolean;
 	openAiCodexAuthenticated: boolean;
 }
 
@@ -36,6 +37,7 @@ export interface KeyboardHandlerActions {
 	setEscPendingCancel: (pending: boolean) => void;
 	setShowFullReasoning: (show: boolean | ((prev: boolean) => boolean)) => void;
 	setShowToolOutput: (show: boolean | ((prev: boolean) => boolean)) => void;
+	cycleReasoningEffort: () => void;
 	persistPreferences: (updates: Partial<AppPreferences>) => void;
 	clearReasoningState: () => void;
 	currentUserInputRef: React.RefObject<string>;
@@ -53,6 +55,7 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 		hasGrounding,
 		showFullReasoning,
 		currentModelProvider,
+		supportsReasoning,
 		openAiCodexAuthenticated,
 	} = state;
 
@@ -302,6 +305,24 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 				return;
 			}
 
+			// 'E' key to cycle reasoning effort without opening settings.
+			if (
+				(key.sequence === "e" || key.sequence === "E") &&
+				key.eventType === "press" &&
+				(currentState === DaemonState.IDLE ||
+					currentState === DaemonState.SPEAKING ||
+					currentState === DaemonState.RESPONDING)
+			) {
+				if (!supportsReasoning) {
+					key.preventDefault();
+					return;
+				}
+
+				actions.cycleReasoningEffort();
+				key.preventDefault();
+				return;
+			}
+
 			// 'O' key to toggle tool output preview (in IDLE, SPEAKING, or RESPONDING state)
 			if (
 				(key.sequence === "o" || key.sequence === "O") &&
@@ -457,6 +478,7 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 			showFullReasoning,
 			state.showToolOutput,
 			currentModelProvider,
+			supportsReasoning,
 			actions,
 		]
 	);

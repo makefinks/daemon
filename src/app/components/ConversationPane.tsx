@@ -76,6 +76,7 @@ export interface ConversationPaneProps {
 	hasGrounding?: boolean;
 	groundingCount?: number;
 	modelName?: string;
+	reasoningEffortLabel?: string;
 	sessionTitle?: string;
 	isVoiceOutputEnabled?: boolean;
 	startupIntroDone?: boolean;
@@ -99,6 +100,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 		hasGrounding,
 		groundingCount,
 		modelName,
+		reasoningEffortLabel,
 		sessionTitle,
 		isVoiceOutputEnabled,
 		startupIntroDone = true,
@@ -193,6 +195,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 					statusColor={statusColor}
 					errorText={apiKeyMissingError || error}
 					modelName={modelName}
+					reasoningEffortLabel={reasoningEffortLabel}
 					sessionTitle={sessionTitle}
 					hasInteracted={hasInteracted}
 					fadeProgress={startupMenuFadeProgress}
@@ -215,6 +218,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 							statusColor={statusColor}
 							errorText={apiKeyMissingError || error}
 							modelName={modelName}
+							reasoningEffortLabel={reasoningEffortLabel}
 							fadeProgress={startupMenuFadeProgress}
 						/>
 

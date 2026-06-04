@@ -37,6 +37,7 @@ export function HotkeysPane({ onClose }: HotkeysPaneProps) {
 			title: "SESSION",
 			items: [
 				{ key: "R", label: "Toggle full reasoning previews" },
+				{ key: "E", label: "Cycle reasoning effort" },
 				{ key: "O", label: "Toggle tool output previews" },
 				{ key: "Y", label: "Copy message / transcript" },
 				{ key: "N", label: "New session" },

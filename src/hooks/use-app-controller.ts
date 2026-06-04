@@ -1,5 +1,5 @@
 import { useOnResize, useRenderer } from "@opentui/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { ConversationPaneProps } from "../app/components/ConversationPane";
 
@@ -20,7 +20,7 @@ import { useSessionController } from "./use-session-controller";
 
 import { getDaemonManager } from "../state/daemon-state";
 import { deleteSession } from "../state/session-store";
-import { DaemonState } from "../types";
+import { DaemonState, getReasoningEffortLevels } from "../types";
 import { STARTUP_MENU_FADE_DELAY_MS, STARTUP_MENU_FADE_DURATION_MS } from "../ui/startup";
 
 export interface AppControllerResult {
@@ -220,6 +220,40 @@ export function useAppController({
 	});
 
 	const { clearConversationState, loadSessionById, startNewSession, undoLastTurn } = conversationManager;
+	const reasoningEffortPersistTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const cycleReasoningEffort = useCallback(() => {
+		if (!supportsReasoning) return;
+		const effortLevels = getReasoningEffortLevels(supportsReasoningXHigh);
+		const currentIndex = effortLevels.indexOf(manager.reasoningEffort);
+		const nextIndex = (currentIndex + 1) % effortLevels.length;
+		const nextEffort = effortLevels[nextIndex] ?? "medium";
+		manager.reasoningEffort = nextEffort;
+		setReasoningEffort(nextEffort);
+		if (reasoningEffortPersistTimeoutRef.current) {
+			clearTimeout(reasoningEffortPersistTimeoutRef.current);
+		}
+		reasoningEffortPersistTimeoutRef.current = setTimeout(() => {
+			persistPreferences({ reasoningEffort: manager.reasoningEffort });
+			reasoningEffortPersistTimeoutRef.current = null;
+		}, 350);
+		daemon.avatarRef.current?.triggerReasoningEffortPulse();
+	}, [
+		daemon.avatarRef,
+		manager,
+		persistPreferences,
+		setReasoningEffort,
+		supportsReasoning,
+		supportsReasoningXHigh,
+	]);
+
+	useEffect(() => {
+		return () => {
+			if (reasoningEffortPersistTimeoutRef.current) {
+				clearTimeout(reasoningEffortPersistTimeoutRef.current);
+			}
+		};
+	}, []);
 
 	const startNewSessionAndReset = useCallback(() => {
 		startNewSession();
@@ -322,6 +356,7 @@ export function useAppController({
 			setEscPendingCancel,
 			setShowFullReasoning,
 			setShowToolOutput,
+			cycleReasoningEffort,
 			persistPreferences,
 			clearReasoningState: daemon.reasoning.clearReasoningState,
 			currentUserInputRef: daemon.currentUserInputRef,
@@ -346,6 +381,7 @@ export function useAppController({
 			daemon.setCurrentResponse,
 			setShowFullReasoning,
 			setShowToolOutput,
+			cycleReasoningEffort,
 			persistPreferences,
 			daemon.reasoning.clearReasoningState,
 			daemon.currentUserInputRef,
@@ -394,6 +430,7 @@ export function useAppController({
 			showFullReasoning,
 			showToolOutput,
 			currentModelProvider,
+			supportsReasoning,
 			openAiCodexAuthenticated: bootstrap.openAiCodexAuthenticated,
 		},
 		keyboardActions
@@ -412,6 +449,8 @@ export function useAppController({
 		modelMetadata: daemon.modelMetadata,
 		curatedModels: modelsWithPricing,
 		availableModels: openRouterModels,
+		reasoningEffort,
+		supportsReasoning,
 		preferencesLoaded,
 		currentSessionId: session.currentSessionId,
 		sessionMenuItems: session.sessionMenuItems,
@@ -426,6 +465,7 @@ export function useAppController({
 		showWorkingSpinner,
 		workingSpinnerLabel,
 		modelName,
+		reasoningEffortLabel,
 		sessionTitle,
 		avatarWidth,
 		avatarHeight,
@@ -668,6 +708,7 @@ export function useAppController({
 			hasGrounding: session.hasGrounding,
 			groundingCount: session.latestGroundingMap?.items.length,
 			modelName: modelName ?? "",
+			reasoningEffortLabel,
 			sessionTitle: sessionTitle ?? "",
 			isVoiceOutputEnabled: interactionMode === "voice",
 			startupIntroDone,

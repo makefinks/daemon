@@ -45,6 +45,7 @@ interface StatusBarProps {
 	statusColor: string;
 	errorText?: string;
 	modelName?: string;
+	reasoningEffortLabel?: string;
 	sessionTitle?: string;
 	hasInteracted?: boolean;
 	fadeProgress?: number;
@@ -55,6 +56,7 @@ export function StatusBar({
 	statusColor,
 	errorText,
 	modelName,
+	reasoningEffortLabel,
 	sessionTitle,
 	hasInteracted,
 	fadeProgress = 1,
@@ -62,6 +64,12 @@ export function StatusBar({
 	const borderColor = fadeColor(COLORS.STATUS_BORDER, fadeProgress);
 	const displayStatusColor = fadeColor(statusColor, fadeProgress);
 	const errorColor = fadeColor(COLORS.DAEMON_ERROR, fadeProgress);
+	const effortColor = fadeColor(COLORS.REASONING, fadeProgress);
+	const titleText = modelName
+		? reasoningEffortLabel
+			? `${modelName} · ${reasoningEffortLabel}`
+			: modelName
+		: undefined;
 
 	if (hasInteracted) {
 		const showTitleSpinner = sessionTitle && isDefaultSessionTitle(sessionTitle);
@@ -80,10 +88,15 @@ export function StatusBar({
 				paddingRight={1}
 			>
 				<box width="100%" flexDirection="row" justifyContent="center" alignItems="center">
-					<box position="absolute" left={0} top={0}>
+					<box position="absolute" left={0} top={0} flexDirection="row">
 						{modelName && (
 							<text>
 								<span fg={borderColor}>{modelName}</span>
+							</text>
+						)}
+						{reasoningEffortLabel && (
+							<text marginLeft={1}>
+								<span fg={effortColor}>EFFORT {reasoningEffortLabel}</span>
 							</text>
 						)}
 					</box>
@@ -128,7 +141,7 @@ export function StatusBar({
 			alignItems="center"
 			borderStyle="single"
 			borderColor={borderColor}
-			title={modelName}
+			title={titleText}
 			titleAlignment="center"
 			paddingTop={0}
 			paddingLeft={1}
