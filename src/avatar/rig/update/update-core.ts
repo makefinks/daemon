@@ -43,7 +43,7 @@ export function updateCore(elements: SceneElements, state: RigState, dt: number,
 	const positions = elements.glowPos;
 	const base = elements.glowBasePositions;
 	const audioLiquidAmount = audioLevel * 0.05 + surgeLevel * 0.024;
-	const audioSpikeAmount = audioLevel * 0.062 + surgeLevel * 0.038;
+	const audioSpikeAmount = audioLevel * 0.11 + surgeLevel * 0.07;
 	const pulseLiquidAmount = powerDistortion * 0.003;
 	const pulseSpikeAmount = powerPulse * 0.17;
 	const hasLiquidWave = audioLiquidAmount + audioSpikeAmount + pulseLiquidAmount + pulseSpikeAmount > 0.0001;

@@ -230,7 +230,7 @@ export function createMicLevelHandler(refs: EventHandlerRefs, managerState: () =
 		if (!avatar) return;
 		if (managerState() !== DaemonState.LISTENING) return;
 
-		const boosted = Math.min(1, level * 1.2);
+		const boosted = Math.min(1, Math.pow(level, 1.15) * 1.05);
 		avatar.setAudioLevel(boosted);
 	};
 }
