@@ -3,6 +3,7 @@ import { useKeyboard } from "@opentui/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getMemoryManager, isMemoryAvailable } from "../ai/memory";
 import { useMenuKeyboard } from "../hooks/use-menu-keyboard";
+import { daemonEvents } from "../state/daemon-events";
 import type { MemoryEntry } from "../types";
 import { COLORS } from "../ui/constants";
 
@@ -89,6 +90,7 @@ export function MemoryMenu({ onClose }: MemoryMenuProps) {
 				const success = await manager.delete(memory.id);
 				if (success) {
 					setMemories((prev) => prev.filter((entry) => entry.id !== memory.id));
+					daemonEvents.emit("memoryDeleted");
 				}
 			} catch {
 				// Silently fail delete

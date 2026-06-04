@@ -2,9 +2,9 @@ import type { SceneElements } from "../scene/create-scene-elements";
 import type { RigState } from "../state/rig-state";
 import { clamp01 } from "../utils/math";
 
-import { STARTUP_BANNER_DURATION_S } from "../../../ui/startup";
+import { STARTUP_AVATAR_SPAWN_DURATION_S } from "../../../ui/startup";
 
-const SPAWN_DURATION = STARTUP_BANNER_DURATION_S + 0.35;
+const SPAWN_DURATION = STARTUP_AVATAR_SPAWN_DURATION_S;
 
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * clamp01(t);
 

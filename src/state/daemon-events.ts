@@ -35,6 +35,9 @@ export type DaemonStateEvents = {
 	responseToken: (token: string) => void;
 	stepUsage: (usage: TokenUsage) => void;
 	memorySaved: (preview: MemoryToastPreview) => void;
+	memoryDeleted: () => void;
+	sessionCreated: () => void;
+	sessionDeleted: (workspaceFileCount: number) => void;
 	responseComplete: (fullText: string, responseMessages: ModelMessage[], usage?: TokenUsage) => void;
 	userMessage: (text: string) => void;
 	speakingStart: () => void;
@@ -42,6 +45,7 @@ export type DaemonStateEvents = {
 	groundingSaved: (sessionId: string, messageId: number, mapId: string) => void;
 	cancelled: () => void;
 	error: (error: Error) => void;
+	toolTogglesChanged: () => void;
 };
 
 class DaemonEventBus extends EventEmitter {

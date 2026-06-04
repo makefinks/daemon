@@ -9,6 +9,7 @@ import { App } from "./app/App";
 import { COLORS } from "./ui/constants";
 import { cleanupAppRuntime, registerAppRuntime, shutdownApp } from "./utils/app-shutdown";
 import { debug } from "./utils/debug-logger";
+import { initStatsStore } from "./state/stats-store";
 
 // Main entry point
 const renderer = await createCliRenderer({
@@ -49,3 +50,6 @@ process.on("exit", () => {
 });
 
 root.render(<App />);
+
+// Seed HUD stats from DB and wire MCP tool-change listener.
+initStatsStore();

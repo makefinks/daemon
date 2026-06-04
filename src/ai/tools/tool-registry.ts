@@ -38,7 +38,7 @@ type ToolGateResult = {
 	disabledReason?: string;
 };
 
-const TOOL_REGISTRY: ToolEntry[] = [
+export const TOOL_REGISTRY: ToolEntry[] = [
 	{ id: "readFile", toggleKey: "readFile", tool: readFile },
 	{ id: "writeFile", toggleKey: "writeFile", tool: writeFile },
 	{ id: "runBash", toggleKey: "runBash", tool: runBash },

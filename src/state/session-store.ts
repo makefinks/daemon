@@ -17,8 +17,9 @@ import type {
 } from "../types";
 import { debug } from "../utils/debug-logger";
 import { getAppConfigDir } from "../utils/preferences";
-import { deleteWorkspace, ensureWorkspaceExists } from "../utils/workspace-manager";
+import { countWorkspaceFiles, deleteWorkspace, ensureWorkspaceExists } from "../utils/workspace-manager";
 import { getSessionMigrations } from "./migrations";
+import { daemonEvents } from "./daemon-events";
 
 const SESSION_DB_FILE = "sessions.sqlite";
 const SESSION_DB_PATH_ENV = "DAEMON_SESSIONS_DB_PATH";
@@ -190,6 +191,8 @@ export async function createSession(title?: string): Promise<SessionInfo> {
 
 	await ensureWorkspaceExists(sessionId);
 
+	daemonEvents.emit("sessionCreated");
+
 	return {
 		id: sessionId,
 		title: sessionTitle,
@@ -241,9 +244,11 @@ export async function saveSessionSnapshot(snapshot: SessionSnapshot, sessionId: 
 export async function clearSessionSnapshot(sessionId: string): Promise<void> {
 	try {
 		const database = await getDb();
+		const fileCount = countWorkspaceFiles(sessionId);
 		database.prepare("DELETE FROM grounding_maps WHERE session_id = ?").run(sessionId);
 		database.prepare("DELETE FROM sessions WHERE id = ?").run(sessionId);
 		await deleteWorkspace(sessionId);
+		daemonEvents.emit("sessionDeleted", fileCount);
 	} catch (error) {
 		const err = error instanceof Error ? error : new Error(String(error));
 		debug.error("session-clear-failed", { message: err.message });

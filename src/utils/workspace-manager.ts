@@ -6,6 +6,7 @@
  */
 
 import { promises as fs } from "node:fs";
+import fsSync from "node:fs";
 import path from "node:path";
 import { getAppConfigDir } from "./preferences";
 import { debug } from "./debug-logger";
@@ -50,6 +51,33 @@ export async function ensureWorkspaceExists(sessionId: string): Promise<string> 
 		}
 	}
 	return workspacePath;
+}
+
+/**
+ * Count the number of files in a session workspace (synchronous, for stats).
+ * @param sessionId - The session UUID
+ * @returns Number of files in the workspace
+ */
+export function countWorkspaceFiles(sessionId: string): number {
+	const workspacePath = getWorkspacePath(sessionId);
+	try {
+		return countFilesRecursive(workspacePath);
+	} catch {
+		return 0;
+	}
+}
+
+function countFilesRecursive(dir: string): number {
+	let total = 0;
+	for (const entry of fsSync.readdirSync(dir, { withFileTypes: true })) {
+		const entryPath = path.join(dir, entry.name);
+		if (entry.isDirectory()) {
+			total += countFilesRecursive(entryPath);
+		} else if (entry.isFile()) {
+			total++;
+		}
+	}
+	return total;
 }
 
 /**

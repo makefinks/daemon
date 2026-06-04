@@ -12,6 +12,7 @@ import {
 } from "../ai/tools/tool-registry";
 import { useMenuKeyboard } from "../hooks/use-menu-keyboard";
 import { getDaemonManager } from "../state/daemon-state";
+import { daemonEvents } from "../state/daemon-events";
 import type { AppPreferences, McpServerToggles, ToolToggleId, ToolToggles } from "../types";
 import { DEFAULT_TOOL_TOGGLES } from "../types";
 import { COLORS } from "../ui/constants";
@@ -157,6 +158,9 @@ export function ToolsMenu({ persistPreferences, onClose }: ToolsMenuProps) {
 				})
 				.catch(() => {
 					setToolAvailability(null);
+				})
+				.finally(() => {
+					daemonEvents.emit("toolTogglesChanged");
 				});
 		},
 	});

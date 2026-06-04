@@ -517,3 +517,17 @@ export interface MemoryContext {
 	retrievedAt: number;
 	query: string;
 }
+
+// ============================================================
+// HUD Stats Types
+// ============================================================
+
+/** Aggregate all-time stats displayed in the avatar HUD. */
+export interface DaemonStats {
+	totalTokens: number;
+	totalSessions: number;
+	totalToolCalls: number;
+	totalMemories: number;
+	totalTurns: number;
+	totalArtifacts: number;
+}

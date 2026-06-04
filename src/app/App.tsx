@@ -69,11 +69,15 @@ export function App() {
 						applyAvatarForState={controller.avatarLayerProps.applyAvatarForState}
 						width={controller.avatarLayerProps.width}
 						height={controller.avatarLayerProps.height}
+						terminalWidth={controller.avatarLayerProps.terminalWidth}
+						terminalHeight={controller.avatarLayerProps.terminalHeight}
 						zIndex={controller.avatarLayerProps.zIndex}
 						showBanner={controller.avatarLayerProps.showBanner}
 						animateBanner={controller.avatarLayerProps.animateBanner}
 						startupAnimationActive={controller.avatarLayerProps.startupAnimationActive}
 						renderAvatar={controller.avatarLayerProps.renderAvatar}
+						stats={controller.avatarLayerProps.stats}
+						showHud={controller.avatarLayerProps.showHud}
 					/>
 
 					{controller.isListeningDim ? (

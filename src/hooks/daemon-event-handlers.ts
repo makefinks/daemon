@@ -9,6 +9,16 @@ import type { DaemonAvatarRenderable } from "../avatar/DaemonAvatarRenderable";
 import type { ToolCategory } from "../avatar/DaemonAvatarRenderable";
 import { clearRuntimeContext, setRuntimeContext } from "../state/runtime-context";
 import { saveSessionSnapshot } from "../state/session-store";
+import {
+	incrementArtifacts,
+	incrementMemories,
+	incrementSessions,
+	incrementTokens,
+	incrementTurns,
+	decrementMemories,
+	decrementSessions,
+	decrementArtifacts,
+} from "../state/stats-store";
 import type {
 	ContentBlock,
 	ConversationMessage,
@@ -84,6 +94,7 @@ function findExistingToolCall(
 
 export function createMemorySavedHandler() {
 	return (preview: MemoryToastPreview) => {
+		incrementMemories(1);
 		const description = preview.description?.trim();
 		if (!description) return;
 		toast.success(`Memory saved (${preview.operation})`, { description });
@@ -268,6 +279,7 @@ export function createUserMessageHandler(
 ) {
 	return (text: string) => {
 		if (!text.trim()) return;
+		incrementTurns(1);
 
 		deps.addToHistory(text);
 
@@ -667,6 +679,7 @@ function mergeTokenUsage(prev: TokenUsage, usage: TokenUsage, isSubagent: boolea
  */
 export function createStepUsageHandler(setters: EventHandlerSetters) {
 	return (usage: TokenUsage) => {
+		incrementTokens(usage.totalTokens);
 		setters.setSessionUsage((prev: TokenUsage) => mergeTokenUsage(prev, usage, false));
 	};
 }
@@ -676,6 +689,7 @@ export function createStepUsageHandler(setters: EventHandlerSetters) {
  */
 export function createSubagentUsageHandler(setters: EventHandlerSetters) {
 	return (usage: TokenUsage) => {
+		incrementTokens(usage.totalTokens);
 		setters.setSessionUsage((prev: TokenUsage) => mergeTokenUsage(prev, usage, true));
 	};
 }
@@ -722,6 +736,10 @@ export function createToolResultHandler(refs: EventHandlerRefs, setters: EventHa
 		}
 
 		setters.setCurrentContentBlocks([...refs.contentBlocksRef.current]);
+
+		if (toolName === "writeFile" && !isErrorResult) {
+			incrementArtifacts(1);
+		}
 
 		const avatar = refs.avatarRef.current;
 		if (avatar) {
@@ -874,5 +892,29 @@ export function createErrorHandler(setters: EventHandlerSetters) {
 	return (err: Error) => {
 		setters.setError(err.message);
 		setTimeout(() => setters.setError(""), 5000);
+	};
+}
+
+/** Create handler for memory deleted events. */
+export function createMemoryDeletedHandler() {
+	return () => {
+		decrementMemories();
+	};
+}
+
+/** Create handler for session created events. */
+export function createSessionCreatedHandler() {
+	return () => {
+		incrementSessions();
+	};
+}
+
+/** Create handler for session deleted events. */
+export function createSessionDeletedHandler() {
+	return (fileCount: number) => {
+		decrementSessions();
+		if (fileCount > 0) {
+			decrementArtifacts(fileCount);
+		}
 	};
 }

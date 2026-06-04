@@ -20,9 +20,12 @@ import {
 	createCancelledHandler,
 	createCompleteHandler,
 	createErrorHandler,
+	createMemoryDeletedHandler,
 	createMemorySavedHandler,
 	createMicLevelHandler,
 	createReasoningTokenHandler,
+	createSessionCreatedHandler,
+	createSessionDeletedHandler,
 	createStateChangeHandler,
 	createStepUsageHandler,
 	createSubagentCompleteHandler,
@@ -336,6 +339,9 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 		const handleComplete = createCompleteHandler(refs, setters, deps);
 		const handleCancelled = createCancelledHandler(refs, setters, deps);
 		const handleMemorySaved = createMemorySavedHandler();
+		const handleMemoryDeleted = createMemoryDeletedHandler();
+		const handleSessionCreated = createSessionCreatedHandler();
+		const handleSessionDeleted = createSessionDeletedHandler();
 		const handleError = createErrorHandler(setters);
 
 		daemonEvents.on("stateChange", handleStateChange);
@@ -355,6 +361,9 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 		daemonEvents.on("subagentComplete", handleSubagentComplete);
 		daemonEvents.on("stepUsage", handleStepUsage);
 		daemonEvents.on("memorySaved", handleMemorySaved);
+		daemonEvents.on("memoryDeleted", handleMemoryDeleted);
+		daemonEvents.on("sessionCreated", handleSessionCreated);
+		daemonEvents.on("sessionDeleted", handleSessionDeleted);
 		daemonEvents.on("responseToken", handleToken);
 		daemonEvents.on("responseComplete", handleComplete);
 		daemonEvents.on("cancelled", handleCancelled);
@@ -384,6 +393,9 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 			daemonEvents.off("subagentComplete", handleSubagentComplete);
 			daemonEvents.off("stepUsage", handleStepUsage);
 			daemonEvents.off("memorySaved", handleMemorySaved);
+			daemonEvents.off("memoryDeleted", handleMemoryDeleted);
+			daemonEvents.off("sessionCreated", handleSessionCreated);
+			daemonEvents.off("sessionDeleted", handleSessionDeleted);
 			daemonEvents.off("responseToken", handleToken);
 			daemonEvents.off("responseComplete", handleComplete);
 			daemonEvents.off("cancelled", handleCancelled);

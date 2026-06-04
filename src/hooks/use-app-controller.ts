@@ -18,9 +18,13 @@ import { useDaemonRuntimeController } from "./use-daemon-runtime-controller";
 import { useOverlayController } from "./use-overlay-controller";
 import { useSessionController } from "./use-session-controller";
 
+import { daemonEvents } from "../state/daemon-events";
 import { getDaemonManager } from "../state/daemon-state";
+import { getMcpManager } from "../ai/mcp/mcp-manager";
 import { deleteSession } from "../state/session-store";
+import { getStats } from "../state/stats-store";
 import { DaemonState, getReasoningEffortLevels } from "../types";
+import type { DaemonStats } from "../types";
 import { STARTUP_MENU_FADE_DELAY_MS, STARTUP_MENU_FADE_DURATION_MS } from "../ui/startup";
 
 export interface AppControllerResult {
@@ -31,11 +35,15 @@ export interface AppControllerResult {
 		applyAvatarForState: ReturnType<typeof useDaemonRuntimeController>["applyAvatarForState"];
 		width: number;
 		height: number;
+		terminalWidth: number;
+		terminalHeight: number;
 		zIndex: number;
 		showBanner: boolean;
 		animateBanner: boolean;
 		startupAnimationActive: boolean;
 		renderAvatar: boolean;
+		stats: DaemonStats | null;
+		showHud: boolean;
 	};
 	isListeningDim: boolean;
 	listeningDimTop: number;
@@ -67,6 +75,7 @@ export function useAppController({
 	const [isInitialLoad, setIsInitialLoad] = useState(true);
 	const [startupIntroDone, setStartupIntroDone] = useState(false);
 	const [startupMenuFadeProgress, setStartupMenuFadeProgress] = useState(0);
+	const [daemonStats, setDaemonStats] = useState<DaemonStats | null>(null);
 
 	// Update terminal size state on resize to trigger re-render
 	useOnResize((width, height) => {
@@ -100,6 +109,28 @@ export function useAppController({
 	} = menus;
 
 	const session = useSessionController({ showSessionMenu });
+
+	useEffect(() => {
+		setDaemonStats(getStats());
+	}, []);
+
+	// Keep tool count in sync when MCP servers connect/disconnect
+	useEffect(() => {
+		const onUpdate = () => setDaemonStats(getStats());
+		getMcpManager().on("update", onUpdate);
+		return () => {
+			getMcpManager().off("update", onUpdate);
+		};
+	}, []);
+
+	// Refresh stats when built-in tools are toggled on/off
+	useEffect(() => {
+		const onToggle = () => setDaemonStats(getStats());
+		daemonEvents.on("toolTogglesChanged", onToggle);
+		return () => {
+			daemonEvents.off("toolTogglesChanged", onToggle);
+		};
+	}, []);
 
 	const appSettings = useAppSettings();
 	const {
@@ -479,8 +510,13 @@ export function useAppController({
 	useEffect(() => {
 		if (daemon.daemonState === DaemonState.IDLE) {
 			setEscPendingCancel(false);
+			setDaemonStats(getStats());
 		}
 	}, [daemon.daemonState]);
+
+	useEffect(() => {
+		setDaemonStats(getStats());
+	}, [daemon.sessionUsage, session.sessionMenuItems.length]);
 
 	// Turn off initial load state once user interacts (banner animation is one-time only)
 	useEffect(() => {
@@ -496,6 +532,8 @@ export function useAppController({
 	}, [daemon.hasInteracted, startupIntroDone]);
 
 	const startupAnimationActive = onboardingComplete && isInitialLoad;
+	const showMainMenuHud =
+		onboardingComplete && !daemon.hasInteracted && terminalSize.height >= 30 && terminalSize.width >= 100;
 
 	useEffect(() => {
 		if (!startupAnimationActive || daemon.hasInteracted) {
@@ -651,13 +689,16 @@ export function useAppController({
 			applyAvatarForState: daemon.applyAvatarForState,
 			width: avatarWidth,
 			height: avatarHeight,
+			terminalWidth: terminalSize.width,
+			terminalHeight: terminalSize.height,
 			zIndex: isListening && daemon.hasInteracted ? 2 : 0,
 			// Show banner only when idle, not interacted, and terminal is large enough
-			showBanner:
-				onboardingComplete && !daemon.hasInteracted && terminalSize.height >= 30 && terminalSize.width >= 100,
+			showBanner: showMainMenuHud,
 			animateBanner: startupAnimationActive,
 			startupAnimationActive,
 			renderAvatar: preferencesLoaded,
+			stats: daemonStats,
+			showHud: showMainMenuHud,
 		},
 		isListeningDim,
 		listeningDimTop: statusBarHeight,

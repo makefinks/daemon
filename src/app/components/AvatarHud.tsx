@@ -1,0 +1,159 @@
+import { memo, useEffect, useState } from "react";
+
+import type { DaemonStats } from "../../types";
+import { STARTUP_AVATAR_SPAWN_DURATION_MS } from "../../ui/startup";
+
+export interface AvatarHudProps {
+	stats: DaemonStats | null;
+	width: number;
+	height: number;
+	avatarWidth: number;
+	avatarHeight: number;
+	visible: boolean;
+	staggeredReveal?: boolean;
+}
+
+/** Label color — dim but legible */
+const LABEL_COLOR = "#303055";
+/** Value color — slightly brighter for contrast */
+const VALUE_COLOR = "#454570";
+const HIDDEN_COLOR = "#050509";
+const HUD_STAGGER_MS = 130;
+const HUD_FADE_MS = 420;
+const RIGHT_COLUMN_SHIFT = 6;
+
+/**
+ * Format a token count with K/M suffix.
+ * e.g. 1234 → "1.2K", 1234567 → "1.2M"
+ */
+function formatTokens(n: number): string {
+	if (n >= 1_000_000) {
+		return `${(n / 1_000_000).toFixed(1)}M`;
+	}
+	if (n >= 1_000) {
+		return `${(n / 1_000).toFixed(1)}K`;
+	}
+	return String(n);
+}
+
+/**
+ * Format a number with commas for thousands.
+ * e.g. 1234 → "1,234"
+ */
+function formatNumber(n: number): string {
+	return n.toLocaleString("en-US");
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+	const value = hex.replace("#", "");
+	return [
+		Number.parseInt(value.slice(0, 2), 16),
+		Number.parseInt(value.slice(2, 4), 16),
+		Number.parseInt(value.slice(4, 6), 16),
+	];
+}
+
+function mixColor(from: string, to: string, progress: number): string {
+	const [fr, fg, fb] = hexToRgb(from);
+	const [tr, tg, tb] = hexToRgb(to);
+	const t = Math.max(0, Math.min(1, progress));
+	const r = Math.round(fr + (tr - fr) * t);
+	const g = Math.round(fg + (tg - fg) * t);
+	const b = Math.round(fb + (tb - fb) * t);
+	return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b
+		.toString(16)
+		.padStart(2, "0")}`;
+}
+
+function easeOutCubic(progress: number): number {
+	const t = Math.max(0, Math.min(1, progress));
+	return 1 - Math.pow(1 - t, 3);
+}
+
+function AvatarHudImpl(props: AvatarHudProps) {
+	const { stats, width, height, avatarWidth, avatarHeight, visible, staggeredReveal = false } = props;
+	const [elapsedMs, setElapsedMs] = useState(() => (staggeredReveal ? 0 : Number.POSITIVE_INFINITY));
+
+	useEffect(() => {
+		if (!visible) {
+			setElapsedMs(0);
+			return;
+		}
+		if (!staggeredReveal) {
+			setElapsedMs(Number.POSITIVE_INFINITY);
+			return;
+		}
+
+		const start = performance.now();
+		setElapsedMs(0);
+		const interval = setInterval(() => {
+			setElapsedMs(performance.now() - start);
+		}, 33);
+		return () => clearInterval(interval);
+	}, [visible, staggeredReveal]);
+
+	if (!stats || !visible || width < 100 || height < 30) {
+		return null;
+	}
+
+	// Pre-format all values
+	const tokens = formatTokens(stats.totalTokens);
+	const tools = formatNumber(stats.totalToolCalls);
+	const turns = formatNumber(stats.totalTurns);
+	const sessions = formatNumber(stats.totalSessions);
+	const memories = formatNumber(stats.totalMemories);
+	const artifacts = formatNumber(stats.totalArtifacts);
+	const centerX = Math.floor(width / 2);
+	const centerY = Math.floor(height / 2);
+	const radiusX = Math.max(24, Math.floor(avatarWidth * 0.32));
+	const radiusY = Math.max(8, Math.floor(avatarHeight * 0.24));
+	// Left side: sessions, memories, tools
+	// Right side: tokens, turns, artifacts
+	const items = [
+		{ label: "TOKENS", value: tokens, angle: -45, width: 18 },
+		{ label: "TURNS", value: turns, angle: 0, width: 16 },
+		{ label: "ARTIFACTS", value: artifacts, angle: 45, width: 20 },
+		{ label: "SESSIONS", value: sessions, angle: 135, width: 18 },
+		{ label: "MEMORIES", value: memories, angle: 180, width: 18 },
+		{ label: "TOOLS", value: tools, angle: -135, width: 16 },
+	];
+
+	return (
+		<box position="absolute" top={0} left={0} width={width} height={height} zIndex={1}>
+			{items.map((item, index) => {
+				const revealStartMs = STARTUP_AVATAR_SPAWN_DURATION_MS + index * HUD_STAGGER_MS;
+				const progress = staggeredReveal ? easeOutCubic((elapsedMs - revealStartMs) / HUD_FADE_MS) : 1;
+				if (progress <= 0) return null;
+				const labelColor = mixColor(HIDDEN_COLOR, LABEL_COLOR, progress);
+				const valueColor = mixColor(HIDDEN_COLOR, VALUE_COLOR, progress);
+				const radians = (item.angle * Math.PI) / 180;
+				const cos = Math.cos(radians);
+				const rightShift = cos >= 0 ? RIGHT_COLUMN_SHIFT : 0;
+				const x = Math.round(centerX + cos * radiusX - (cos < 0 ? item.width - 2 : 0) + rightShift);
+				const y = Math.round(centerY + Math.sin(radians) * radiusY);
+				const left = Math.max(1, Math.min(width - item.width - 1, x));
+				const top = Math.max(1, Math.min(height - 2, y));
+				const labelIsInner = cos >= 0;
+				return (
+					<box key={item.label} position="absolute" top={top} left={left} width={item.width} height={1}>
+						<text>
+							{labelIsInner ? (
+								<>
+									<span fg={labelColor}>{item.label} </span>
+									<span fg={valueColor}>{item.value}</span>
+								</>
+							) : (
+								<>
+									<span fg={valueColor}>{item.value} </span>
+									<span fg={labelColor}>{item.label}</span>
+								</>
+							)}
+						</text>
+					</box>
+				);
+			})}
+		</box>
+	);
+}
+
+export const AvatarHud = memo(AvatarHudImpl);

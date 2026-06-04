@@ -3,8 +3,10 @@ import type { RefObject } from "react";
 import type { DaemonAvatarRenderable } from "../../avatar/DaemonAvatarRenderable";
 import { BANNER_GRADIENT, DAEMON_BANNER_LINES, useGlitchyBanner } from "../../hooks/use-glitchy-banner";
 import { DaemonState } from "../../types";
+import type { DaemonStats } from "../../types";
 import { COLORS } from "../../ui/constants";
 import { APP_VERSION } from "../../utils/app-version";
+import { AvatarHud } from "./AvatarHud";
 
 export interface AvatarLayerProps {
 	avatarRef: RefObject<DaemonAvatarRenderable | null>;
@@ -12,11 +14,15 @@ export interface AvatarLayerProps {
 	applyAvatarForState: (state: DaemonState) => void;
 	width: number;
 	height: number;
+	terminalWidth: number;
+	terminalHeight: number;
 	zIndex?: number;
 	showBanner?: boolean;
 	animateBanner?: boolean;
 	startupAnimationActive?: boolean;
 	renderAvatar?: boolean;
+	stats?: DaemonStats | null;
+	showHud?: boolean;
 }
 
 function AvatarLayerImpl(props: AvatarLayerProps) {
@@ -26,11 +32,15 @@ function AvatarLayerImpl(props: AvatarLayerProps) {
 		applyAvatarForState,
 		width,
 		height,
+		terminalWidth,
+		terminalHeight,
 		zIndex = 0,
 		showBanner = false,
 		animateBanner = false,
 		startupAnimationActive = false,
 		renderAvatar = true,
+		stats = null,
+		showHud = false,
 	} = props;
 
 	// Use glitchy banner animation when animateBanner is true
@@ -83,6 +93,15 @@ function AvatarLayerImpl(props: AvatarLayerProps) {
 
 	return (
 		<>
+			<AvatarHud
+				stats={stats}
+				width={terminalWidth}
+				height={terminalHeight}
+				avatarWidth={width}
+				avatarHeight={height}
+				visible={renderAvatar && showHud}
+				staggeredReveal={startupAnimationActive}
+			/>
 			{showBanner && (
 				<box
 					position="absolute"
