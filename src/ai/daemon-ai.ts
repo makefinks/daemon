@@ -164,7 +164,23 @@ async function persistConversationMemory(
 	if (!memoryManager.isAvailable) return null;
 
 	try {
-		const memoryMessages = [
+		const allMessages = getDaemonManager().conversationHistory;
+		const recentHistory = allMessages.slice(-18, -2);
+
+		const memoryMessages: Array<{ role: string; content: string }> = [
+			...(recentHistory.length > 0
+				? [
+						{
+							role: "user" as const,
+							content: `<context>Previous conversation:\n${recentHistory
+								.map((m) => {
+									const text = typeof m.content === "string" ? m.content : "";
+									return `<${m.role}>${text}</${m.role}>`;
+								})
+								.join("\n")}\n</context>`,
+						},
+					]
+				: []),
 			{ role: "user", content: `<user>${userTextForMemory}</user>` },
 			{ role: "assistant", content: `<assistant>${assistantTextForMemory}</assistant>` },
 		];
