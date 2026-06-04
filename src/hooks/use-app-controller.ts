@@ -179,6 +179,8 @@ export function useAppController({
 		setShowToolOutput,
 		memoryEnabled,
 		setMemoryEnabled,
+		showStats,
+		setShowStats,
 		canEnableVoiceOutput,
 	} = appSettings;
 
@@ -252,6 +254,7 @@ export function useAppController({
 		setBashApprovalLevel,
 		setShowFullReasoning,
 		setShowToolOutput,
+		setShowStats,
 		setMemoryEnabled,
 		setLoadedPreferences: bootstrap.setLoadedPreferences,
 		setOnboardingActive: bootstrap.setOnboardingActive,
@@ -567,6 +570,7 @@ export function useAppController({
 	const startupAnimationActive = onboardingComplete && isInitialLoad;
 	const showMainMenuHud =
 		onboardingComplete && !daemon.hasInteracted && terminalSize.height >= 30 && terminalSize.width >= 100;
+	const showHud = showStats && showMainMenuHud;
 
 	useEffect(() => {
 		if (!startupAnimationActive || daemon.hasInteracted) {
@@ -648,6 +652,8 @@ export function useAppController({
 			setShowToolOutput,
 			memoryEnabled,
 			setMemoryEnabled,
+			showStats,
+			setShowStats,
 			setBashApprovalLevel,
 			persistPreferences,
 		},
@@ -733,7 +739,7 @@ export function useAppController({
 			startupAnimationActive,
 			renderAvatar: preferencesLoaded,
 			stats: daemonStats,
-			showHud: showMainMenuHud,
+			showHud,
 		},
 		isListeningDim,
 		listeningDimTop: statusBarHeight,

@@ -53,6 +53,7 @@ export interface UseAppPreferencesBootstrapParams {
 	setBashApprovalLevel: (level: BashApprovalLevel) => void;
 	setShowFullReasoning: (show: boolean) => void;
 	setShowToolOutput: (show: boolean) => void;
+	setShowStats: (show: boolean) => void;
 	setMemoryEnabled: (enabled: boolean) => void;
 	setLoadedPreferences: (prefs: AppPreferences | null) => void;
 	setOnboardingActive: (active: boolean) => void;
@@ -83,6 +84,7 @@ export function useAppPreferencesBootstrap(
 		setBashApprovalLevel,
 		setShowFullReasoning,
 		setShowToolOutput,
+		setShowStats,
 		setMemoryEnabled,
 		setLoadedPreferences,
 		setOnboardingActive,
@@ -196,6 +198,9 @@ export function useAppPreferencesBootstrap(
 			}
 			if (prefs?.showToolOutput !== undefined) {
 				setShowToolOutput(prefs.showToolOutput);
+			}
+			if (prefs?.showStats !== undefined) {
+				setShowStats(prefs.showStats);
 			}
 			if (prefs?.memoryEnabled !== undefined) {
 				manager.memoryEnabled = prefs.memoryEnabled;

@@ -336,6 +336,7 @@ export function handleOnboardingKey(key: KeyEvent, ctx: OnboardingContext): bool
 interface SettingsMenuContext {
 	selectedIdx: number;
 	menuItemCount: number;
+	tabItemIds: string[];
 	interactionMode: "text" | "voice";
 	modelProvider: LlmProvider;
 	openAiCodexAuthenticated: boolean;
@@ -349,6 +350,7 @@ interface SettingsMenuContext {
 	canEnableVoiceOutput: boolean;
 	showFullReasoning: boolean;
 	showToolOutput: boolean;
+	showStats: boolean;
 	memoryEnabled: boolean;
 	memoryToggleDisabled: boolean;
 	setSelectedIdx: (fn: (prev: number) => number) => void;
@@ -362,6 +364,7 @@ interface SettingsMenuContext {
 	setBashApprovalLevel: (level: BashApprovalLevel) => void;
 	setShowFullReasoning: (show: boolean) => void;
 	setShowToolOutput: (show: boolean) => void;
+	setShowStats: (show: boolean) => void;
 	setMemoryEnabled: (enabled: boolean) => void;
 	persistPreferences: (updates: Partial<AppPreferences>) => void;
 	onClose: () => void;
@@ -373,6 +376,129 @@ interface SettingsMenuContext {
 		bashApprovalLevel: BashApprovalLevel;
 		memoryEnabled: boolean;
 	};
+}
+
+function handleSettingsReturn(ctx: SettingsMenuContext, key: KeyEvent): boolean {
+	const itemId = ctx.tabItemIds[ctx.selectedIdx];
+	if (!itemId) {
+		key.preventDefault();
+		return true;
+	}
+
+	switch (itemId) {
+		case "interaction-mode": {
+			if (ctx.interactionMode === "text" && !ctx.canEnableVoiceOutput) {
+				key.preventDefault();
+				return true;
+			}
+			ctx.toggleInteractionMode();
+			ctx.persistPreferences({
+				interactionMode: ctx.manager.interactionMode as "text" | "voice",
+			});
+			key.preventDefault();
+			return true;
+		}
+		case "model-provider": {
+			ctx.cycleModelProvider();
+			key.preventDefault();
+			return true;
+		}
+		case "reasoning-effort": {
+			if (!ctx.supportsReasoning) {
+				key.preventDefault();
+				return true;
+			}
+			const effortLevels = getReasoningEffortLevels(ctx.supportsReasoningXHigh);
+			const currentIndex = effortLevels.indexOf(ctx.reasoningEffort);
+			const nextIndex = (currentIndex + 1) % effortLevels.length;
+			const nextEffort = effortLevels[nextIndex] ?? "medium";
+			ctx.manager.reasoningEffort = nextEffort;
+			ctx.setReasoningEffort(nextEffort);
+			ctx.persistPreferences({ reasoningEffort: nextEffort });
+			key.preventDefault();
+			return true;
+		}
+		case "openai-codex-auth": {
+			ctx.manageOpenAiCodexAuth();
+			key.preventDefault();
+			return true;
+		}
+		case "copilot-auth": {
+			ctx.manageCopilotAuth();
+			key.preventDefault();
+			return true;
+		}
+		case "voice-interaction-type": {
+			ctx.setVoiceInteractionType(ctx.voiceInteractionType === "direct" ? "review" : "direct");
+			ctx.persistPreferences({
+				voiceInteractionType: ctx.manager.voiceInteractionType === "direct" ? "review" : "direct",
+			});
+			key.preventDefault();
+			return true;
+		}
+		case "bash-approvals": {
+			const bashCurrentIndex = BASH_APPROVAL_LEVELS.indexOf(ctx.bashApprovalLevel);
+			const bashNextIndex = (bashCurrentIndex + 1) % BASH_APPROVAL_LEVELS.length;
+			const nextLevel = BASH_APPROVAL_LEVELS[bashNextIndex] ?? "dangerous";
+			ctx.manager.bashApprovalLevel = nextLevel;
+			ctx.setBashApprovalLevel(nextLevel);
+			ctx.persistPreferences({ bashApprovalLevel: nextLevel });
+			key.preventDefault();
+			return true;
+		}
+		case "memory-enabled": {
+			if (ctx.memoryToggleDisabled) {
+				key.preventDefault();
+				return true;
+			}
+			const next = !ctx.manager.memoryEnabled;
+			ctx.manager.memoryEnabled = next;
+			ctx.setMemoryEnabled(next);
+			ctx.persistPreferences({ memoryEnabled: next });
+			key.preventDefault();
+			return true;
+		}
+		case "speech-speed": {
+			if (ctx.interactionMode !== "voice") {
+				key.preventDefault();
+				return true;
+			}
+			const speeds: SpeechSpeed[] = [1.0, 1.25, 1.5, 1.75, 2.0];
+			const currentSpeed = ctx.manager.speechSpeed;
+			const currentIdx = speeds.indexOf(currentSpeed);
+			const nextIdx = (currentIdx + 1) % speeds.length;
+			const nextSpeed = speeds[nextIdx] ?? 1.0;
+			ctx.manager.speechSpeed = nextSpeed;
+			ctx.setSpeechSpeed(nextSpeed);
+			ctx.persistPreferences({ speechSpeed: nextSpeed });
+			key.preventDefault();
+			return true;
+		}
+		case "show-full-reasoning": {
+			const nextVal = !ctx.showFullReasoning;
+			ctx.setShowFullReasoning(nextVal);
+			ctx.persistPreferences({ showFullReasoning: nextVal });
+			key.preventDefault();
+			return true;
+		}
+		case "show-tool-output": {
+			const nextVal = !ctx.showToolOutput;
+			ctx.setShowToolOutput(nextVal);
+			ctx.persistPreferences({ showToolOutput: nextVal });
+			key.preventDefault();
+			return true;
+		}
+		case "show-stats": {
+			const nextVal = !ctx.showStats;
+			ctx.setShowStats(nextVal);
+			ctx.persistPreferences({ showStats: nextVal });
+			key.preventDefault();
+			return true;
+		}
+	}
+
+	key.preventDefault();
+	return true;
 }
 
 export function handleSettingsMenuKey(key: KeyEvent, ctx: SettingsMenuContext): boolean {
@@ -397,135 +523,7 @@ export function handleSettingsMenuKey(key: KeyEvent, ctx: SettingsMenuContext): 
 	}
 
 	if (key.name === "return") {
-		let settingIdx = 0;
-
-		if (ctx.selectedIdx === settingIdx) {
-			if (ctx.interactionMode === "text" && !ctx.canEnableVoiceOutput) {
-				key.preventDefault();
-				return true;
-			}
-			ctx.toggleInteractionMode();
-			ctx.persistPreferences({
-				interactionMode: ctx.manager.interactionMode as "text" | "voice",
-			});
-			key.preventDefault();
-			return true;
-		}
-		settingIdx++;
-
-		if (ctx.selectedIdx === settingIdx) {
-			ctx.cycleModelProvider();
-			key.preventDefault();
-			return true;
-		}
-		settingIdx++;
-
-		if (ctx.selectedIdx === settingIdx) {
-			ctx.manageOpenAiCodexAuth();
-			key.preventDefault();
-			return true;
-		}
-		settingIdx++;
-
-		if (ctx.selectedIdx === settingIdx) {
-			ctx.manageCopilotAuth();
-			key.preventDefault();
-			return true;
-		}
-		settingIdx++;
-
-		if (ctx.selectedIdx === settingIdx) {
-			const current = ctx.manager.voiceInteractionType;
-			const next = current === "direct" ? "review" : "direct";
-			ctx.manager.voiceInteractionType = next;
-			ctx.setVoiceInteractionType(next);
-			ctx.persistPreferences({ voiceInteractionType: next });
-			key.preventDefault();
-			return true;
-		}
-		settingIdx++;
-
-		if (ctx.selectedIdx === settingIdx) {
-			if (ctx.supportsReasoning) {
-				const effortLevels = getReasoningEffortLevels(ctx.supportsReasoningXHigh);
-				const currentEffort = ctx.manager.reasoningEffort;
-				const currentIndex = effortLevels.indexOf(currentEffort);
-				const nextIndex = (currentIndex + 1) % effortLevels.length;
-				const nextEffort = effortLevels[nextIndex] ?? "medium";
-				ctx.manager.reasoningEffort = nextEffort;
-				ctx.setReasoningEffort(nextEffort);
-				ctx.persistPreferences({ reasoningEffort: nextEffort });
-			}
-			key.preventDefault();
-			return true;
-		}
-		settingIdx++;
-
-		if (ctx.selectedIdx === settingIdx) {
-			const currentLevel = ctx.manager.bashApprovalLevel;
-			const currentIndex = BASH_APPROVAL_LEVELS.indexOf(currentLevel);
-			const nextIndex = (currentIndex + 1) % BASH_APPROVAL_LEVELS.length;
-			const nextLevel = BASH_APPROVAL_LEVELS[nextIndex] ?? "dangerous";
-			ctx.manager.bashApprovalLevel = nextLevel;
-			ctx.setBashApprovalLevel(nextLevel);
-			ctx.persistPreferences({ bashApprovalLevel: nextLevel });
-			key.preventDefault();
-			return true;
-		}
-		settingIdx++;
-
-		if (ctx.selectedIdx === settingIdx) {
-			if (ctx.memoryToggleDisabled) {
-				key.preventDefault();
-				return true;
-			}
-			const next = !ctx.manager.memoryEnabled;
-			ctx.manager.memoryEnabled = next;
-			ctx.setMemoryEnabled(next);
-			ctx.persistPreferences({ memoryEnabled: next });
-			key.preventDefault();
-			return true;
-		}
-		settingIdx++;
-
-		if (ctx.selectedIdx === settingIdx) {
-			if (ctx.interactionMode !== "voice") {
-				key.preventDefault();
-				return true;
-			}
-			const speeds: SpeechSpeed[] = [1.0, 1.25, 1.5, 1.75, 2.0];
-			const currentSpeed = ctx.manager.speechSpeed;
-			const currentIndex = speeds.indexOf(currentSpeed);
-			const nextIndex = (currentIndex + 1) % speeds.length;
-			const nextSpeed = speeds[nextIndex] ?? 1.0;
-			ctx.manager.speechSpeed = nextSpeed;
-			ctx.setSpeechSpeed(nextSpeed);
-			ctx.persistPreferences({ speechSpeed: nextSpeed });
-			key.preventDefault();
-			return true;
-		}
-		settingIdx++;
-
-		if (ctx.selectedIdx === settingIdx) {
-			const next = !ctx.showFullReasoning;
-			ctx.setShowFullReasoning(next);
-			ctx.persistPreferences({ showFullReasoning: next });
-			key.preventDefault();
-			return true;
-		}
-		settingIdx++;
-
-		if (ctx.selectedIdx === settingIdx) {
-			const next = !ctx.showToolOutput;
-			ctx.setShowToolOutput(next);
-			ctx.persistPreferences({ showToolOutput: next });
-			key.preventDefault();
-			return true;
-		}
-		settingIdx++;
-
-		key.preventDefault();
-		return true;
+		return handleSettingsReturn(ctx, key);
 	}
 
 	return true;

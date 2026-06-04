@@ -27,6 +27,9 @@ export interface UseAppSettingsReturn {
 	memoryEnabled: boolean;
 	setMemoryEnabled: React.Dispatch<React.SetStateAction<boolean>>;
 
+	showStats: boolean;
+	setShowStats: React.Dispatch<React.SetStateAction<boolean>>;
+
 	canEnableVoiceOutput: boolean;
 }
 
@@ -43,6 +46,7 @@ export function useAppSettings(): UseAppSettingsReturn {
 	const [showFullReasoning, setShowFullReasoning] = useState(true);
 	const [showToolOutput, setShowToolOutput] = useState(false);
 	const [memoryEnabled, setMemoryEnabled] = useState(manager.memoryEnabled);
+	const [showStats, setShowStats] = useState(true);
 
 	const canEnableVoiceOutput = Boolean(process.env.OPENAI_API_KEY);
 
@@ -63,6 +67,8 @@ export function useAppSettings(): UseAppSettingsReturn {
 		setShowToolOutput,
 		memoryEnabled,
 		setMemoryEnabled,
+		showStats,
+		setShowStats,
 		canEnableVoiceOutput,
 	};
 }

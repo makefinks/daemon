@@ -1,4 +1,4 @@
-import type { KeyEvent } from "@opentui/core";
+import { TextAttributes, type KeyEvent } from "@opentui/core";
 import { useKeyboard } from "@opentui/react";
 import { useEffect, useState } from "react";
 import { getMemoryManager, isMemoryAvailable } from "../ai/memory";
@@ -23,7 +23,6 @@ interface SettingsMenuItem {
 	description?: string;
 	isToggle?: boolean;
 	isCyclic?: boolean;
-	isHeader?: boolean;
 	disabled?: boolean;
 }
 
@@ -41,6 +40,7 @@ interface SettingsMenuProps {
 	canEnableVoiceOutput: boolean;
 	showFullReasoning: boolean;
 	showToolOutput: boolean;
+	showStats: boolean;
 	memoryEnabled: boolean;
 	onClose: () => void;
 	toggleInteractionMode: () => void;
@@ -53,6 +53,7 @@ interface SettingsMenuProps {
 	setBashApprovalLevel: (level: BashApprovalLevel) => void;
 	setShowFullReasoning: (show: boolean) => void;
 	setShowToolOutput: (show: boolean) => void;
+	setShowStats: (show: boolean) => void;
 	setMemoryEnabled: (enabled: boolean) => void;
 	persistPreferences: (updates: Partial<AppPreferences>) => void;
 }
@@ -71,6 +72,7 @@ export function SettingsMenu({
 	canEnableVoiceOutput,
 	showFullReasoning,
 	showToolOutput,
+	showStats,
 	memoryEnabled,
 	onClose,
 	toggleInteractionMode,
@@ -83,6 +85,7 @@ export function SettingsMenu({
 	setBashApprovalLevel,
 	setShowFullReasoning,
 	setShowToolOutput,
+	setShowStats,
 	setMemoryEnabled,
 	persistPreferences,
 }: SettingsMenuProps) {
@@ -173,161 +176,168 @@ export function SettingsMenu({
 						? "Inject stored memories only (OPENROUTER_API_KEY missing: no new memories added)"
 						: "Auto-save messages + inject relevant memories";
 
-	const items: SettingsMenuItem[] = [
+	const audioSettingsDisabled = interactionMode !== "voice";
+
+	// Tab definitions — each tab has a label and its items
+	type TabDef = {
+		label: string;
+		items: SettingsMenuItem[];
+	};
+	const [currentTab, setCurrentTab] = useState(0);
+	const tabs: TabDef[] = [
 		{
-			id: "header-core",
-			label: "CORE SYSTEMS",
-			isHeader: true,
+			label: "CORE",
+			items: [
+				{
+					id: "interaction-mode",
+					label: "Interaction Mode",
+					value: interactionMode === "voice" ? "VOICE" : "TEXT",
+					description: interactionModeDescription,
+					isToggle: true,
+					disabled: interactionModeLocked,
+				},
+				{
+					id: "model-provider",
+					label: "Model Provider",
+					value:
+						modelProvider === "copilot"
+							? "COPILOT"
+							: modelProvider === "openai-codex"
+								? "OPENAI CODEX"
+								: "OPENROUTER",
+					description:
+						!copilotAuthenticated && modelProvider === "openrouter"
+							? "OpenRouter API with provider routing"
+							: modelProvider === "openai-codex"
+								? "ChatGPT subscription auth via OpenAI Codex OAuth"
+								: modelProvider === "copilot"
+									? "GitHub Copilot session runtime"
+									: "OpenRouter API with provider routing",
+					isToggle: true,
+				},
+				{
+					id: "reasoning-effort",
+					label: "Reasoning Effort",
+					value: supportsReasoning ? REASONING_EFFORT_LABELS[reasoningEffort] : "N/A",
+					description: supportsReasoning
+						? supportsReasoningXHigh
+							? "Depth of reasoning (LOW / MEDIUM / HIGH / XHIGH)"
+							: "Depth of reasoning (LOW / MEDIUM / HIGH)"
+						: "Not supported by current model",
+					isCyclic: supportsReasoning,
+				},
+				{
+					id: "openai-codex-auth",
+					label: "OpenAI Codex Auth",
+					value: openAiCodexAuthenticated ? "CONNECTED" : "CONNECT",
+					description: openAiCodexAuthenticated
+						? "Browser OAuth active. Press ENTER to re-authenticate."
+						: "Connect your ChatGPT/Codex subscription via browser OAuth.",
+				},
+				{
+					id: "copilot-auth",
+					label: "Copilot Auth",
+					value: copilotAuthenticated ? "CONNECTED" : "CONNECT",
+					description: copilotAuthenticated
+						? "GitHub auth detected. Press ENTER to view auth guidance again."
+						: "Exit DAEMON, run `gh auth login`, then relaunch to use Copilot.",
+				},
+			],
 		},
 		{
-			id: "interaction-mode",
-			label: "Interaction Mode",
-			value: interactionMode === "voice" ? "VOICE" : "TEXT",
-			description: interactionModeDescription,
-			isToggle: true,
-			disabled: interactionModeLocked,
-		},
-		{
-			id: "model-provider",
-			label: "Model Provider",
-			value:
-				modelProvider === "copilot"
-					? "COPILOT"
-					: modelProvider === "openai-codex"
-						? "OPENAI CODEX"
-						: "OPENROUTER",
-			description:
-				!copilotAuthenticated && modelProvider === "openrouter"
-					? "OpenRouter API with provider routing"
-					: modelProvider === "openai-codex"
-						? "ChatGPT subscription auth via OpenAI Codex OAuth"
-						: modelProvider === "copilot"
-							? "GitHub Copilot session runtime"
-							: "OpenRouter API with provider routing",
-			isToggle: true,
-		},
-		{
-			id: "header-provider-auth",
-			label: "PROVIDER AUTH",
-			isHeader: true,
-		},
-		{
-			id: "openai-codex-auth",
-			label: "OpenAI Codex Auth",
-			value: openAiCodexAuthenticated ? "CONNECTED" : "CONNECT",
-			description: openAiCodexAuthenticated
-				? "Browser OAuth active. Press ENTER to re-authenticate."
-				: "Connect your ChatGPT/Codex subscription via browser OAuth.",
-		},
-		{
-			id: "copilot-auth",
-			label: "Copilot Auth",
-			value: copilotAuthenticated ? "CONNECTED" : "CONNECT",
-			description: copilotAuthenticated
-				? "GitHub auth detected. Press ENTER to view auth guidance again."
-				: "Exit DAEMON, run `gh auth login`, then relaunch to use Copilot.",
-		},
-		{
-			id: "header-runtime",
 			label: "RUNTIME",
-			isHeader: true,
+			items: [
+				{
+					id: "bash-approvals",
+					label: "Bash Approvals",
+					value: BASH_APPROVAL_LABELS[bashApprovalLevel],
+					description: "Require approval for bash commands (NONE / DANGEROUS / ALL)",
+					isCyclic: true,
+				},
+				{
+					id: "memory-enabled",
+					label: "Memory",
+					value: !memoryLockedByProvider && memoryEnabled ? "ON" : "OFF",
+					description: memoryDescription,
+					isToggle: true,
+					disabled: memoryToggleDisabled,
+				},
+			],
 		},
 		{
-			id: "voice-interaction-type",
-			label: "Voice Flow",
-			value: voiceInteractionType === "direct" ? "DIRECT" : "REVIEW",
-			description:
-				voiceInteractionType === "direct"
-					? "Send transcript immediately"
-					: "Review/Edit trasncript before sending",
-			isToggle: true,
+			label: "AUDIO",
+			items: [
+				{
+					id: "voice-interaction-type",
+					label: "Voice Flow",
+					value: voiceInteractionType === "direct" ? "DIRECT" : "REVIEW",
+					description:
+						voiceInteractionType === "direct"
+							? "Send transcript immediately"
+							: "Review/Edit trasncript before sending",
+					isToggle: true,
+				},
+				{
+					id: "speech-speed",
+					label: "Speech Speed",
+					value: audioSettingsDisabled ? "N/A" : `${speechSpeed.toFixed(2)}x`,
+					description: audioSettingsDisabled
+						? "Enable voice mode to adjust speech rate"
+						: "Adjust speech rate (1.0x - 2.0x)",
+					isCyclic: !audioSettingsDisabled,
+					disabled: audioSettingsDisabled,
+				},
+			],
 		},
 		{
-			id: "reasoning-effort",
-			label: "Reasoning Effort",
-			value: supportsReasoning ? REASONING_EFFORT_LABELS[reasoningEffort] : "N/A",
-			description: supportsReasoning
-				? supportsReasoningXHigh
-					? "Depth of reasoning (LOW / MEDIUM / HIGH / XHIGH)"
-					: "Depth of reasoning (LOW / MEDIUM / HIGH)"
-				: "Not supported by current model",
-			isCyclic: supportsReasoning,
-		},
-		{
-			id: "bash-approvals",
-			label: "Bash Approvals",
-			value: BASH_APPROVAL_LABELS[bashApprovalLevel],
-			description: "Require approval for bash commands (NONE / DANGEROUS / ALL)",
-			isCyclic: true,
-		},
-		{
-			id: "memory-enabled",
-			label: "Memory",
-			value: !memoryLockedByProvider && memoryEnabled ? "ON" : "OFF",
-			description: memoryDescription,
-			isToggle: true,
-			disabled: memoryToggleDisabled,
+			label: "DISPLAY",
+			items: [
+				{
+					id: "show-full-reasoning",
+					label: "Full Reasoning",
+					value: showFullReasoning ? "ON" : "OFF",
+					description: "Show full reasoning blocks (hotkey: T)",
+					isToggle: true,
+				},
+				{
+					id: "show-tool-output",
+					label: "Tool Output",
+					value: showToolOutput ? "ON" : "OFF",
+					description: "Show tool output previews (hotkey: O)",
+					isToggle: true,
+				},
+				{
+					id: "show-stats",
+					label: "Show Stats",
+					value: showStats ? "ON" : "OFF",
+					description: "Show DAEMON stats HUD overlay",
+					isToggle: true,
+				},
+			],
 		},
 	];
 
-	const audioSettingsDisabled = interactionMode !== "voice";
-	items.push(
-		{
-			id: "header-audio",
-			label: "AUDIO PARAMETERS",
-			isHeader: true,
-		},
-		{
-			id: "speech-speed",
-			label: "Speech Speed",
-			value: audioSettingsDisabled ? "N/A" : `${speechSpeed.toFixed(2)}x`,
-			description: audioSettingsDisabled
-				? "Enable voice mode to adjust speech rate"
-				: "Adjust speech rate (1.0x - 2.0x)",
-			isCyclic: !audioSettingsDisabled,
-			disabled: audioSettingsDisabled,
-		}
-	);
-
-	items.push(
-		{
-			id: "header-display",
-			label: "DISPLAY",
-			isHeader: true,
-		},
-		{
-			id: "show-full-reasoning",
-			label: "Full Reasoning",
-			value: showFullReasoning ? "ON" : "OFF",
-			description: "Show full reasoning blocks (hotkey: T)",
-			isToggle: true,
-		},
-		{
-			id: "show-tool-output",
-			label: "Tool Output",
-			value: showToolOutput ? "ON" : "OFF",
-			description: "Show tool output previews (hotkey: O)",
-			isToggle: true,
-		}
-	);
-
-	// Filter out headers for selection logic
-	const selectableItems = items.filter((item) => !item.isHeader);
-	const selectableCount = selectableItems.length;
-	const labelWidth = Math.max(0, ...selectableItems.map((item) => item.label.length)) + 4;
+	// Reset selected index when tab changes
+	const tabItems = tabs[currentTab]?.items ?? [];
+	const selectableCount = tabItems.length;
+	const tabItemIds = tabItems.map((i) => i.id);
+	const labelWidth = Math.max(0, ...tabItems.map((item) => item.label.length)) + 4;
 
 	useEffect(() => {
-		if (selectableCount === 0) {
-			setSelectedIdx(0);
-			return;
-		}
-		setSelectedIdx((prev) => (prev >= selectableCount ? selectableCount - 1 : prev));
-	}, [selectableCount]);
+		setSelectedIdx(0);
+	}, [currentTab]);
 
 	useKeyboard((key: KeyEvent) => {
+		if (key.name === "tab" && key.eventType === "press") {
+			setCurrentTab((prev) => (prev + 1) % tabs.length);
+			setSelectedIdx(0);
+			key.preventDefault();
+			return;
+		}
 		handleSettingsMenuKey(key, {
 			selectedIdx,
 			menuItemCount: selectableCount,
+			tabItemIds,
 			interactionMode,
 			modelProvider,
 			openAiCodexAuthenticated,
@@ -341,6 +351,7 @@ export function SettingsMenu({
 			canEnableVoiceOutput,
 			showFullReasoning,
 			showToolOutput,
+			showStats,
 			memoryEnabled,
 			memoryToggleDisabled,
 			setSelectedIdx,
@@ -354,6 +365,7 @@ export function SettingsMenu({
 			setBashApprovalLevel,
 			setShowFullReasoning,
 			setShowToolOutput,
+			setShowStats,
 			setMemoryEnabled,
 			persistPreferences,
 			onClose,
@@ -391,26 +403,39 @@ export function SettingsMenu({
 						<span fg={COLORS.DAEMON_LABEL}>[ SETTINGS ]</span>
 					</text>
 				</box>
+				{/* Tab bar */}
+				<box flexDirection="row" marginBottom={1} gap={1}>
+					{tabs.map((tab, i) => {
+						const isActive = i === currentTab;
+						return (
+							<box
+								key={tab.label}
+								paddingLeft={1}
+								paddingRight={1}
+								backgroundColor={isActive ? COLORS.STATUS_COMPLETED : undefined}
+							>
+								<text>
+									<span
+										fg={isActive ? COLORS.MENU_BG : COLORS.STATUS_COMPLETED}
+										attributes={isActive ? TextAttributes.BOLD : TextAttributes.NONE}
+									>
+										[{tab.label}]
+									</span>
+								</text>
+							</box>
+						);
+					})}
+				</box>
 				<box marginBottom={1}>
 					<text>
 						<span fg={COLORS.USER_LABEL}>
-							↑/↓ or j/k to navigate, ENTER to change or connect, ESC to close
+							Tab to cycle section, ↑/↓ or j/k for item, ENTER to change, ESC to close
 						</span>
 					</text>
 				</box>
 				<box flexDirection="column">
-					{items.map((item) => {
-						if (item.isHeader) {
-							return (
-								<box key={item.id} marginTop={1} marginBottom={0}>
-									<text>
-										<span fg={COLORS.USER_LABEL}>— {item.label} —</span>
-									</text>
-								</box>
-							);
-						}
-
-						const selectableIdx = selectableItems.indexOf(item);
+					{tabItems.map((item) => {
+						const selectableIdx = tabItems.indexOf(item);
 						const isSelected = selectableIdx === selectedIdx;
 						const labelColor = item.disabled
 							? COLORS.REASONING_DIM

@@ -78,6 +78,8 @@ export interface UseAppContextBuilderParams {
 		setShowToolOutput: (show: boolean) => void;
 		memoryEnabled: boolean;
 		setMemoryEnabled: (enabled: boolean) => void;
+		showStats: boolean;
+		setShowStats: (show: boolean) => void;
 		setBashApprovalLevel: (level: BashApprovalLevel) => void;
 		persistPreferences: (updates: Partial<AppPreferences>) => void;
 	};

@@ -353,6 +353,8 @@ export interface AppPreferences {
 	memoryEnabled?: boolean;
 	/** Bash command approval level */
 	bashApprovalLevel?: BashApprovalLevel;
+	/** Show DAEMON stats HUD overlay */
+	showStats?: boolean;
 	/** Tool toggles (on/off) */
 	toolToggles?: ToolToggles;
 	/** MCP server toggles by server id (missing means enabled) */

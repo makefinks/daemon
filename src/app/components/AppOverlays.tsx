@@ -69,6 +69,7 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 					canEnableVoiceOutput={settings.canEnableVoiceOutput}
 					showFullReasoning={settings.showFullReasoning}
 					showToolOutput={settings.showToolOutput}
+					showStats={settings.showStats}
 					memoryEnabled={settings.memoryEnabled}
 					onClose={() => menus.setShowSettingsMenu(false)}
 					toggleInteractionMode={settingsCallbacks.onToggleInteractionMode}
@@ -81,6 +82,7 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 					setBashApprovalLevel={settingsCallbacks.onSetBashApprovalLevel}
 					setShowFullReasoning={settings.setShowFullReasoning}
 					setShowToolOutput={settings.setShowToolOutput}
+					setShowStats={settings.setShowStats}
 					setMemoryEnabled={settings.setMemoryEnabled}
 					persistPreferences={settings.persistPreferences}
 				/>
