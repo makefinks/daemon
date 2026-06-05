@@ -27,7 +27,7 @@ export interface UseAppSessionsReturn {
 
 	sessionMenuItems: SessionMenuRuntimeItem[];
 
-	handleFirstMessage: (targetSessionId: string, message: string) => void;
+	handleFirstMessage: (targetSessionId: string, message: string) => Promise<string | null>;
 }
 
 export function useAppSessions(params: UseAppSessionsParams): UseAppSessionsReturn {
@@ -101,12 +101,15 @@ export function useAppSessions(params: UseAppSessionsParams): UseAppSessionsRetu
 		};
 	}, [showSessionMenu]);
 
-	const handleFirstMessage = useCallback((targetSessionId: string, message: string) => {
-		void (async () => {
+	const handleFirstMessage = useCallback(async (targetSessionId: string, message: string) => {
+		try {
 			const title = await generateSessionTitle(message);
 			await updateSessionTitle(targetSessionId, title);
 			setSessions((prev) => prev.map((s) => (s.id === targetSessionId ? { ...s, title } : s)));
-		})();
+			return title;
+		} catch {
+			return null;
+		}
 	}, []);
 
 	return {

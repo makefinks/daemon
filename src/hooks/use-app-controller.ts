@@ -556,6 +556,13 @@ export function useAppController({
 		getCurrentTodos(session.currentSessionId).find((todo) => todo.status === "in_progress")?.content ?? null;
 
 	useEffect(() => {
+		manager.setGetSessionTitle(
+			(sessionId) => session.sessionMenuItems.find((item) => item.id === sessionId)?.title ?? null
+		);
+		return () => manager.setGetSessionTitle(null);
+	}, [manager, session.sessionMenuItems]);
+
+	useEffect(() => {
 		if (daemon.daemonState === DaemonState.IDLE) {
 			setEscPendingCancel(false);
 			setDaemonStats(getStats());

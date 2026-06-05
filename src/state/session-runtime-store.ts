@@ -615,7 +615,9 @@ export class SessionRuntimeStore {
 		sessionId: string,
 		fullText: string,
 		responseMessages: ModelMessage[],
-		visibleSessionId: string | null
+		visibleSessionId: string | null,
+		isSessionViewVisible: boolean,
+		sessionTitle: string | null
 	): void {
 		const runtime = this.ensure(sessionId);
 		this.finalizeReasoningDuration(runtime);
@@ -650,8 +652,11 @@ export class SessionRuntimeStore {
 		runtime.updatedAt = Date.now();
 		void this.persist(runtime);
 		this.notify(sessionId);
-		if (visibleSessionId && visibleSessionId !== sessionId) {
-			toast.success("Background session complete");
+		if (!isSessionViewVisible || visibleSessionId !== sessionId) {
+			const title = sessionTitle?.trim();
+			toast.success("Background session complete", {
+				description: title ? title : sessionId,
+			});
 		}
 	}
 
