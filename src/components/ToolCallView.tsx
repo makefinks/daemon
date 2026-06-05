@@ -77,7 +77,8 @@ export function ToolCallView({ call, result, showOutput = true }: ToolCallViewPr
 	const isFailed = call.status === "failed";
 
 	const { needsApproval, isActive, approve, deny, approveAll, denyAll } = useToolApprovalForCall(
-		call.toolCallId
+		call.toolCallId,
+		call.sessionId
 	);
 
 	const header = useMemo(() => {

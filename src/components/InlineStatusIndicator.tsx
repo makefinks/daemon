@@ -1,7 +1,6 @@
 import { TextAttributes } from "@opentui/core";
 import { COLORS } from "../ui/constants";
 import { DaemonState } from "../types";
-import { getCurrentTodos } from "../ai/tools/todo-manager";
 import { ShimmerText } from "./ShimmerText";
 
 export interface InlineStatusProps {
@@ -9,6 +8,7 @@ export interface InlineStatusProps {
 	isToolCalling: boolean;
 	isReasoning: boolean;
 	responseElapsedMs: number;
+	currentTodoLabel?: string | null;
 }
 
 type InlineStatusConfig = {
@@ -24,12 +24,6 @@ function buildElapsedSuffix(responseElapsedMs: number): string {
 
 	const seconds = Math.max(1, Math.floor(responseElapsedMs / 1000));
 	return ` · ${seconds}s`;
-}
-
-function getCurrentTodoLabel(): string | null {
-	const todos = getCurrentTodos();
-	const inProgress = todos.find((t) => t.status === "in_progress");
-	return inProgress?.content ?? null;
 }
 
 function getInlineStatusConfig(args: {
@@ -89,6 +83,7 @@ export function InlineStatusIndicator({
 	isToolCalling,
 	isReasoning,
 	responseElapsedMs,
+	currentTodoLabel,
 }: InlineStatusProps) {
 	const elapsedSuffix = buildElapsedSuffix(responseElapsedMs);
 	const config = getInlineStatusConfig({
@@ -103,7 +98,6 @@ export function InlineStatusIndicator({
 	}
 
 	const { spinnerName, label, color } = config;
-	const currentTodoLabel = getCurrentTodoLabel();
 
 	return (
 		<box flexDirection="row" alignItems="center" marginTop={1} marginBottom={1} paddingLeft={2}>

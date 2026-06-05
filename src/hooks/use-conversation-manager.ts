@@ -1,12 +1,14 @@
 import { toast } from "@opentui-ui/toast/react";
 import { useCallback } from "react";
 import { getDaemonManager } from "../state/daemon-state";
+import { sessionRuntimeStore } from "../state/session-runtime-store";
 import {
 	buildModelHistoryFromConversation,
 	deleteSession,
 	loadSessionSnapshot,
 	saveSessionSnapshot,
 } from "../state/session-store";
+import { DaemonState } from "../types";
 import type { ConversationMessage, SessionInfo, TokenUsage } from "../types";
 
 export interface UseConversationManagerParams {
@@ -58,8 +60,8 @@ export function useConversationManager(params: UseConversationManagerParams): Us
 	const manager = getDaemonManager();
 
 	const clearConversationState = useCallback(() => {
-		manager.clearHistory();
-		manager.setConversationHistory([]);
+		const activeSessionId = currentSessionIdRef.current;
+		if (activeSessionId) sessionRuntimeStore.clearConversation(activeSessionId);
 		hydrateConversationHistory([]);
 		setCurrentTranscription("");
 		setCurrentResponse("");
@@ -68,7 +70,7 @@ export function useConversationManager(params: UseConversationManagerParams): Us
 		resetSessionUsage();
 		currentUserInputRef.current = "";
 	}, [
-		manager,
+		currentSessionIdRef,
 		hydrateConversationHistory,
 		setCurrentTranscription,
 		setCurrentResponse,
@@ -80,20 +82,39 @@ export function useConversationManager(params: UseConversationManagerParams): Us
 
 	const loadSessionById = useCallback(
 		async (sessionId: string) => {
+			const existingRuntime = sessionRuntimeStore.getSnapshot(sessionId);
+			if (
+				existingRuntime &&
+				(existingRuntime.state !== DaemonState.IDLE ||
+					existingRuntime.conversationHistory.length > 0 ||
+					existingRuntime.currentContentBlocks.length > 0)
+			) {
+				setCurrentSessionIdSafe(sessionId);
+				manager.setConversationHistory(existingRuntime.modelHistory);
+				return;
+			}
+
 			const snapshot = await loadSessionSnapshot(sessionId);
-			clearConversationState();
 			if (snapshot) {
-				hydrateConversationHistory(snapshot.conversationHistory);
-				setSessionUsage(snapshot.sessionUsage);
+				sessionRuntimeStore.hydrate(sessionId, snapshot.conversationHistory, snapshot.sessionUsage);
 				manager.setConversationHistory(buildModelHistoryFromConversation(snapshot.conversationHistory));
+			} else {
+				sessionRuntimeStore.hydrate(sessionId, [], {
+					promptTokens: 0,
+					completionTokens: 0,
+					totalTokens: 0,
+					subagentTotalTokens: 0,
+					subagentPromptTokens: 0,
+					subagentCompletionTokens: 0,
+				});
 			}
 			setCurrentSessionIdSafe(sessionId);
 		},
-		[clearConversationState, hydrateConversationHistory, setSessionUsage, manager, setCurrentSessionIdSafe]
+		[manager, setCurrentSessionIdSafe]
 	);
 
 	const startNewSession = useCallback(() => {
-		manager.stopSpeaking();
+		if (manager.state === DaemonState.SPEAKING) manager.stopSpeaking();
 		void (async () => {
 			if (conversationHistory.length > 0) {
 				const targetSessionId = currentSessionId ?? (await ensureSessionId());
@@ -106,7 +127,6 @@ export function useConversationManager(params: UseConversationManagerParams): Us
 				);
 			}
 
-			clearConversationState();
 			setCurrentSessionIdSafe(null);
 		})();
 	}, [
@@ -114,8 +134,8 @@ export function useConversationManager(params: UseConversationManagerParams): Us
 		sessionUsage,
 		currentSessionId,
 		ensureSessionId,
-		clearConversationState,
 		setCurrentSessionIdSafe,
+		manager,
 	]);
 
 	const undoLastTurn = useCallback(() => {
@@ -146,13 +166,13 @@ export function useConversationManager(params: UseConversationManagerParams): Us
 		hydrateConversationHistory(newHistory);
 
 		manager.stopSpeaking();
-
-		const modelMessagesRemoved = manager.undoLastTurn();
-
-		if (modelMessagesRemoved > 0) {
-			toast.info("Last message deleted");
+		const activeSessionId = currentSessionIdRef.current;
+		if (activeSessionId) {
+			sessionRuntimeStore.hydrate(activeSessionId, newHistory, sessionUsage);
 		}
-	}, [conversationHistory, hydrateConversationHistory, manager]);
+		manager.setConversationHistory(buildModelHistoryFromConversation(newHistory));
+		toast.info("Last message deleted");
+	}, [conversationHistory, hydrateConversationHistory, manager, currentSessionIdRef, sessionUsage]);
 
 	return {
 		clearConversationState,

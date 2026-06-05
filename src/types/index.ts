@@ -73,6 +73,8 @@ export interface SubagentStep {
 export interface ToolCall {
 	name: string;
 	input: unknown;
+	/** Owning session for approval/todo UI routing. */
+	sessionId?: string;
 	/** Raw tool input JSON text accumulated during streaming */
 	inputText?: string;
 	toolCallId?: string;
@@ -127,6 +129,7 @@ export interface SessionInfo {
 	title: string;
 	createdAt: string;
 	updatedAt: string;
+	totalTokens?: number;
 }
 
 /**
@@ -410,6 +413,7 @@ export type TodoStatus = "pending" | "in_progress" | "completed" | "cancelled";
  * Emitted when a tool with needsApproval: true is called.
  */
 export interface ToolApprovalRequest {
+	sessionId?: string;
 	approvalId: string;
 	toolName: string;
 	toolCallId: string;

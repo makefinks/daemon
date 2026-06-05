@@ -158,18 +158,20 @@ export async function listSessions(): Promise<SessionInfo[]> {
 	try {
 		const database = await getDb();
 		const rows = database
-			.prepare("SELECT id, title, created_at, updated_at FROM sessions ORDER BY updated_at DESC")
+			.prepare("SELECT id, title, created_at, updated_at, usage_json FROM sessions ORDER BY updated_at DESC")
 			.all() as Array<{
 			id: string;
 			title: string | null;
 			created_at: string;
 			updated_at: string;
+			usage_json: string;
 		}>;
 		return rows.map((row) => ({
 			id: row.id,
 			title: row.title && row.title.trim() ? row.title : formatSessionTitle(row.created_at),
 			createdAt: row.created_at,
 			updatedAt: row.updated_at,
+			totalTokens: parseSessionUsage(row.usage_json).totalTokens,
 		}));
 	} catch (error) {
 		const err = error instanceof Error ? error : new Error(String(error));

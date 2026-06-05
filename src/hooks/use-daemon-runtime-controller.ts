@@ -9,6 +9,7 @@ import { useResponseTimer } from "./use-response-timer";
 import { useTypingMode } from "./use-typing-mode";
 
 import { daemonEvents } from "../state/daemon-events";
+import { getDaemonManager } from "../state/daemon-state";
 import type { LlmProvider } from "../types";
 
 export interface DaemonRuntimeControllerResult {
@@ -62,6 +63,12 @@ export function useDaemonRuntimeController({
 }): DaemonRuntimeControllerResult {
 	const reasoning = useReasoningAnimation();
 	const { addToHistory, navigateUp, navigateDown, resetNavigation } = useInputHistory();
+	const manager = getDaemonManager();
+
+	useEffect(() => {
+		manager.setGetCurrentSessionId(() => sessionIdRef.current);
+		return () => manager.setGetCurrentSessionId(null);
+	}, [manager, sessionIdRef]);
 
 	const {
 		daemonState,

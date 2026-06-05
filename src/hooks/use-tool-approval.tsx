@@ -10,8 +10,8 @@ interface PendingApproval {
 interface ToolApprovalContextValue {
 	pendingApprovals: Map<string, PendingApproval>;
 	activeApprovalId: string | null;
-	approveRequest: (toolCallId: string) => void;
-	denyRequest: (toolCallId: string, reason?: string) => void;
+	approveRequest: (toolCallId: string, sessionId?: string | null) => void;
+	denyRequest: (toolCallId: string, reason?: string, sessionId?: string | null) => void;
 	approveAll: () => void;
 	denyAll: (reason?: string) => void;
 }
@@ -26,7 +26,24 @@ export function useToolApproval(): ToolApprovalContextValue {
 	return context;
 }
 
-export function useToolApprovalForCall(toolCallId: string | undefined): {
+function getApprovalKey(toolCallId: string, sessionId?: string | null): string {
+	return sessionId ? `${sessionId}:${toolCallId}` : toolCallId;
+}
+
+function findApprovalKey(
+	approvals: Map<string, PendingApproval>,
+	toolCallId: string,
+	sessionId?: string | null
+) {
+	const exact = approvals.get(getApprovalKey(toolCallId, sessionId));
+	if (exact) return getApprovalKey(toolCallId, sessionId);
+	return [...approvals.keys()].find((key) => key === toolCallId || key.endsWith(`:${toolCallId}`));
+}
+
+export function useToolApprovalForCall(
+	toolCallId: string | undefined,
+	sessionId?: string | null
+): {
 	needsApproval: boolean;
 	isActive: boolean;
 	approve: () => void;
@@ -36,20 +53,22 @@ export function useToolApprovalForCall(toolCallId: string | undefined): {
 } {
 	const context = useContext(ToolApprovalContext);
 
-	const approval = toolCallId ? context?.pendingApprovals.get(toolCallId) : undefined;
-	const isActive = toolCallId !== undefined && context?.activeApprovalId === toolCallId;
+	const approvalKey =
+		toolCallId && context ? findApprovalKey(context.pendingApprovals, toolCallId, sessionId) : undefined;
+	const approval = approvalKey ? context?.pendingApprovals.get(approvalKey) : undefined;
+	const isActive = approvalKey !== undefined && context?.activeApprovalId === approvalKey;
 
 	const approve = useCallback(() => {
 		if (toolCallId && context) {
-			context.approveRequest(toolCallId);
+			context.approveRequest(toolCallId, sessionId);
 		}
-	}, [toolCallId, context]);
+	}, [toolCallId, sessionId, context]);
 
 	const deny = useCallback(() => {
 		if (toolCallId && context) {
-			context.denyRequest(toolCallId, "User denied tool execution");
+			context.denyRequest(toolCallId, "User denied tool execution", sessionId);
 		}
-	}, [toolCallId, context]);
+	}, [toolCallId, sessionId, context]);
 
 	const approveAll = useCallback(() => {
 		context?.approveAll();
@@ -89,18 +108,25 @@ export function ToolApprovalProvider({ children }: ToolApprovalProviderProps) {
 		) => {
 			const responseCollector = new Map<string, ToolApprovalResponse>();
 			const expectedCount = requests.length;
+			const approvalKeys = new Set(
+				requests.map((request) => getApprovalKey(request.toolCallId, request.sessionId))
+			);
 
 			const checkAndRespond = () => {
 				if (responseCollector.size === expectedCount) {
 					respondToApprovals(Array.from(responseCollector.values()));
-					setPendingApprovals(new Map());
-					setActiveApprovalId(null);
+					setPendingApprovals((prev) => {
+						const next = new Map(prev);
+						for (const approvalKey of approvalKeys) next.delete(approvalKey);
+						setActiveApprovalId(getFirstPendingId(next));
+						return next;
+					});
 				}
 			};
 
 			const newApprovals = new Map<string, PendingApproval>();
 			for (const request of requests) {
-				newApprovals.set(request.toolCallId, {
+				newApprovals.set(getApprovalKey(request.toolCallId, request.sessionId), {
 					request,
 					respond: (response) => {
 						responseCollector.set(request.approvalId, response);
@@ -109,29 +135,33 @@ export function ToolApprovalProvider({ children }: ToolApprovalProviderProps) {
 				});
 			}
 
-			setPendingApprovals(newApprovals);
-			const firstId = requests[0]?.toolCallId ?? null;
-			setActiveApprovalId(firstId);
+			setPendingApprovals((prev) => {
+				const next = new Map(prev);
+				for (const [toolCallId, approval] of newApprovals) next.set(toolCallId, approval);
+				setActiveApprovalId((current) => current ?? getFirstPendingId(next));
+				return next;
+			});
 		};
 
 		daemonEvents.on("awaitingApprovals", handleAwaitingApprovals);
 		return () => {
 			daemonEvents.off("awaitingApprovals", handleAwaitingApprovals);
 		};
-	}, []);
+	}, [getFirstPendingId]);
 
 	const approveRequest = useCallback(
-		(toolCallId: string) => {
+		(toolCallId: string, sessionId?: string | null) => {
 			setPendingApprovals((prev) => {
-				const approval = prev.get(toolCallId);
+				const approvalKey = findApprovalKey(prev, toolCallId, sessionId);
+				const approval = approvalKey ? prev.get(approvalKey) : undefined;
 				if (approval) {
 					approval.respond({
 						approvalId: approval.request.approvalId,
 						approved: true,
 					});
-					daemonEvents.emit("toolApprovalResolved", toolCallId, true);
+					daemonEvents.emit("toolApprovalResolved", toolCallId, true, approval.request.sessionId);
 					const next = new Map(prev);
-					next.delete(toolCallId);
+					next.delete(approvalKey!);
 					setActiveApprovalId(getFirstPendingId(next));
 					return next;
 				}
@@ -142,18 +172,19 @@ export function ToolApprovalProvider({ children }: ToolApprovalProviderProps) {
 	);
 
 	const denyRequest = useCallback(
-		(toolCallId: string, reason?: string) => {
+		(toolCallId: string, reason?: string, sessionId?: string | null) => {
 			setPendingApprovals((prev) => {
-				const approval = prev.get(toolCallId);
+				const approvalKey = findApprovalKey(prev, toolCallId, sessionId);
+				const approval = approvalKey ? prev.get(approvalKey) : undefined;
 				if (approval) {
 					approval.respond({
 						approvalId: approval.request.approvalId,
 						approved: false,
 						reason,
 					});
-					daemonEvents.emit("toolApprovalResolved", toolCallId, false);
+					daemonEvents.emit("toolApprovalResolved", toolCallId, false, approval.request.sessionId);
 					const next = new Map(prev);
-					next.delete(toolCallId);
+					next.delete(approvalKey!);
 					setActiveApprovalId(getFirstPendingId(next));
 					return next;
 				}
@@ -165,12 +196,17 @@ export function ToolApprovalProvider({ children }: ToolApprovalProviderProps) {
 
 	const approveAll = useCallback(() => {
 		setPendingApprovals((prev) => {
-			for (const [toolCallId, approval] of prev.entries()) {
+			for (const approval of prev.values()) {
 				approval.respond({
 					approvalId: approval.request.approvalId,
 					approved: true,
 				});
-				daemonEvents.emit("toolApprovalResolved", toolCallId, true);
+				daemonEvents.emit(
+					"toolApprovalResolved",
+					approval.request.toolCallId,
+					true,
+					approval.request.sessionId
+				);
 			}
 			setActiveApprovalId(null);
 			return new Map();
@@ -179,13 +215,18 @@ export function ToolApprovalProvider({ children }: ToolApprovalProviderProps) {
 
 	const denyAll = useCallback((reason?: string) => {
 		setPendingApprovals((prev) => {
-			for (const [toolCallId, approval] of prev.entries()) {
+			for (const approval of prev.values()) {
 				approval.respond({
 					approvalId: approval.request.approvalId,
 					approved: false,
 					reason,
 				});
-				daemonEvents.emit("toolApprovalResolved", toolCallId, false);
+				daemonEvents.emit(
+					"toolApprovalResolved",
+					approval.request.toolCallId,
+					false,
+					approval.request.sessionId
+				);
 			}
 			setActiveApprovalId(null);
 			return new Map();

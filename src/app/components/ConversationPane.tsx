@@ -49,6 +49,7 @@ export interface ProgressDisplayState {
 	workingSpinnerLabel: string;
 	isToolCalling: boolean;
 	responseElapsedMs: number;
+	currentTodoLabel?: string | null;
 }
 
 export interface TypingInputState {
@@ -118,7 +119,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 		escPendingCancel,
 	} = status;
 	const { showFullReasoning, showToolOutput, reasoningQueue, reasoningDisplay, fullReasoning } = reasoning;
-	const { showWorkingSpinner, isToolCalling, responseElapsedMs } = progress;
+	const { showWorkingSpinner, isToolCalling, responseElapsedMs, currentTodoLabel } = progress;
 	const {
 		typingTextareaRef,
 		conversationScrollRef,
@@ -455,6 +456,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 								isToolCalling={isToolCalling}
 								isReasoning={isReasoning}
 								responseElapsedMs={responseElapsedMs}
+								currentTodoLabel={currentTodoLabel}
 							/>
 						)}
 

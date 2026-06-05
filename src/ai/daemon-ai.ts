@@ -6,11 +6,14 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { type ModelMessage, experimental_transcribe as transcribe } from "ai";
 import { getDaemonManager } from "../state/daemon-state";
+import { getRuntimeContext } from "../state/runtime-context";
+import { sessionRuntimeStore } from "../state/session-runtime-store";
 import type {
 	MemoryToastOperation,
 	MemoryToastPreview,
 	ReasoningEffort,
 	StreamCallbacks,
+	TokenUsage,
 	TranscriptionResult,
 } from "../types";
 import { debug } from "../utils/debug-logger";
@@ -18,7 +21,7 @@ import { buildMemoryInjection, getMemoryManager, isMemoryAvailable } from "./mem
 import { TRANSCRIPTION_MODEL, getModelProvider } from "./model-config";
 import { getProviderAdapter } from "./providers/registry";
 import { type InteractionMode } from "./system-prompt";
-import { setSubagentProgressEmitter } from "./tools/subagents";
+import { runWithSubagentProgressEmitter } from "./tools/subagents";
 
 export type { ModelMessage } from "ai";
 
@@ -95,11 +98,11 @@ export async function generateResponse(
 	abortSignal?: AbortSignal,
 	reasoningEffort?: ReasoningEffort
 ): Promise<void> {
-	setSubagentProgressEmitter({
+	const subagentProgressEmitter = {
 		onSubagentToolCall: (toolCallId: string, toolName: string, input?: unknown) => {
 			callbacks.onSubagentToolCall?.(toolCallId, toolName, input);
 		},
-		onSubagentUsage: (usage) => {
+		onSubagentUsage: (usage: TokenUsage) => {
 			callbacks.onSubagentUsage?.(usage);
 		},
 		onSubagentToolResult: (toolCallId: string, toolName: string, success: boolean) => {
@@ -108,31 +111,33 @@ export async function generateResponse(
 		onSubagentComplete: (toolCallId: string, success: boolean) => {
 			callbacks.onSubagentComplete?.(toolCallId, success);
 		},
-	});
+	};
 
 	try {
-		const memoryInjection = await buildMemoryInjectionForPrompt(userMessage);
-		const provider = getProviderAdapter();
-		const result = await provider.streamResponse({
-			userMessage,
-			callbacks,
-			conversationHistory,
-			interactionMode,
-			abortSignal,
-			reasoningEffort,
-			memoryInjection,
-		});
+		await runWithSubagentProgressEmitter(subagentProgressEmitter, async () => {
+			const memoryInjection = await buildMemoryInjectionForPrompt(userMessage);
+			const provider = getProviderAdapter();
+			const result = await provider.streamResponse({
+				userMessage,
+				callbacks,
+				conversationHistory,
+				interactionMode,
+				abortSignal,
+				reasoningEffort,
+				memoryInjection,
+			});
 
-		if (!result) {
-			return;
-		}
+			if (!result) {
+				return;
+			}
 
-		callbacks.onComplete?.(result.fullText, result.responseMessages, result.usage, result.finalText);
+			callbacks.onComplete?.(result.fullText, result.responseMessages, result.usage, result.finalText);
 
-		const assistantTextForMemory = result.finalText ?? result.fullText;
-		void persistConversationMemory(userMessage, assistantTextForMemory).then((preview) => {
-			if (!preview) return;
-			callbacks.onMemorySaved?.(preview);
+			const assistantTextForMemory = result.finalText ?? result.fullText;
+			void persistConversationMemory(userMessage, assistantTextForMemory).then((preview) => {
+				if (!preview) return;
+				callbacks.onMemorySaved?.(preview);
+			});
 		});
 	} catch (error) {
 		if (abortSignal?.aborted) {
@@ -143,8 +148,6 @@ export async function generateResponse(
 		}
 		const err = error instanceof Error ? error : new Error(String(error));
 		callbacks.onError?.(new Error(err.message));
-	} finally {
-		setSubagentProgressEmitter(null);
 	}
 }
 
@@ -164,7 +167,9 @@ async function persistConversationMemory(
 	if (!memoryManager.isAvailable) return null;
 
 	try {
-		const allMessages = getDaemonManager().conversationHistory;
+		const { sessionId } = getRuntimeContext();
+		const allMessages =
+			sessionRuntimeStore.getSnapshot(sessionId)?.modelHistory ?? getDaemonManager().conversationHistory;
 		const recentHistory = allMessages.slice(-18, -2);
 
 		const memoryMessages: Array<{ role: string; content: string }> = [

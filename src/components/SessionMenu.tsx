@@ -2,11 +2,13 @@ import type { ScrollBoxRenderable, TextareaRenderable } from "@opentui/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useKeyboard } from "@opentui/react";
 import type { SessionInfo } from "../types";
+import type { SessionRuntimeStatus } from "../state/session-runtime-store";
 import { useMenuKeyboard } from "../hooks/use-menu-keyboard";
 import { COLORS } from "../ui/constants";
 
 export interface SessionMenuItem extends SessionInfo {
 	isNew?: boolean;
+	runtimeStatus?: SessionRuntimeStatus;
 }
 
 interface SessionMenuProps {
@@ -17,7 +19,7 @@ interface SessionMenuProps {
 	onDelete: (index: number) => void;
 }
 
-const SESSION_ITEM_HEIGHT = 2;
+const SESSION_ITEM_HEIGHT = 1;
 const MAX_SCROLLBOX_HEIGHT = 20;
 
 function formatTimestamp(value: string): string {
@@ -25,9 +27,26 @@ function formatTimestamp(value: string): string {
 	return value.replace("T", " ").slice(0, 16);
 }
 
+function formatRuntimeDuration(startedAt: number | null | undefined): string {
+	if (!startedAt) return "0s";
+	const totalSeconds = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+	const minutes = Math.floor(totalSeconds / 60);
+	const seconds = totalSeconds % 60;
+	if (minutes <= 0) return `${seconds}s`;
+	return `${minutes}m${seconds.toString().padStart(2, "0")}s`;
+}
+
+function formatTokenCount(totalTokens: number | undefined): string {
+	const value = Math.max(0, totalTokens ?? 0);
+	if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+	if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
+	return String(value);
+}
+
 export function SessionMenu({ items, currentSessionId, onClose, onSelect, onDelete }: SessionMenuProps) {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [isSearchFocused, setIsSearchFocused] = useState(false);
+	const [, setRuntimeTick] = useState(0);
 	const searchInputRef = useRef<TextareaRenderable | null>(null);
 
 	const filteredItems = useMemo(() => {
@@ -37,6 +56,12 @@ export function SessionMenu({ items, currentSessionId, onClose, onSelect, onDele
 			(item) => item.title.toLowerCase().includes(lowerQuery) || item.id.toLowerCase().includes(lowerQuery)
 		);
 	}, [items, searchQuery]);
+
+	useEffect(() => {
+		if (!filteredItems.some((item) => item.runtimeStatus?.isRunning)) return;
+		const interval = setInterval(() => setRuntimeTick((tick) => tick + 1), 1000);
+		return () => clearInterval(interval);
+	}, [filteredItems]);
 
 	const handleSelect = (filteredIndex: number) => {
 		const item = filteredItems[filteredIndex];
@@ -89,6 +114,10 @@ export function SessionMenu({ items, currentSessionId, onClose, onSelect, onDele
 	});
 
 	const scrollRef = useRef<ScrollBoxRenderable | null>(null);
+	const nameColumnWidth = "38%";
+	const statusColumnWidth = "31%";
+	const tokensColumnWidth = "12%";
+	const updatedColumnWidth = "19%";
 	const scrollboxHeight = Math.min(
 		MAX_SCROLLBOX_HEIGHT,
 		Math.max(SESSION_ITEM_HEIGHT, filteredItems.length * SESSION_ITEM_HEIGHT)
@@ -218,9 +247,28 @@ export function SessionMenu({ items, currentSessionId, onClose, onSelect, onDele
 				</box>
 
 				<box marginBottom={0}>
-					<text>
-						<span fg={COLORS.USER_LABEL}>— SESSIONS —</span>
-					</text>
+					<box flexDirection="row" width="100%" paddingLeft={1} paddingRight={1}>
+						<box width={nameColumnWidth}>
+							<text>
+								<span fg={COLORS.USER_LABEL}>NAME</span>
+							</text>
+						</box>
+						<box width={statusColumnWidth}>
+							<text>
+								<span fg={COLORS.USER_LABEL}>STATUS</span>
+							</text>
+						</box>
+						<box width={tokensColumnWidth} justifyContent="flex-end">
+							<text>
+								<span fg={COLORS.USER_LABEL}>TOKENS</span>
+							</text>
+						</box>
+						<box width={updatedColumnWidth} justifyContent="flex-end">
+							<text>
+								<span fg={COLORS.USER_LABEL}>UPDATED AT</span>
+							</text>
+						</box>
+					</box>
 				</box>
 
 				{filteredItems.length === 0 ? (
@@ -258,10 +306,23 @@ export function SessionMenu({ items, currentSessionId, onClose, onSelect, onDele
 										: COLORS.MENU_TEXT;
 
 								const currentIndicatorColor = COLORS.TYPING_PROMPT;
+								const runtimeStatus = item.runtimeStatus;
+								const isAwaitingApproval = runtimeStatus?.isAwaitingApproval ?? false;
+								const isRunning = (runtimeStatus?.isRunning ?? false) && !isAwaitingApproval;
+								const runningLabel = isRunning
+									? `RUNNING (${formatRuntimeDuration(runtimeStatus?.startedAt)})`
+									: "";
+								const approvalLabel = isAwaitingApproval
+									? `APPROVAL${runtimeStatus?.pendingApprovalCount ? ` (${runtimeStatus.pendingApprovalCount})` : ""}`
+									: "";
+								const statusColor = isAwaitingApproval
+									? "#fb923c"
+									: isRunning
+										? COLORS.STATUS_RUNNING
+										: COLORS.REASONING_DIM;
 								const detailColor = COLORS.REASONING_DIM;
-								const detail = item.isNew
-									? "Start a fresh conversation"
-									: `Updated ${formatTimestamp(item.updatedAt)}`;
+								const detail = item.isNew ? "Start fresh" : `Updated ${formatTimestamp(item.updatedAt)}`;
+								const tokenCount = runtimeStatus?.totalTokens ?? item.totalTokens;
 
 								return (
 									<box
@@ -269,9 +330,11 @@ export function SessionMenu({ items, currentSessionId, onClose, onSelect, onDele
 										backgroundColor={isSelected ? COLORS.MENU_SELECTED_BG : COLORS.MENU_BG}
 										paddingLeft={1}
 										paddingRight={1}
-										flexDirection="column"
+										flexDirection="row"
+										alignItems="center"
+										height={1}
 									>
-										<box>
+										<box width={nameColumnWidth}>
 											<text>
 												<span fg={labelColor}>
 													{isSelected ? "▶ " : "  "}
@@ -280,7 +343,30 @@ export function SessionMenu({ items, currentSessionId, onClose, onSelect, onDele
 												{isCurrent && <span fg={currentIndicatorColor}> ●</span>}
 											</text>
 										</box>
-										<box marginLeft={4}>
+										<box width={statusColumnWidth} height={1} flexDirection="row" alignItems="center">
+											{runningLabel ? (
+												<box flexDirection="row" alignItems="center">
+													<spinner name="dots" color={statusColor} />
+													<text marginLeft={1}>
+														<span fg={statusColor}>{runningLabel}</span>
+													</text>
+												</box>
+											) : approvalLabel ? (
+												<text>
+													<span fg={statusColor}>{approvalLabel.trim()}</span>
+												</text>
+											) : (
+												<text>
+													<span fg={statusColor}>IDLE</span>
+												</text>
+											)}
+										</box>
+										<box width={tokensColumnWidth} justifyContent="flex-end">
+											<text>
+												<span fg={detailColor}>{formatTokenCount(tokenCount)}</span>
+											</text>
+										</box>
+										<box width={updatedColumnWidth} justifyContent="flex-end">
 											<text>
 												<span fg={detailColor}>{detail}</span>
 											</text>

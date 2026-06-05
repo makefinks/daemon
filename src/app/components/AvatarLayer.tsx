@@ -23,6 +23,8 @@ export interface AvatarLayerProps {
 	renderAvatar?: boolean;
 	stats?: DaemonStats | null;
 	showHud?: boolean;
+	runningSessionCount?: number;
+	approvalSessionCount?: number;
 }
 
 function AvatarLayerImpl(props: AvatarLayerProps) {
@@ -41,6 +43,8 @@ function AvatarLayerImpl(props: AvatarLayerProps) {
 		renderAvatar = true,
 		stats = null,
 		showHud = false,
+		runningSessionCount = 0,
+		approvalSessionCount = 0,
 	} = props;
 
 	// Use glitchy banner animation when animateBanner is true
@@ -117,6 +121,8 @@ function AvatarLayerImpl(props: AvatarLayerProps) {
 				visible={renderAvatar && showHud}
 				staggeredReveal={startupAnimationActive}
 				daemonState={daemonState}
+				runningSessionCount={runningSessionCount}
+				approvalSessionCount={approvalSessionCount}
 			/>
 			{showBanner && (
 				<box

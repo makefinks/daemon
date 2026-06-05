@@ -13,6 +13,8 @@ export interface AvatarHudProps {
 	visible: boolean;
 	staggeredReveal?: boolean;
 	daemonState?: DaemonState;
+	runningSessionCount?: number;
+	approvalSessionCount?: number;
 }
 
 /** Label color — dim but legible */
@@ -117,6 +119,8 @@ function AvatarHudImpl(props: AvatarHudProps) {
 		visible,
 		staggeredReveal = false,
 		daemonState,
+		runningSessionCount = 0,
+		approvalSessionCount = 0,
 	} = props;
 	const [elapsedMs, setElapsedMs] = useState(() => (staggeredReveal ? 0 : Number.POSITIVE_INFINITY));
 
@@ -188,7 +192,12 @@ function AvatarHudImpl(props: AvatarHudProps) {
 	const tokens = formatTokens(stats.totalTokens);
 	const tools = formatNumber(stats.totalToolCalls);
 	const skills = formatNumber(stats.totalSkills);
-	const sessions = formatNumber(stats.totalSessions);
+	const sessions =
+		approvalSessionCount > 0
+			? `${formatNumber(stats.totalSessions)} !${approvalSessionCount}`
+			: runningSessionCount > 0
+				? `${formatNumber(stats.totalSessions)} +${runningSessionCount}`
+				: formatNumber(stats.totalSessions);
 	const memories = formatNumber(stats.totalMemories);
 	const artifacts = formatNumber(stats.totalArtifacts);
 	const centerX = Math.floor(width / 2);

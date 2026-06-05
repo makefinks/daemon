@@ -10,6 +10,7 @@ import { useAppMenus } from "./use-app-menus";
 import { useAppModel } from "./use-app-model";
 import { useAppPreferencesBootstrap } from "./use-app-preferences-bootstrap";
 import { useAppSettings } from "./use-app-settings";
+import { getCurrentTodos } from "../ai/tools/todo-manager";
 import { useBootstrapController } from "./use-bootstrap-controller";
 import { useConversationManager } from "./use-conversation-manager";
 import { useCopyOnSelect } from "./use-copy-on-select";
@@ -22,6 +23,7 @@ import { daemonEvents } from "../state/daemon-events";
 import { getDaemonManager } from "../state/daemon-state";
 import { getMcpManager } from "../ai/mcp/mcp-manager";
 import { deleteSession } from "../state/session-store";
+import { sessionRuntimeStore } from "../state/session-runtime-store";
 import { getStats, setEnabledSkillCount } from "../state/stats-store";
 import { DaemonState, getReasoningEffortLevels } from "../types";
 import type { DaemonStats } from "../types";
@@ -45,6 +47,8 @@ export interface AppControllerResult {
 		renderAvatar: boolean;
 		stats: DaemonStats | null;
 		showHud: boolean;
+		runningSessionCount: number;
+		approvalSessionCount: number;
 	};
 	isListeningDim: boolean;
 	listeningDimTop: number;
@@ -379,7 +383,11 @@ export function useAppController({
 			if (!item) return;
 
 			void (async () => {
+				if (item.runtimeStatus?.isRunning || item.runtimeStatus?.isAwaitingApproval) {
+					manager.cancelSessionAction(item.id);
+				}
 				await deleteSession(item.id);
+				sessionRuntimeStore.clear(item.id);
 				session.setSessions((prev) => prev.filter((s) => s.id !== item.id));
 
 				if (session.currentSessionIdRef.current === item.id) {
@@ -396,6 +404,7 @@ export function useAppController({
 			session.currentSessionIdRef,
 			clearConversationState,
 			session.setCurrentSessionIdSafe,
+			manager,
 		]
 	);
 
@@ -490,6 +499,7 @@ export function useAppController({
 
 	useDaemonKeyboard(
 		{
+			daemonState: daemon.daemonState,
 			isOverlayOpen,
 			escPendingCancel,
 			hasInteracted: daemon.hasInteracted,
@@ -542,6 +552,8 @@ export function useAppController({
 	} = displayState;
 
 	const statusBarHeight = daemon.hasInteracted ? (apiKeyMissingError ? 5 : 3) : 0;
+	const currentTodoLabel =
+		getCurrentTodos(session.currentSessionId).find((todo) => todo.status === "in_progress")?.content ?? null;
 
 	useEffect(() => {
 		if (daemon.daemonState === DaemonState.IDLE) {
@@ -571,6 +583,10 @@ export function useAppController({
 	const showMainMenuHud =
 		onboardingComplete && !daemon.hasInteracted && terminalSize.height >= 30 && terminalSize.width >= 100;
 	const showHud = showStats && showMainMenuHud;
+	const runningSessionCount = session.sessionMenuItems.filter((item) => item.runtimeStatus?.isRunning).length;
+	const approvalSessionCount = session.sessionMenuItems.filter(
+		(item) => item.runtimeStatus?.isAwaitingApproval
+	).length;
 
 	useEffect(() => {
 		if (!startupAnimationActive || daemon.hasInteracted) {
@@ -740,6 +756,8 @@ export function useAppController({
 			renderAvatar: preferencesLoaded,
 			stats: daemonStats,
 			showHud,
+			runningSessionCount,
+			approvalSessionCount,
 		},
 		isListeningDim,
 		listeningDimTop: statusBarHeight,
@@ -772,6 +790,7 @@ export function useAppController({
 				workingSpinnerLabel,
 				isToolCalling,
 				responseElapsedMs: daemon.responseElapsedMs,
+				currentTodoLabel,
 			},
 			typing: {
 				typingTextareaRef: daemon.typing.typingTextareaRef,

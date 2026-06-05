@@ -79,7 +79,9 @@ export function useAppDisplayState(params: UseAppDisplayStateParams): UseAppDisp
 
 	const isToolCalling = useMemo(() => {
 		if (daemonState !== DaemonState.RESPONDING) return false;
-		return currentContentBlocks.some((b) => b.type === "tool" && b.call.status === "running");
+		return currentContentBlocks.some(
+			(b) => b.type === "tool" && (b.call.status === "running" || b.call.status === "awaiting_approval")
+		);
 	}, [daemonState, currentContentBlocks]);
 
 	const isReasoning =

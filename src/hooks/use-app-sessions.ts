@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { generateSessionTitle } from "../ai/daemon-ai";
 import { createSession, listSessions, updateSessionTitle } from "../state/session-store";
+import { sessionRuntimeStore } from "../state/session-runtime-store";
+import type { SessionRuntimeStatus } from "../state/session-runtime-store";
 import type { SessionInfo } from "../types";
+
+export type SessionMenuRuntimeItem = SessionInfo & {
+	isNew: boolean;
+	runtimeStatus?: SessionRuntimeStatus;
+};
 
 export interface UseAppSessionsParams {
 	showSessionMenu: boolean;
@@ -18,7 +25,7 @@ export interface UseAppSessionsReturn {
 
 	sessionCreateRef: React.RefObject<Promise<SessionInfo> | null>;
 
-	sessionMenuItems: Array<SessionInfo & { isNew: boolean }>;
+	sessionMenuItems: SessionMenuRuntimeItem[];
 
 	handleFirstMessage: (targetSessionId: string, message: string) => void;
 }
@@ -29,6 +36,7 @@ export function useAppSessions(params: UseAppSessionsParams): UseAppSessionsRetu
 	const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 	const currentSessionIdRef = useRef<string | null>(null);
 	const [sessions, setSessions] = useState<SessionInfo[]>([]);
+	const [runtimeStatusVersion, setRuntimeStatusVersion] = useState(0);
 	const sessionCreateRef = useRef<Promise<SessionInfo> | null>(null);
 
 	const setCurrentSessionIdSafe = useCallback((nextSessionId: string | null) => {
@@ -59,11 +67,21 @@ export function useAppSessions(params: UseAppSessionsParams): UseAppSessionsRetu
 	}, [setCurrentSessionIdSafe]);
 
 	const sessionMenuItems = useMemo(() => {
+		const statuses = sessionRuntimeStore.getStatusMap();
 		return sessions.map((session) => ({
 			...session,
 			isNew: false,
+			runtimeStatus: statuses.get(session.id),
 		}));
-	}, [sessions]);
+	}, [sessions, runtimeStatusVersion]);
+
+	useEffect(() => {
+		const onStatusChanged = () => setRuntimeStatusVersion((prev) => prev + 1);
+		sessionRuntimeStore.events.on("statusChanged", onStatusChanged);
+		return () => {
+			sessionRuntimeStore.events.off("statusChanged", onStatusChanged);
+		};
+	}, []);
 
 	useEffect(() => {
 		if (!showSessionMenu) return;
