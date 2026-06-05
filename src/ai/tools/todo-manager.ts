@@ -4,8 +4,7 @@ import { getRuntimeContext } from "../../state/runtime-context";
 import { loadLatestTodoList, saveTodoList } from "../../state/session-store";
 import type { TodoItem } from "../../types";
 
-let currentTodos: TodoItem[] = [];
-let lastSessionId: string | null = null;
+const todosBySession = new Map<string, TodoItem[]>();
 
 function formatTodoList(todos: TodoItem[]): string {
 	if (todos.length === 0) {
@@ -27,14 +26,8 @@ function formatTodoList(todos: TodoItem[]): string {
 }
 
 async function ensureTodosLoaded(sessionId: string | null): Promise<void> {
-	if (sessionId === lastSessionId) return;
-
-	lastSessionId = sessionId;
-	if (sessionId) {
-		currentTodos = await loadLatestTodoList(sessionId);
-	} else {
-		currentTodos = [];
-	}
+	if (!sessionId || todosBySession.has(sessionId)) return;
+	todosBySession.set(sessionId, await loadLatestTodoList(sessionId));
 }
 
 const todoItemSchema = z.object({
@@ -75,12 +68,15 @@ Example write with status:
 		}
 
 		await ensureTodosLoaded(context.sessionId);
+		const sessionId = context.sessionId;
+		let currentTodos = todosBySession.get(sessionId) ?? [];
 
 		switch (action) {
 			case "write": {
 				if (!newTodos || newTodos.length === 0) {
 					currentTodos = [];
-					await saveTodoList(context.sessionId, currentTodos);
+					todosBySession.set(sessionId, currentTodos);
+					await saveTodoList(sessionId, currentTodos);
 					return {
 						success: true,
 						todos: formatTodoList(currentTodos),
@@ -90,7 +86,8 @@ Example write with status:
 					content: t.content,
 					status: t.status || "pending",
 				}));
-				await saveTodoList(context.sessionId, currentTodos);
+				todosBySession.set(sessionId, currentTodos);
+				await saveTodoList(sessionId, currentTodos);
 				return {
 					success: true,
 					todos: formatTodoList(currentTodos),
@@ -115,7 +112,8 @@ Example write with status:
 				if (status) {
 					todo.status = status;
 				}
-				await saveTodoList(context.sessionId, currentTodos);
+				todosBySession.set(sessionId, currentTodos);
+				await saveTodoList(sessionId, currentTodos);
 				return {
 					success: true,
 					todos: formatTodoList(currentTodos),
@@ -139,10 +137,13 @@ Example write with status:
 });
 
 export function clearAllTodos(): void {
-	currentTodos = [];
-	lastSessionId = null;
+	todosBySession.clear();
 }
 
-export function getCurrentTodos(): TodoItem[] {
-	return [...currentTodos];
+export function getCurrentTodos(sessionIdOverride?: string | null): TodoItem[] {
+	if (sessionIdOverride !== undefined) {
+		return sessionIdOverride ? [...(todosBySession.get(sessionIdOverride) ?? [])] : [];
+	}
+	const { sessionId } = getRuntimeContext();
+	return sessionId ? [...(todosBySession.get(sessionId) ?? [])] : [];
 }

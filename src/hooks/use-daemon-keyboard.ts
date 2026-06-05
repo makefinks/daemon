@@ -7,6 +7,7 @@ import { getDaemonManager } from "../state/daemon-state";
 import { type AppPreferences, type LlmProvider, DaemonState } from "../types";
 import { COLORS } from "../ui/constants";
 export interface KeyboardHandlerState {
+	daemonState: DaemonState;
 	isOverlayOpen: boolean;
 	escPendingCancel: boolean;
 	hasInteracted: boolean;
@@ -50,6 +51,7 @@ export interface KeyboardHandlerActions {
 export function useDaemonKeyboard(state: KeyboardHandlerState, actions: KeyboardHandlerActions) {
 	const manager = getDaemonManager();
 	const {
+		daemonState,
 		isOverlayOpen,
 		escPendingCancel,
 		hasInteracted,
@@ -77,7 +79,7 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 
 	const handleKeyPress = useCallback(
 		(key: KeyEvent) => {
-			const currentState = manager.state;
+			const currentState = daemonState;
 
 			if (isOverlayOpen) return;
 
@@ -132,11 +134,13 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 				return;
 			}
 
-			// 'L' key to open session menu (in IDLE or SPEAKING state)
+			// 'L' key to open session menu (also while the visible session is responding)
 			if (
 				(key.sequence === "l" || key.sequence === "L") &&
 				key.eventType === "press" &&
-				(currentState === DaemonState.IDLE || currentState === DaemonState.SPEAKING)
+				(currentState === DaemonState.IDLE ||
+					currentState === DaemonState.SPEAKING ||
+					currentState === DaemonState.RESPONDING)
 			) {
 				closeAllMenus();
 				actions.setShowSessionMenu(true);
@@ -218,11 +222,13 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 				return;
 			}
 
-			// 'N' key to start a new session (in IDLE or SPEAKING state)
+			// 'N' key to start a new session (also while the visible session is responding)
 			if (
 				(key.sequence === "n" || key.sequence === "N") &&
 				key.eventType === "press" &&
-				(currentState === DaemonState.IDLE || currentState === DaemonState.SPEAKING)
+				(currentState === DaemonState.IDLE ||
+					currentState === DaemonState.SPEAKING ||
+					currentState === DaemonState.RESPONDING)
 			) {
 				actions.startNewSession();
 				key.preventDefault();
@@ -487,6 +493,7 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 		},
 		[
 			manager,
+			daemonState,
 			isOverlayOpen,
 			escPendingCancel,
 			hasInteracted,

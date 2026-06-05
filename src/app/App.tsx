@@ -78,6 +78,8 @@ export function App() {
 						renderAvatar={controller.avatarLayerProps.renderAvatar}
 						stats={controller.avatarLayerProps.stats}
 						showHud={controller.avatarLayerProps.showHud}
+						runningSessionCount={controller.avatarLayerProps.runningSessionCount}
+						approvalSessionCount={controller.avatarLayerProps.approvalSessionCount}
 					/>
 
 					{controller.isListeningDim ? (

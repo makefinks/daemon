@@ -1,6 +1,7 @@
 import type { TextareaRenderable } from "@opentui/core";
 import { type MutableRefObject, type ReactNode, createContext, useContext } from "react";
 import type { ProviderMenuItem } from "../components/ProviderMenu";
+import type { SessionMenuRuntimeItem } from "../hooks/use-app-sessions";
 import type {
 	AppPreferences,
 	AudioDevice,
@@ -10,7 +11,6 @@ import type {
 	ModelOption,
 	OnboardingStep,
 	ReasoningEffort,
-	SessionInfo,
 	SpeechSpeed,
 	VoiceInteractionType,
 } from "../types";
@@ -88,7 +88,7 @@ export interface ModelState {
 }
 
 export interface SessionState {
-	sessionMenuItems: Array<SessionInfo & { isNew: boolean }>;
+	sessionMenuItems: SessionMenuRuntimeItem[];
 	currentSessionId: string | null;
 }
 

@@ -23,6 +23,8 @@ import { SpeechController } from "../voice/tts/speech-controller";
 import { VoiceInputController } from "../voice/voice-input-controller";
 import { type DaemonStateEvents, daemonEvents } from "./daemon-events";
 import { ModelHistoryStore } from "./model-history-store";
+import { runWithRuntimeContext } from "./runtime-context";
+import { sessionRuntimeStore } from "./session-runtime-store";
 
 /**
  * Daemon state manager - handles the full interaction flow
@@ -33,9 +35,12 @@ class DaemonStateManager {
 	private _response: string = "";
 	private modelHistory = new ModelHistoryStore();
 	private ensureSessionIdFn: (() => Promise<string>) | null = null;
+	private getCurrentSessionIdFn: (() => string | null) | null = null;
+	private onFirstMessageFn: ((sessionId: string, message: string) => void) | null = null;
 	private voiceInput = new VoiceInputController();
 	private speechController = new SpeechController();
 	private agentTurnRunner = new AgentTurnRunner();
+	private sessionAgentTurnRunners = new Map<string, AgentTurnRunner>();
 	private transcriptionAbortController: AbortController | null = null;
 	private _ttsEnabled = false;
 	private _interactionMode: InteractionMode = "text";
@@ -188,6 +193,27 @@ class DaemonStateManager {
 		this.ensureSessionIdFn = fn;
 	}
 
+	setGetCurrentSessionId(fn: (() => string | null) | null): void {
+		this.getCurrentSessionIdFn = fn;
+	}
+
+	setOnFirstMessage(fn: ((sessionId: string, message: string) => void) | null): void {
+		this.onFirstMessageFn = fn;
+	}
+
+	private getCurrentSessionId(): string | null {
+		return this.getCurrentSessionIdFn?.() ?? null;
+	}
+
+	private getSessionRunner(sessionId: string): AgentTurnRunner {
+		let runner = this.sessionAgentTurnRunners.get(sessionId);
+		if (!runner) {
+			runner = new AgentTurnRunner();
+			this.sessionAgentTurnRunners.set(sessionId, runner);
+		}
+		return runner;
+	}
+
 	private setState(newState: DaemonState): void {
 		if (this._state !== newState) {
 			this._state = newState;
@@ -195,16 +221,19 @@ class DaemonStateManager {
 		}
 	}
 
-	private async ensureSessionId(): Promise<boolean> {
-		if (!this.ensureSessionIdFn) return true;
+	syncVisibleState(state: DaemonState): void {
+		this.setState(state);
+	}
+
+	private async ensureSessionId(): Promise<string | null> {
+		if (!this.ensureSessionIdFn) return this.getCurrentSessionId();
 		try {
-			await this.ensureSessionIdFn();
-			return true;
+			return await this.ensureSessionIdFn();
 		} catch (error) {
 			const err = error instanceof Error ? error : new Error(String(error));
 			debug.error("session-ensure-failed", { message: err.message });
 			this.emitEvent("error", err);
-			return false;
+			return null;
 		}
 	}
 
@@ -266,9 +295,13 @@ class DaemonStateManager {
 				this.setState(DaemonState.TYPING);
 				this.emitEvent("transcriptionReady", result.text);
 			} else {
-				this.emitEvent("transcriptionUpdate", result.text);
-				this.emitEvent("userMessage", result.text);
-				await this.generateResponseFromText(result.text);
+				const sessionId = await this.ensureSessionId();
+				if (!sessionId) {
+					this.setState(DaemonState.IDLE);
+					return;
+				}
+				sessionRuntimeStore.setCurrentTranscription(sessionId, result.text);
+				await this.generateResponseFromText(sessionId, result.text);
 			}
 		} catch (error) {
 			if (error instanceof Error && error.name === "AbortError") {
@@ -290,23 +323,36 @@ class DaemonStateManager {
 	async submitText(text: string): Promise<void> {
 		if (!text.trim()) return;
 
+		const sessionId = await this.ensureSessionId();
+		if (!sessionId) {
+			this.setState(DaemonState.IDLE);
+			return;
+		}
+
 		this._transcription = text;
-		this.emitEvent("transcriptionUpdate", text);
-		this.emitEvent("userMessage", text);
-		await this.generateResponseFromText(text);
+		sessionRuntimeStore.setCurrentTranscription(sessionId, text);
+		await this.generateResponseFromText(sessionId, text);
 	}
 
 	/**
 	 * Generate a response from text input
 	 */
-	private async generateResponseFromText(text: string): Promise<void> {
-		const ok = await this.ensureSessionId();
-		if (!ok) {
+	private async generateResponseFromText(sessionId: string, text: string): Promise<void> {
+		const runtime = sessionRuntimeStore.ensure(sessionId);
+		const isFirstMessage = sessionRuntimeStore.beginUserMessage(sessionId, text);
+		if (runtime.state === DaemonState.RESPONDING) {
+			return;
+		}
+
+		if (!sessionId) {
 			this.setState(DaemonState.IDLE);
 			return;
 		}
 
-		this.setState(DaemonState.RESPONDING);
+		sessionRuntimeStore.beginResponse(sessionId);
+		if (this.getCurrentSessionId() === sessionId) {
+			this.setState(DaemonState.RESPONDING);
+		}
 		this._response = "";
 		const turnId = ++this._turnId;
 		messageDebug.info("agent-turn-start", {
@@ -317,44 +363,61 @@ class DaemonStateManager {
 		});
 
 		try {
-			const result = await this.agentTurnRunner.run(
-				{
-					userText: text,
-					conversationHistory: this.modelHistory.get(),
-					interactionMode: this._interactionMode,
-					reasoningEffort: this._reasoningEffort,
-				},
-				{
-					onReasoningToken: (token) => this.emitEvent("reasoningToken", token),
-					onToolCallStart: (toolName, toolCallId) => this.emitEvent("toolInputStart", toolName, toolCallId),
-					onToolCallInputDelta: (toolCallId, delta) => this.emitEvent("toolInputDelta", toolCallId, delta),
-					onToolCall: (toolName, args, toolCallId) =>
-						this.emitEvent("toolInvocation", toolName, args, toolCallId),
-					onToolResult: (toolName, resultValue, toolCallId) =>
-						this.emitEvent("toolResult", toolName, resultValue, toolCallId),
-					onToolApprovalRequest: (request) => this.emitEvent("toolApprovalRequest", request),
-					onAwaitingApprovals: (pendingApprovals, respondToApprovals) =>
-						this.emitEvent("awaitingApprovals", pendingApprovals, respondToApprovals),
-					onSubagentToolCall: (toolCallId, toolName, input) =>
-						this.emitEvent("subagentToolCall", toolCallId, toolName, input),
-					onSubagentUsage: (usage) => this.emitEvent("subagentUsage", usage),
-					onSubagentToolResult: (toolCallId, toolName, success) =>
-						this.emitEvent("subagentToolResult", toolCallId, toolName, success),
-					onSubagentComplete: (toolCallId, success) =>
-						this.emitEvent("subagentComplete", toolCallId, success),
-					onToken: (token) => {
-						this._response += token;
-						this.emitEvent("responseToken", token);
+			const runner = this.getSessionRunner(sessionId);
+			const result = await runWithRuntimeContext({ sessionId, messageId: runtime.messageId }, () =>
+				runner.run(
+					{
+						userText: text,
+						conversationHistory: runtime.modelHistory,
+						interactionMode: this._interactionMode,
+						reasoningEffort: this._reasoningEffort,
 					},
-					onStepUsage: (usage) => this.emitEvent("stepUsage", usage),
-					onMemorySaved: (preview) => this.emitEvent("memorySaved", preview),
-				}
+					{
+						onReasoningToken: (token) => {
+							sessionRuntimeStore.appendReasoning(sessionId, token);
+							if (this.getCurrentSessionId() === sessionId) {
+								daemonEvents.emit("reasoningToken", token);
+							}
+						},
+						onToolCallStart: (toolName, toolCallId) =>
+							sessionRuntimeStore.toolInputStart(sessionId, toolName, toolCallId),
+						onToolCallInputDelta: (toolCallId, delta) =>
+							sessionRuntimeStore.toolInputDelta(sessionId, toolCallId, delta),
+						onToolCall: (toolName, args, toolCallId) =>
+							sessionRuntimeStore.toolInvocation(sessionId, toolName, args, toolCallId),
+						onToolResult: (toolName, resultValue, toolCallId) =>
+							sessionRuntimeStore.toolResult(sessionId, toolName, resultValue, toolCallId),
+						onToolApprovalRequest: (request) => {
+							const requestWithSession = { ...request, sessionId };
+							sessionRuntimeStore.toolApprovalRequest(sessionId, requestWithSession);
+							this.emitEvent("toolApprovalRequest", requestWithSession);
+						},
+						onAwaitingApprovals: (pendingApprovals, respondToApprovals) => {
+							const approvalsWithSession = pendingApprovals.map((request) => ({ ...request, sessionId }));
+							this.emitEvent("awaitingApprovals", approvalsWithSession, respondToApprovals);
+						},
+						onSubagentToolCall: (toolCallId, toolName, input) =>
+							sessionRuntimeStore.subagentToolCall(sessionId, toolCallId, toolName, input),
+						onSubagentUsage: (usage) => sessionRuntimeStore.subagentUsage(sessionId, usage),
+						onSubagentToolResult: (toolCallId, toolName, success) =>
+							sessionRuntimeStore.subagentToolResult(sessionId, toolCallId, toolName, success),
+						onSubagentComplete: (toolCallId, success) =>
+							sessionRuntimeStore.subagentComplete(sessionId, toolCallId, success),
+						onToken: (token) => {
+							this._response += token;
+							sessionRuntimeStore.appendToken(sessionId, token);
+						},
+						onStepUsage: (usage) => sessionRuntimeStore.stepUsage(sessionId, usage),
+						onMemorySaved: (preview) => this.emitEvent("memorySaved", preview),
+					}
+				)
 			);
 
 			if (!result) {
-				if (this._state === DaemonState.RESPONDING) {
+				if (this.getCurrentSessionId() === sessionId && this._state === DaemonState.RESPONDING) {
 					this.setState(DaemonState.IDLE);
 				}
+				sessionRuntimeStore.cancelResponse(sessionId);
 				return;
 			}
 
@@ -365,15 +428,22 @@ class DaemonStateManager {
 				responseMessages: result.responseMessages,
 				usage: result.usage,
 			});
-			this.modelHistory.appendTurn(text, result.responseMessages);
-			this.emitEvent("responseComplete", result.fullText, result.responseMessages, result.usage);
+			sessionRuntimeStore.completeResponse(
+				sessionId,
+				result.fullText,
+				result.responseMessages,
+				this.getCurrentSessionId()
+			);
+			if (isFirstMessage) {
+				this.onFirstMessageFn?.(sessionId, text);
+			}
 
 			// Trigger TTS if enabled - use finalText (last assistant message only) for speech
 			const textToSpeak = result.finalText ?? result.fullText;
-			if (this._ttsEnabled && textToSpeak.trim()) {
+			if (this._ttsEnabled && textToSpeak.trim() && this.getCurrentSessionId() === sessionId) {
 				void this.speakResponse(textToSpeak);
 			} else {
-				this.setState(DaemonState.IDLE);
+				if (this.getCurrentSessionId() === sessionId) this.setState(DaemonState.IDLE);
 			}
 		} catch (error) {
 			const err = error instanceof Error ? error : new Error(String(error));
@@ -383,16 +453,16 @@ class DaemonStateManager {
 				stack: err.stack,
 				partialResponseLength: this._response.length,
 			});
-			if (this._state === DaemonState.RESPONDING) {
+			if (this.getCurrentSessionId() === sessionId && this._state === DaemonState.RESPONDING) {
 				messageDebug.info("agent-turn-error-finalizing-partial", {
 					turnId,
 					message: err.message,
 					partialResponse: this._response,
 				});
-				this.emitEvent("cancelled");
+				sessionRuntimeStore.cancelResponse(sessionId);
 			}
 			this.emitEvent("error", err);
-			this.setState(DaemonState.IDLE);
+			if (this.getCurrentSessionId() === sessionId) this.setState(DaemonState.IDLE);
 		}
 	}
 
@@ -400,6 +470,8 @@ class DaemonStateManager {
 	 * Enter typing mode (shift+tab pressed)
 	 */
 	enterTypingMode(): void {
+		const sessionId = this.getCurrentSessionId();
+		if (sessionId) sessionRuntimeStore.setTyping(sessionId);
 		if (this._state === DaemonState.IDLE) {
 			this.setState(DaemonState.TYPING);
 		}
@@ -409,6 +481,8 @@ class DaemonStateManager {
 	 * Exit typing mode (escape or submission)
 	 */
 	exitTypingMode(): void {
+		const sessionId = this.getCurrentSessionId();
+		if (sessionId) sessionRuntimeStore.setIdle(sessionId);
 		if (this._state === DaemonState.TYPING) {
 			this.setState(DaemonState.IDLE);
 		}
@@ -474,6 +548,15 @@ class DaemonStateManager {
 	 * Cancel current action (transcription, response generation, or speaking)
 	 */
 	cancelCurrentAction(): void {
+		const visibleSessionId = this.getCurrentSessionId();
+		if (visibleSessionId) {
+			const snapshot = sessionRuntimeStore.getSnapshot(visibleSessionId);
+			if (snapshot?.state === DaemonState.RESPONDING) {
+				this.cancelSessionAction(visibleSessionId);
+				return;
+			}
+		}
+
 		if (this._state === DaemonState.LISTENING) {
 			this.cancelListening();
 			return;
@@ -494,6 +577,11 @@ class DaemonStateManager {
 		}
 
 		if (this._state === DaemonState.RESPONDING) {
+			const sessionId = this.getCurrentSessionId();
+			if (sessionId) {
+				this.cancelSessionAction(sessionId);
+				return;
+			}
 			this.agentTurnRunner.cancel();
 		}
 
@@ -501,6 +589,18 @@ class DaemonStateManager {
 		this._response = "";
 		this.emitEvent("cancelled");
 		this.setState(DaemonState.IDLE);
+	}
+
+	cancelSessionAction(sessionId: string): void {
+		const runner = this.sessionAgentTurnRunners.get(sessionId);
+		runner?.cancel();
+		sessionRuntimeStore.cancelResponse(sessionId);
+		if (this.getCurrentSessionId() === sessionId) {
+			this._transcription = "";
+			this._response = "";
+			this.emitEvent("cancelled");
+			this.setState(DaemonState.IDLE);
+		}
 	}
 
 	/**
@@ -525,6 +625,10 @@ class DaemonStateManager {
 	 */
 	destroy(): void {
 		this.agentTurnRunner.cancel();
+		for (const runner of this.sessionAgentTurnRunners.values()) {
+			runner.cancel();
+		}
+		this.sessionAgentTurnRunners.clear();
 		if (this.transcriptionAbortController) {
 			this.transcriptionAbortController.abort();
 			this.transcriptionAbortController = null;

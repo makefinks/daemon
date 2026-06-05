@@ -1,6 +1,7 @@
 import type { TextareaRenderable } from "@opentui/core";
 import { type MutableRefObject, useMemo } from "react";
 import type { ProviderMenuItem } from "../components/ProviderMenu";
+import type { SessionMenuRuntimeItem } from "./use-app-sessions";
 import type {
 	AppContextValue,
 	DeviceCallbacks,
@@ -19,7 +20,6 @@ import type {
 	ModelOption,
 	OnboardingStep,
 	ReasoningEffort,
-	SessionInfo,
 	SpeechSpeed,
 	VoiceInteractionType,
 } from "../types";
@@ -98,7 +98,7 @@ export interface UseAppContextBuilderParams {
 	};
 
 	session: {
-		sessionMenuItems: Array<SessionInfo & { isNew: boolean }>;
+		sessionMenuItems: SessionMenuRuntimeItem[];
 		currentSessionId: string | null;
 	};
 

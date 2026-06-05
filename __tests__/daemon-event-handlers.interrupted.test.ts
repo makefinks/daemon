@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { buildInterruptedModelMessages } from "../src/hooks/daemon-event-handlers";
+import { buildInterruptedModelMessages } from "../src/hooks/daemon-event-handlers/interrupted-turn";
 import type { ContentBlock, ToolCall } from "../src/types";
 
 describe("buildInterruptedModelMessages", () => {

@@ -4,6 +4,7 @@
  */
 
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { tool } from "ai";
 import { type ModelMessage, ToolLoopAgent, stepCountIs } from "ai";
 import type { ToolSet } from "ai";
@@ -68,15 +69,22 @@ Today's date: ${new Date().toISOString().split("T")[0]}
 	`;
 }
 
-// Global emitter that will be set by the daemon-ai module
-let progressEmitter: SubagentProgressEmitter | null = null;
+const progressEmitterStorage = new AsyncLocalStorage<SubagentProgressEmitter | null>();
 
 /**
  * Set the progress emitter for subagent updates.
  * Called by daemon-ai when setting up the response generation.
  */
 export function setSubagentProgressEmitter(emitter: SubagentProgressEmitter | null): void {
-	progressEmitter = emitter;
+	void emitter;
+}
+
+export function runWithSubagentProgressEmitter<T>(emitter: SubagentProgressEmitter | null, fn: () => T): T {
+	return progressEmitterStorage.run(emitter, fn);
+}
+
+function getProgressEmitter(): SubagentProgressEmitter | null {
+	return progressEmitterStorage.getStore() ?? null;
 }
 
 /**
@@ -102,6 +110,7 @@ Provide a concise summary for display and a very specific task description (espe
 	}),
 	execute: async ({ summary, task }, { toolCallId }) => {
 		try {
+			const progressEmitter = getProgressEmitter();
 			const tools = await getSubagentTools();
 			const webSearchAvailable = Boolean((tools as Record<string, unknown>).webSearch);
 			const fetchUrlsAvailable = Boolean((tools as Record<string, unknown>).fetchUrls);
@@ -174,7 +183,7 @@ Provide a concise summary for display and a very specific task description (espe
 			const errorMessage = error instanceof Error ? error.message : String(error);
 
 			// Emit failure
-			progressEmitter?.onSubagentComplete(toolCallId, false);
+			getProgressEmitter()?.onSubagentComplete(toolCallId, false);
 
 			return {
 				success: false,

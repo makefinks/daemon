@@ -23,7 +23,7 @@ export type DaemonStateEvents = {
 	toolResult: (toolName: string, result: unknown, toolCallId?: string) => void;
 	toolComplete: (toolCallId: string, status: ToolCallStatus) => void;
 	toolApprovalRequest: (request: ToolApprovalRequest) => void;
-	toolApprovalResolved: (toolCallId: string, approved: boolean) => void;
+	toolApprovalResolved: (toolCallId: string, approved: boolean, sessionId?: string) => void;
 	awaitingApprovals: (
 		pendingApprovals: ToolApprovalRequest[],
 		respondToApprovals: (responses: ToolApprovalResponse[]) => void
