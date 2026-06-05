@@ -291,6 +291,7 @@ export type VoiceInteractionType = "direct" | "review";
 export type ToolToggleId =
 	| "readFile"
 	| "writeFile"
+	| "editFile"
 	| "runBash"
 	| "loadSkill"
 	| "loadSkillResource"
@@ -308,6 +309,7 @@ export type SkillToggles = Record<string, boolean>;
 export const DEFAULT_TOOL_TOGGLES: ToolToggles = {
 	readFile: true,
 	writeFile: true,
+	editFile: true,
 	runBash: true,
 	loadSkill: true,
 	loadSkillResource: true,

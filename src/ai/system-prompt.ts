@@ -76,6 +76,7 @@ function normalizeToolAvailability(toolAvailability?: Partial<ToolAvailability>)
 	return {
 		readFile: toolAvailability?.readFile ?? true,
 		writeFile: toolAvailability?.writeFile ?? true,
+		editFile: toolAvailability?.editFile ?? true,
 		runBash: toolAvailability?.runBash ?? true,
 		loadSkill: toolAvailability?.loadSkill ?? true,
 		loadSkillResource: toolAvailability?.loadSkillResource ?? true,
@@ -272,6 +273,16 @@ Fetch multiple URLs in one call:
   - Do NOT give commands like "cat filename" or "open filename" unless the file is actually in the current working directory
   - For files in the workspace, give the full path: "cat /full/path/to/file" or tell the user to navigate there first
 `,
+	editFile: `
+  ### 'editFile' (granular search/replace editor)
+  Apply precise search/replace edits to an existing file. Each edit specifies the exact text to find (\`oldText\`) and the replacement text (\`newText\`). Edits are applied sequentially — later edits operate on the file after earlier changes.
+
+  **Rules:**
+  - \`oldText\` must match exactly once in the file. Include surrounding context (adjacent lines, indentation, etc.) to guarantee uniqueness.
+  - If \`oldText\` is not found or matches multiple times, the entire edit operation fails and no changes are written.
+  - Multiple edits can be provided in one call; they are applied in order.
+  - Use this for granular changes instead of rewriting the whole file.
+`,
 
 	subagent: `
   ### 'subagent'
@@ -302,6 +313,7 @@ function buildToolDefinitions(availability: ToolAvailability, mcpToolGuidance?: 
 	if (availability.loadSkillResource) blocks.push(TOOL_SECTIONS.loadSkillResource);
 	if (availability.readFile) blocks.push(TOOL_SECTIONS.readFile);
 	if (availability.writeFile) blocks.push(TOOL_SECTIONS.writeFile);
+	if (availability.editFile) blocks.push(TOOL_SECTIONS.editFile);
 	if (availability.subagent) blocks.push(TOOL_SECTIONS.subagent);
 	const mcpGuidanceSection = buildMcpToolGuidanceSection(mcpToolGuidance);
 

@@ -737,7 +737,7 @@ export function createToolResultHandler(refs: EventHandlerRefs, setters: EventHa
 
 		setters.setCurrentContentBlocks([...refs.contentBlocksRef.current]);
 
-		if (toolName === "writeFile" && !isErrorResult) {
+		if ((toolName === "writeFile" || toolName === "editFile") && !isErrorResult) {
 			incrementArtifacts(1);
 		}
 

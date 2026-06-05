@@ -9,6 +9,7 @@ import { runBash } from "./run-bash";
 import { subagent } from "./subagents";
 import { todoManager } from "./todo-manager";
 import { webSearch } from "./web-search";
+import { editFile } from "./edit-file";
 import { writeFile } from "./write-file";
 
 import { getProviderCapabilities } from "../providers/capabilities";
@@ -43,6 +44,7 @@ type ToolGateResult = {
 export const TOOL_REGISTRY: ToolEntry[] = [
 	{ id: "readFile", toggleKey: "readFile", tool: readFile },
 	{ id: "writeFile", toggleKey: "writeFile", tool: writeFile },
+	{ id: "editFile", toggleKey: "editFile", tool: editFile },
 	{ id: "runBash", toggleKey: "runBash", tool: runBash },
 	{ id: "loadSkill", toggleKey: "loadSkill", tool: loadSkill },
 	{ id: "loadSkillResource", toggleKey: "loadSkillResource", tool: loadSkillResource },
@@ -79,6 +81,7 @@ function normalizeToggles(toggles?: ToolToggles): ToolToggles {
 	return {
 		readFile: toggles?.readFile ?? true,
 		writeFile: toggles?.writeFile ?? true,
+		editFile: toggles?.editFile ?? true,
 		runBash: toggles?.runBash ?? true,
 		loadSkill: toggles?.loadSkill ?? true,
 		loadSkillResource: toggles?.loadSkillResource ?? true,
@@ -179,6 +182,7 @@ export function getToolLabels(): Record<ToolId, string> {
 	return {
 		readFile: "readFile",
 		writeFile: "writeFile",
+		editFile: "editFile",
 		runBash: "runBash",
 		loadSkill: "loadSkill",
 		loadSkillResource: "loadSkillResource",
@@ -194,6 +198,7 @@ export function getDefaultToolOrder(): ToolId[] {
 	return [
 		"readFile",
 		"writeFile",
+		"editFile",
 		"runBash",
 		"loadSkill",
 		"loadSkillResource",
@@ -209,6 +214,7 @@ export function createToolAvailabilitySnapshot(availability: ToolAvailabilityMap
 	return {
 		readFile: availability.readFile?.enabled ?? false,
 		writeFile: availability.writeFile?.enabled ?? false,
+		editFile: availability.editFile?.enabled ?? false,
 		runBash: availability.runBash?.enabled ?? false,
 		loadSkill: availability.loadSkill?.enabled ?? false,
 		loadSkillResource: availability.loadSkillResource?.enabled ?? false,
