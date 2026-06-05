@@ -4,16 +4,12 @@ import { REASONING_ANIMATION } from "../ui/constants";
 export interface ReasoningState {
 	reasoningQueue: string;
 	reasoningDisplay: string;
-	fullReasoning: string;
 }
 
 export interface UseReasoningAnimationReturn {
 	reasoningQueue: string;
 	reasoningDisplay: string;
-	fullReasoning: string;
 	setReasoningQueue: (queue: string | ((prev: string) => string)) => void;
-	setFullReasoning: (full: string | ((prev: string) => string)) => void;
-	fullReasoningRef: React.RefObject<string>;
 	clearReasoningState: () => void;
 	clearReasoningTicker: () => void;
 }
@@ -21,15 +17,11 @@ export interface UseReasoningAnimationReturn {
 export function useReasoningAnimation(): UseReasoningAnimationReturn {
 	const [reasoningQueue, setReasoningQueue] = useState<string>("");
 	const [reasoningDisplay, setReasoningDisplay] = useState<string>("");
-	const [fullReasoning, setFullReasoning] = useState<string>("");
 	const reasoningAnimRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const fullReasoningRef = useRef<string>("");
 
 	const clearReasoningState = () => {
 		setReasoningQueue("");
 		setReasoningDisplay("");
-		setFullReasoning("");
-		fullReasoningRef.current = "";
 	};
 	const clearReasoningTicker = () => {
 		setReasoningQueue("");
@@ -92,10 +84,7 @@ export function useReasoningAnimation(): UseReasoningAnimationReturn {
 	return {
 		reasoningQueue,
 		reasoningDisplay,
-		fullReasoning,
 		setReasoningQueue,
-		setFullReasoning,
-		fullReasoningRef,
 		clearReasoningState,
 		clearReasoningTicker,
 	};

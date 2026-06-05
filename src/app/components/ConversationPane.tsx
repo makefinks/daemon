@@ -14,9 +14,8 @@ import { TokenUsageDisplay } from "../../components/TokenUsageDisplay";
 import { TypingInputBar } from "../../components/TypingInputBar";
 import type { ContentBlock, ConversationMessage, LlmProvider, TokenUsage } from "../../types";
 import { DaemonState } from "../../types";
-import { COLORS, REASONING_MARKDOWN_STYLE } from "../../ui/constants";
+import { COLORS } from "../../ui/constants";
 import { renderReasoningTicker } from "../../ui/reasoning-ticker";
-import { formatElapsedTime } from "../../utils/formatters";
 import type { ModelMetadata } from "../../utils/model-metadata";
 
 export interface ConversationDisplayState {
@@ -41,7 +40,6 @@ export interface ReasoningDisplayState {
 	showToolOutput: boolean;
 	reasoningQueue: string;
 	reasoningDisplay: string;
-	fullReasoning: string;
 }
 
 export interface ProgressDisplayState {
@@ -118,7 +116,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 		resetNotification,
 		escPendingCancel,
 	} = status;
-	const { showFullReasoning, showToolOutput, reasoningQueue, reasoningDisplay, fullReasoning } = reasoning;
+	const { showFullReasoning, showToolOutput, reasoningQueue, reasoningDisplay } = reasoning;
 	const { showWorkingSpinner, isToolCalling, responseElapsedMs, currentTodoLabel } = progress;
 	const {
 		typingTextareaRef,
@@ -185,9 +183,6 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 	const isReasoning =
 		daemonState === DaemonState.RESPONDING &&
 		(!conversation.currentResponse || !!reasoningDisplay || !!reasoningQueue);
-	const fullReasoningDurationLabel =
-		responseElapsedMs > 0 ? ` · ${formatElapsedTime(responseElapsedMs, { style: "detailed" })}` : "";
-
 	return (
 		<>
 			{hasInteracted && !suppressStatusBar && (
@@ -416,33 +411,13 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 							</box>
 						)}
 
-						{currentContentBlocks.length === 0 && (reasoningDisplay || reasoningQueue) && (
-							<box marginBottom={1}>
-								{showFullReasoning && fullReasoning ? (
-									<box
-										flexDirection="column"
-										border={["left"]}
-										borderStyle="heavy"
-										borderColor={COLORS.REASONING_DIM}
-										paddingLeft={1}
-									>
-										<text>
-											<span fg={COLORS.REASONING}>{"REASONING"}</span>
-											<span fg={COLORS.REASONING_DIM}>{fullReasoningDurationLabel}</span>
-										</text>
-										<code
-											content={fullReasoning}
-											filetype="markdown"
-											syntaxStyle={REASONING_MARKDOWN_STYLE}
-											streaming={true}
-											drawUnstyledText={false}
-										/>
-									</box>
-								) : reasoningDisplay ? (
-									renderReasoningTicker(reasoningDisplay)
-								) : null}
-							</box>
-						)}
+						{daemonState === DaemonState.RESPONDING &&
+							currentContentBlocks.length === 0 &&
+							(reasoningDisplay || reasoningQueue) && (
+								<box marginBottom={1}>
+									{reasoningDisplay ? renderReasoningTicker(reasoningDisplay) : null}
+								</box>
+							)}
 
 						{hasGrounding &&
 							groundingCount &&

@@ -57,6 +57,8 @@ Highlight styling guidance:
 - after applying a highlight, take a screenshot to visually verify placement before telling the user; if the label or highlight obstructs the target content, adjust the placement/style and verify again
 
 Do not present a screenshot as the user-facing output for this behavior unless the user explicitly asks for one; screenshot use for internal visual verification of highlight placement is expected.
+
+When the user explicitly asks for a screenshot that will be viewed by them or used in a deliverable (report, website, evidence, etc.), do NOT screenshot the full page. Only capture the relevant section — the specific element, evidence text, or area of interest. If no specific element is targeted, use a reasonable default viewport size (e.g. 1280x800) rather than the full page height.
 `,
 	},
 };

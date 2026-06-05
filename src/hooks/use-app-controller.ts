@@ -783,7 +783,6 @@ export function useAppController({
 				showToolOutput,
 				reasoningQueue: daemon.reasoning.reasoningQueue,
 				reasoningDisplay: daemon.reasoning.reasoningDisplay,
-				fullReasoning: daemon.reasoning.fullReasoning,
 			},
 			progress: {
 				showWorkingSpinner,
