@@ -190,7 +190,7 @@ export function SettingsMenu({
 			items: [
 				{
 					id: "interaction-mode",
-					label: "Interaction Mode",
+					label: "Response Mode",
 					value: interactionMode === "voice" ? "VOICE" : "TEXT",
 					description: interactionModeDescription,
 					isToggle: true,

@@ -303,7 +303,7 @@ export function ModelMenu({
 							focused={isSearchFocused}
 							width="100%"
 							height={1}
-							placeholder="Type to filter... (/ or Shift+Tab)"
+							placeholder="Type to filter..."
 							style={{
 								backgroundColor: "transparent",
 								focusedBackgroundColor: "transparent",
