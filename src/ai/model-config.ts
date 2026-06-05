@@ -13,6 +13,7 @@ export const AVAILABLE_OPENROUTER_MODELS: ModelOption[] = [
 	{ id: "x-ai/grok-4.3", name: "Grok 4.3" },
 	{ id: "anthropic/claude-opus-4.8", name: "Claude Opus 4.8" },
 	{ id: "deepseek/deepseek-v4-flash", name: "DeepSeek V4 Flash" },
+	{ id: "deepseek/deepseek-v4-pro", name: "DeepSeek V4 Pro" },
 	{ id: "qwen/qwen3.7-max", name: "Qwen 3.7 Max" },
 	{ id: "z-ai/glm-5.1", name: "GLM 5.1" },
 ];

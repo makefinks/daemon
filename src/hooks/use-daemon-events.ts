@@ -27,10 +27,8 @@ export interface UseDaemonEventsParams {
 	preferencesLoaded: boolean;
 	openAiCodexAuthenticated: boolean;
 	setReasoningQueue: (queue: string | ((prev: string) => string)) => void;
-	setFullReasoning: (full: string | ((prev: string) => string)) => void;
 	clearReasoningState: () => void;
 	clearReasoningTicker: () => void;
-	fullReasoningRef: React.RefObject<string>;
 	sessionId: string | null;
 	sessionIdRef: React.RefObject<string | null>;
 	ensureSessionId: () => Promise<string>;
@@ -90,14 +88,10 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 	// Stable refs for reasoning callbacks to avoid effect re-registration
 	const setReasoningQueueRef = useRef(params.setReasoningQueue);
 	setReasoningQueueRef.current = params.setReasoningQueue;
-	const setFullReasoningRef = useRef(params.setFullReasoning);
-	setFullReasoningRef.current = params.setFullReasoning;
 	const clearReasoningTickerRef = useRef(params.clearReasoningTicker);
 	clearReasoningTickerRef.current = params.clearReasoningTicker;
 	const clearReasoningStateRef = useRef(clearReasoningState);
 	clearReasoningStateRef.current = clearReasoningState;
-	const fullReasoningRef = useRef(params.fullReasoningRef);
-	fullReasoningRef.current = params.fullReasoningRef;
 
 	// Track whether reasoning tokens are currently flowing — set by
 	// handleReasoningToken, cleared when a new non-reasoning block appears.
@@ -189,6 +183,11 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 		};
 		const handleStateChange = (state: DaemonState) => {
 			const activeSessionId = sessionIdRef.current;
+			if (state !== DaemonState.RESPONDING) {
+				clearReasoningStateRef.current();
+				reasoningActiveRef.current = false;
+				lastNonReasoningCountRef.current = 0;
+			}
 			if (!activeSessionId) {
 				setDaemonState(state);
 				return;
@@ -235,12 +234,11 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 		daemonEvents.on("sessionCreated", handleSessionCreated);
 		daemonEvents.on("sessionDeleted", handleSessionDeleted);
 		const handleReasoningToken = (token: string) => {
+			const isNewReasoningSegment = !reasoningActiveRef.current;
 			reasoningActiveRef.current = true;
-			setFullReasoningRef.current((prev: string) => prev + token);
-			setReasoningQueueRef.current((prev: string) => prev + token.replace(/\n/g, " "));
-			if (fullReasoningRef.current?.current !== undefined) {
-				fullReasoningRef.current.current += token;
-			}
+			setReasoningQueueRef.current((prev: string) =>
+				isNewReasoningSegment ? token.replace(/\n/g, " ") : prev + token.replace(/\n/g, " ")
+			);
 		};
 		daemonEvents.on("reasoningToken", handleReasoningToken);
 		return () => {
