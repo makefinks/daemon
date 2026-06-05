@@ -36,7 +36,9 @@ class DaemonStateManager {
 	private modelHistory = new ModelHistoryStore();
 	private ensureSessionIdFn: (() => Promise<string>) | null = null;
 	private getCurrentSessionIdFn: (() => string | null) | null = null;
-	private onFirstMessageFn: ((sessionId: string, message: string) => void) | null = null;
+	private getSessionViewVisibleFn: (() => boolean) | null = null;
+	private getSessionTitleFn: ((sessionId: string) => string | null) | null = null;
+	private onFirstMessageFn: ((sessionId: string, message: string) => Promise<string | null>) | null = null;
 	private voiceInput = new VoiceInputController();
 	private speechController = new SpeechController();
 	private agentTurnRunner = new AgentTurnRunner();
@@ -197,12 +199,28 @@ class DaemonStateManager {
 		this.getCurrentSessionIdFn = fn;
 	}
 
-	setOnFirstMessage(fn: ((sessionId: string, message: string) => void) | null): void {
+	setGetSessionViewVisible(fn: (() => boolean) | null): void {
+		this.getSessionViewVisibleFn = fn;
+	}
+
+	setGetSessionTitle(fn: ((sessionId: string) => string | null) | null): void {
+		this.getSessionTitleFn = fn;
+	}
+
+	setOnFirstMessage(fn: ((sessionId: string, message: string) => Promise<string | null>) | null): void {
 		this.onFirstMessageFn = fn;
 	}
 
 	private getCurrentSessionId(): string | null {
 		return this.getCurrentSessionIdFn?.() ?? null;
+	}
+
+	private isSessionViewVisible(): boolean {
+		return this.getSessionViewVisibleFn?.() ?? false;
+	}
+
+	private getSessionTitle(sessionId: string): string | null {
+		return this.getSessionTitleFn?.(sessionId) ?? null;
 	}
 
 	private getSessionRunner(sessionId: string): AgentTurnRunner {
@@ -340,6 +358,13 @@ class DaemonStateManager {
 	private async generateResponseFromText(sessionId: string, text: string): Promise<void> {
 		const runtime = sessionRuntimeStore.ensure(sessionId);
 		const isFirstMessage = sessionRuntimeStore.beginUserMessage(sessionId, text);
+		const titlePromise = isFirstMessage
+			? (this.onFirstMessageFn?.(sessionId, text) ?? Promise.resolve(null)).catch((error) => {
+					const err = error instanceof Error ? error : new Error(String(error));
+					messageDebug.warn("session-title-generation-failed", { sessionId, message: err.message });
+					return null;
+				})
+			: Promise.resolve(null);
 		if (runtime.state === DaemonState.RESPONDING) {
 			return;
 		}
@@ -428,15 +453,15 @@ class DaemonStateManager {
 				responseMessages: result.responseMessages,
 				usage: result.usage,
 			});
+			const generatedTitle = await titlePromise;
 			sessionRuntimeStore.completeResponse(
 				sessionId,
 				result.fullText,
 				result.responseMessages,
-				this.getCurrentSessionId()
+				this.getCurrentSessionId(),
+				this.isSessionViewVisible(),
+				generatedTitle ?? this.getSessionTitle(sessionId)
 			);
-			if (isFirstMessage) {
-				this.onFirstMessageFn?.(sessionId, text);
-			}
 
 			// Trigger TTS if enabled - use finalText (last assistant message only) for speech
 			const textToSpeak = result.finalText ?? result.fullText;

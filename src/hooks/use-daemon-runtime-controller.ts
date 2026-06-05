@@ -59,7 +59,7 @@ export function useDaemonRuntimeController({
 	sessionId: string | null;
 	sessionIdRef: MutableRefObject<string | null>;
 	ensureSessionId: () => Promise<string>;
-	onFirstMessage: (sessionId: string, message: string) => void;
+	onFirstMessage: (sessionId: string, message: string) => Promise<string | null>;
 }): DaemonRuntimeControllerResult {
 	const reasoning = useReasoningAnimation();
 	const { addToHistory, navigateUp, navigateDown, resetNavigation } = useInputHistory();
@@ -131,6 +131,11 @@ export function useDaemonRuntimeController({
 
 	const hasInteracted =
 		conversationHistory.length > 0 || currentTranscription.length > 0 || currentContentBlocks.length > 0;
+
+	useEffect(() => {
+		manager.setGetSessionViewVisible(() => hasInteracted);
+		return () => manager.setGetSessionViewVisible(null);
+	}, [manager, hasInteracted]);
 
 	return {
 		reasoning,

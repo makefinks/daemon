@@ -33,7 +33,7 @@ export interface UseDaemonEventsParams {
 	sessionIdRef: React.RefObject<string | null>;
 	ensureSessionId: () => Promise<string>;
 	addToHistory: (input: string) => void;
-	onFirstMessage?: (sessionId: string, message: string) => void;
+	onFirstMessage?: (sessionId: string, message: string) => Promise<string | null>;
 }
 
 export interface UseDaemonEventsReturn {

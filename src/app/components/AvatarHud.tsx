@@ -28,7 +28,6 @@ const VALUE_HIGHLIGHT = "#AAAADD";
 const HIDDEN_COLOR = "#050509";
 const HUD_STAGGER_MS = 130;
 const HUD_FADE_MS = 420;
-const RIGHT_COLUMN_SHIFT = 6;
 
 /** Pulse animation — items bloom outward then return in sync */
 const PULSE_OUTWARD_MS = 200;
@@ -207,12 +206,12 @@ function AvatarHudImpl(props: AvatarHudProps) {
 	// Left side: sessions, memories, tools
 	// Right side: tokens, skills, artifacts
 	const items = [
-		{ label: "TOKENS", value: tokens, angle: -45, width: 18 },
-		{ label: "SESSIONS", value: sessions, angle: 0, width: 16 },
-		{ label: "ARTIFACTS", value: artifacts, angle: 45, width: 20 },
-		{ label: "SKILLS", value: skills, angle: 135, width: 18 },
-		{ label: "MEMORIES", value: memories, angle: 180, width: 18 },
-		{ label: "TOOLS", value: tools, angle: -135, width: 16 },
+		{ label: "TOKENS", value: tokens, angle: -45 },
+		{ label: "SESSIONS", value: sessions, angle: 0 },
+		{ label: "ARTIFACTS", value: artifacts, angle: 45 },
+		{ label: "SKILLS", value: skills, angle: 135 },
+		{ label: "MEMORIES", value: memories, angle: 180 },
+		{ label: "TOOLS", value: tools, angle: -135 },
 	];
 
 	return (
@@ -229,16 +228,17 @@ function AvatarHudImpl(props: AvatarHudProps) {
 
 				const radians = (item.angle * Math.PI) / 180;
 				const cos = Math.cos(radians);
-				const rightShift = cos >= 0 ? RIGHT_COLUMN_SHIFT : 0;
 				const rX = radiusX * pulseRadiusScale;
 				const rY = radiusY * pulseRadiusScale;
-				const x = Math.round(centerX + cos * rX - (cos < 0 ? item.width - 2 : 0) + rightShift);
+				const textWidth = item.label.length + 1 + item.value.length;
+				const innerEdgeX = Math.round(centerX + cos * rX);
+				const x = cos < 0 ? innerEdgeX - textWidth + 1 : innerEdgeX;
 				const y = Math.round(centerY + Math.sin(radians) * rY);
-				const left = Math.max(1, Math.min(width - item.width - 1, x));
+				const left = Math.max(1, Math.min(width - textWidth - 1, x));
 				const top = Math.max(1, Math.min(height - 2, y));
 				const labelIsInner = cos >= 0;
 				return (
-					<box key={item.label} position="absolute" top={top} left={left} width={item.width} height={1}>
+					<box key={item.label} position="absolute" top={top} left={left} width={textWidth} height={1}>
 						<text>
 							{labelIsInner ? (
 								<>
