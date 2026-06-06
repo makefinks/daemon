@@ -1,4 +1,4 @@
-import { CopilotClient, defineTool } from "@github/copilot-sdk";
+import { CopilotClient, RuntimeConnection, defineTool } from "@github/copilot-sdk";
 import type {
 	CopilotClientOptions,
 	CopilotSession,
@@ -9,6 +9,7 @@ import type {
 	Tool as CopilotTool,
 	ToolResultObject,
 	ToolInvocation,
+	RuntimeConnection as CopilotRuntimeConnection,
 } from "@github/copilot-sdk";
 import type { ToolSet } from "ai";
 import { spawn, spawnSync } from "node:child_process";
@@ -159,7 +160,7 @@ const denyCopilotPermissionRequest: PermissionHandler = (request, invocation) =>
 	});
 
 	return {
-		kind: "denied-no-approval-rule-and-could-not-request-from-user",
+		kind: "no-result",
 	};
 };
 
@@ -244,28 +245,25 @@ function resolveBundledCopilotCliPath(): string | undefined {
 	}
 }
 
-function resolveRuntimeCliOverrides(): Pick<CopilotClientOptions, "cliArgs" | "cliPath"> {
+function resolveRuntimeConnectionOverride(): CopilotRuntimeConnection | undefined {
 	const explicitCliPath = process.env.COPILOT_CLI_PATH?.trim();
 	if (explicitCliPath) {
-		return { cliPath: explicitCliPath };
+		return RuntimeConnection.forStdio({ path: explicitCliPath });
 	}
 
 	// Copilot SDK defaults to spawning the bundled CLI JS with process.execPath.
 	// Under Bun, that means executing the CLI with Bun, which can hang auth/session RPC calls.
 	if (!isBunRuntime()) {
-		return {};
+		return undefined;
 	}
 
 	const nodePath = resolveNodeExecutablePath();
 	const bundledCliPath = resolveBundledCopilotCliPath();
 	if (!nodePath || !bundledCliPath) {
-		return {};
+		return undefined;
 	}
 
-	return {
-		cliPath: nodePath,
-		cliArgs: [bundledCliPath],
-	};
+	return RuntimeConnection.forStdio({ path: nodePath, args: [bundledCliPath] });
 }
 
 function resolveCopilotAuthConfig(): Pick<CopilotClientOptions, "useLoggedInUser"> {
@@ -374,22 +372,19 @@ export async function hasCopilotCliAuthSafe(): Promise<boolean> {
 
 function buildClientOptions(): CopilotClientOptions {
 	const authConfig = resolveCopilotAuthConfig();
-	const cliOverrides = resolveRuntimeCliOverrides();
+	const connection = resolveRuntimeConnectionOverride();
 
 	return {
-		...cliOverrides,
+		connection,
 		env: buildCopilotChildEnv(authConfig),
 		useLoggedInUser: authConfig.useLoggedInUser,
-		autoStart: false,
-		autoRestart: true,
 		logLevel: "warning",
 	};
 }
 
 function getFingerprint(options: CopilotClientOptions): string {
 	return JSON.stringify({
-		cliPath: options.cliPath ?? "default",
-		cliArgs: options.cliArgs ?? [],
+		connection: options.connection ?? "default",
 		useLoggedInUser: options.useLoggedInUser ?? true,
 		nodeOptions: options.env?.NODE_OPTIONS ?? null,
 		extraCaCerts: options.env?.NODE_EXTRA_CA_CERTS ?? null,
@@ -424,8 +419,7 @@ async function ensureClient(): Promise<CopilotClient> {
 
 		debug.info("copilot-client-start", {
 			useLoggedInUser: options.useLoggedInUser ?? true,
-			cliPath: options.cliPath ?? "default",
-			cliArgs: options.cliArgs ?? [],
+			connection: options.connection ?? "default",
 		});
 
 		const client = new CopilotClient(options);
@@ -732,6 +726,7 @@ export function convertToolSetToCopilotTools(tools: ToolSet, callbacks: StreamCa
 		return defineTool(name, {
 			description: (tool as { description?: string }).description,
 			parameters: toJsonSchema(inputSchema),
+			skipPermission: true,
 			handler: async (rawInput: unknown, invocation: ToolInvocation) => {
 				const parsed = await parseToolInput(inputSchema, rawInput);
 				if (!parsed.ok) {
