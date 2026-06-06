@@ -72,8 +72,8 @@ Session and display controls:
 - \`R\`: toggle full reasoning previews on/off.
 - \`E\`: cycle reasoning effort directly, without opening Settings. This only works when the current model/provider supports reasoning effort.
 - \`O\`: toggle tool output previews on/off.
-- \`Y\`: open copy menu for messages/transcripts.
-- \`N\`: start a new session.
+- \`Ctrl+Y\`: open copy menu for messages/transcripts.
+- \`Ctrl+N\`: start a new session.
 - \`Ctrl+X\`: undo the last message.
 - \`G\`: open Grounding menu when grounding exists.
 - \`U\`: open URL menu after web/source interaction exists.
@@ -127,7 +127,7 @@ MCP servers from \`config.json\` appear in the Tools menu. Toggling an MCP serve
 - \`P\` opens the OpenRouter provider-routing menu when the active model provider is OpenRouter.
 - \`L\` opens the Sessions menu. Use it to switch, create, filter, or delete sessions.
 - \`B\` opens the Memories menu. Use it to inspect stored memories when memory is available.
-- \`Y\` opens the Copy menu after interaction has occurred. Use it to copy messages or transcripts.
+- \`Ctrl+Y\` opens the Copy menu after interaction has occurred. Use it to copy messages or transcripts.
 
 ## Voice and Text Modes
 

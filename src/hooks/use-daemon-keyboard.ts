@@ -222,9 +222,10 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 				return;
 			}
 
-			// 'N' key to start a new session (also while the visible session is responding)
+			// Ctrl+N to start a new session (also while the visible session is responding)
 			if (
-				(key.sequence === "n" || key.sequence === "N") &&
+				key.ctrl &&
+				(key.name === "n" || key.sequence === "\u000e") &&
 				key.eventType === "press" &&
 				(currentState === DaemonState.IDLE ||
 					currentState === DaemonState.SPEAKING ||
@@ -275,9 +276,10 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 				return;
 			}
 
-			// 'Y' key to open copy menu (in IDLE, SPEAKING, or RESPONDING state)
+			// Ctrl+Y to open copy menu (in IDLE, SPEAKING, or RESPONDING state)
 			if (
-				(key.sequence === "y" || key.sequence === "Y") &&
+				key.ctrl &&
+				(key.name === "y" || key.sequence === "\u0019") &&
 				key.eventType === "press" &&
 				(currentState === DaemonState.IDLE ||
 					currentState === DaemonState.SPEAKING ||
