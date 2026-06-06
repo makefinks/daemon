@@ -220,6 +220,7 @@ async function streamCopilotSession(params: {
 		toolAvailability: createToolAvailabilitySnapshot(toolAvailability),
 		mcpToolGuidance,
 		workspacePath,
+		cwdPath: process.cwd(),
 		memoryInjection,
 		skillCatalog,
 	});
