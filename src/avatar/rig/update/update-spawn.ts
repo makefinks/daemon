@@ -176,8 +176,12 @@ function applySpawnSettled(elements: SceneElements): void {
 	elements.particleSystem.scale.setScalar(1);
 	elements.sigilLines.scale.setScalar(1);
 	elements.pointLight.intensity = 0.8;
-	elements.rings.forEach((ring) => ring.mesh.scale.setScalar(1));
-	elements.fragments.forEach((fragment) => fragment.mesh.scale.setScalar(1));
+	elements.rings.forEach((ring) => {
+		ring.mesh.scale.setScalar(1);
+	});
+	elements.fragments.forEach((fragment) => {
+		fragment.mesh.scale.setScalar(1);
+	});
 }
 
 /**

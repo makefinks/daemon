@@ -70,3 +70,4 @@ Audio tuning (optional):
 - JSX: Uses `@opentui/react` with custom components extended via `extend()`. Prefer small, functional components.
 - State: EventEmitter pattern for cross-component state (`src/state/daemon-state.ts`). Hook-based UI state management (`src/hooks/`). Session persistence in `src/state/session-store.ts`.
 - Async: Use AbortController for cancellable async operations (e.g. response generation, transcription, TTS).
+- Documentation: Use detailed JSDoc (`@param`) on functions with multiple or non-obvious params. Skip `@returns` when obvious from the return type (e.g. string builders, void side-effects). Summary-only style is fine for simple helpers with self-explanatory signatures.
