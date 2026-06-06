@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { tool } from "ai";
 import { z } from "zod";
+import { incrementArtifacts } from "../../state/stats-store";
 
 export const writeFile = tool({
 	description:
@@ -27,11 +28,17 @@ export const writeFile = tool({
 				fs.mkdirSync(dir, { recursive: true });
 			}
 
+			const isNewFile = !fs.existsSync(resolvedPath);
+
 			// Write or append to the file
 			if (append) {
 				fs.appendFileSync(resolvedPath, content, "utf8");
 			} else {
 				fs.writeFileSync(resolvedPath, content, "utf8");
+			}
+
+			if (isNewFile) {
+				incrementArtifacts(1);
 			}
 
 			return {
