@@ -31,6 +31,10 @@ export function updateThemeColors(elements: SceneElements, state: RigState, dt: 
 	}
 	elements.pointLight.color.setHex(theme.current.glow);
 
-	elements.rings.forEach((ring) => ring.material.color.setHex(displayPrimary));
-	elements.fragments.forEach((frag) => frag.material.color.setHex(displayPrimary));
+	elements.rings.forEach((ring) => {
+		ring.material.color.setHex(displayPrimary);
+	});
+	elements.fragments.forEach((frag) => {
+		frag.material.color.setHex(displayPrimary);
+	});
 }

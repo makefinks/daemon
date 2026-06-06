@@ -101,7 +101,7 @@ export function useAppDisplayState(params: UseAppDisplayStateParams): UseAppDisp
 		let baseStatus = STATUS_TEXT[daemonState];
 		if (daemonState === DaemonState.IDLE) {
 			if (hasInteracted) {
-				baseStatus = "SPACE speak · SHIFT+TAB type · N new · ? hotkeys";
+				baseStatus = "SPACE speak · SHIFT+TAB type · CTRL+N new · ? hotkeys";
 			}
 		}
 		return baseStatus;
