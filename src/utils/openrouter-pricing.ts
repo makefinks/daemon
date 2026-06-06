@@ -7,6 +7,45 @@ export function parseOpenRouterPricePerTokenToPerMillion(pricePerToken: unknown)
 	return parsed * 1_000_000;
 }
 
+export function mergePricingMinima(pricings: ModelPricing[]): ModelPricing | undefined {
+	if (pricings.length === 0) return undefined;
+
+	let minPrompt = Number.POSITIVE_INFINITY;
+	let minCompletion = Number.POSITIVE_INFINITY;
+	let minCacheRead: number | undefined;
+	let minCacheWrite: number | undefined;
+
+	for (const pricing of pricings) {
+		if (Number.isFinite(pricing.prompt) && pricing.prompt < minPrompt) {
+			minPrompt = pricing.prompt;
+		}
+		if (Number.isFinite(pricing.completion) && pricing.completion < minCompletion) {
+			minCompletion = pricing.completion;
+		}
+		if (
+			pricing.inputCacheRead !== undefined &&
+			Number.isFinite(pricing.inputCacheRead) &&
+			(minCacheRead === undefined || pricing.inputCacheRead < minCacheRead)
+		) {
+			minCacheRead = pricing.inputCacheRead;
+		}
+		if (
+			pricing.inputCacheWrite !== undefined &&
+			Number.isFinite(pricing.inputCacheWrite) &&
+			(minCacheWrite === undefined || pricing.inputCacheWrite < minCacheWrite)
+		) {
+			minCacheWrite = pricing.inputCacheWrite;
+		}
+	}
+
+	if (!Number.isFinite(minPrompt) || !Number.isFinite(minCompletion)) return undefined;
+
+	const merged: ModelPricing = { prompt: minPrompt, completion: minCompletion };
+	if (minCacheRead !== undefined) merged.inputCacheRead = minCacheRead;
+	if (minCacheWrite !== undefined) merged.inputCacheWrite = minCacheWrite;
+	return merged;
+}
+
 export function mergePricingAverages(pricings: ModelPricing[]): ModelPricing | undefined {
 	let promptSum = 0;
 	let promptCount = 0;

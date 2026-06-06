@@ -34,6 +34,8 @@ function getToolLabel(id: ToolToggleId): string {
 	switch (id) {
 		case "readFile":
 			return "readFile";
+		case "readImage":
+			return "readImage";
 		case "runBash":
 			return "runBash";
 		case "webSearch":

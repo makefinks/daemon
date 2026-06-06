@@ -4,6 +4,7 @@ import type { InteractionMode } from "../system-prompt";
 
 export interface ProviderCapabilities {
 	supportsSubagentTool: boolean;
+	supportsImageToolOutput: boolean;
 }
 
 export interface ProviderStreamRequest {

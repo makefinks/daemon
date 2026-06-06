@@ -10,12 +10,14 @@ import { loadManualConfig } from "../utils/config";
 export const AVAILABLE_OPENROUTER_MODELS: ModelOption[] = [
 	{ id: "openai/gpt-5.5", name: "GPT-5.5" },
 	{ id: "google/gemini-3.5-flash", name: "Gemini 3.5 Flash" },
-	{ id: "x-ai/grok-4.3", name: "Grok 4.3" },
 	{ id: "anthropic/claude-opus-4.8", name: "Claude Opus 4.8" },
 	{ id: "deepseek/deepseek-v4-flash", name: "DeepSeek V4 Flash" },
 	{ id: "deepseek/deepseek-v4-pro", name: "DeepSeek V4 Pro" },
 	{ id: "qwen/qwen3.7-max", name: "Qwen 3.7 Max" },
-	{ id: "z-ai/glm-5.1", name: "GLM 5.1" },
+	{ id: "qwen/qwen3.7-plus", name: "Qwen 3.7 Plus" },
+	{ id: "xiaomi/mimo-v2.5", name: "MiMo V2.5" },
+	{ id: "xiaomi/mimo-v2.5-pro", name: "MiMo V2.5 Pro" },
+	{ id: "minimax/minimax-m3", name: "MiniMax M3" },
 ];
 
 // Default model IDs

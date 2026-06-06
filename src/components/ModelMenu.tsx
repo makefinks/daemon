@@ -11,11 +11,19 @@ const COL_WIDTH = {
 	IN: 10,
 	OUT: 10,
 	CACHE: 6,
+	IMG: 3,
 } as const;
+
+const COL_GAP = "   ";
 
 const ALL_MODEL_ITEM_HEIGHT = 1;
 const MAX_ALL_SCROLLBOX_HEIGHT = 20;
 const MIN_ALL_MODEL_QUERY_LENGTH = 3;
+
+function truncateText(text: string, maxLen: number): string {
+	if (text.length <= maxLen) return text;
+	return `${text.slice(0, Math.max(0, maxLen - 1))}…`;
+}
 
 interface ModelMenuProps {
 	curatedModels: ModelOption[];
@@ -188,6 +196,26 @@ export function ModelMenu({
 
 	const updatedAtLabel = formatUpdatedAt(allModelsUpdatedAt);
 	const needsSearchHint = !isCopilotProvider && searchQuery.trim().length < MIN_ALL_MODEL_QUERY_LENGTH;
+	const modelWidth = useMemo(() => {
+		const raw = menuItems.reduce((max, model) => {
+			const freeSuffix = model.id.endsWith(":free") ? " [FREE]" : "";
+			const currentSuffix = model.id === currentModelId ? " ●" : "";
+			return Math.max(max, `${model.name}${freeSuffix}${currentSuffix}`.length);
+		}, 0);
+		return Math.min(Math.max(raw + 2, 28), 72);
+	}, [currentModelId, menuItems]);
+
+	const renderModelHeader = () => (
+		<box marginBottom={1} paddingLeft={1} paddingRight={1}>
+			<text>
+				<span fg={COLORS.REASONING_DIM}>
+					{`  ${"MODEL".padEnd(modelWidth)}${COL_GAP}${"CTX".padStart(COL_WIDTH.CTX)}${COL_GAP}${"IN".padStart(
+						COL_WIDTH.IN
+					)}${COL_GAP}${"OUT".padStart(COL_WIDTH.OUT)}${COL_GAP}${"CACHE".padStart(COL_WIDTH.CACHE)}${COL_GAP}${"IMG".padStart(COL_WIDTH.IMG)}`}
+				</span>
+			</text>
+		</box>
+	);
 
 	const renderModelRow = (model: ModelOption, isSelected: boolean, isCurrent: boolean) => {
 		const pricing = model.pricing;
@@ -201,6 +229,13 @@ export function ModelMenu({
 
 		const supportsCaching = Boolean(model.supportsCaching);
 		const cacheText = supportsCaching ? "✓" : "x";
+		const supportsVision = model.supportsVision === true;
+		const imageText = supportsVision ? "✓" : "x";
+		const freeSuffix = model.id.endsWith(":free") ? " [FREE]" : "";
+		const currentSuffix = isCurrent ? " ●" : "";
+		const modelText = truncateText(`${model.name}${freeSuffix}${currentSuffix}`, modelWidth).padEnd(
+			modelWidth
+		);
 
 		return (
 			<box
@@ -208,24 +243,23 @@ export function ModelMenu({
 				backgroundColor={isSelected ? COLORS.MENU_SELECTED_BG : COLORS.MENU_BG}
 				paddingLeft={1}
 				paddingRight={1}
-				flexDirection="row"
-				justifyContent="space-between"
 			>
 				<text>
-					<span fg={isSelected ? COLORS.DAEMON_LABEL : COLORS.MENU_TEXT}>
-						{isSelected ? "▶ " : "  "}
-						{model.name}
-						{model.id.endsWith(":free") && <span fg={COLORS.STATUS_COMPLETED}> [FREE]</span>}
-						{isCurrent ? " ●" : ""}
-					</span>
-				</text>
-				<text>
-					<span fg={COLORS.MENU_TEXT}>{ctxText.padStart(COL_WIDTH.CTX)} </span>
-					<span fg={COLORS.TYPING_PROMPT}>
-						{inText.padStart(COL_WIDTH.IN)} {outText.padStart(COL_WIDTH.OUT)}{" "}
-					</span>
+					<span fg={isSelected ? COLORS.DAEMON_LABEL : COLORS.MENU_TEXT}>{isSelected ? "▶ " : "  "}</span>
+					<span fg={isSelected ? COLORS.DAEMON_LABEL : COLORS.MENU_TEXT}>{modelText}</span>
+					<span fg={COLORS.REASONING_DIM}>{COL_GAP}</span>
+					<span fg={COLORS.MENU_TEXT}>{ctxText.padStart(COL_WIDTH.CTX)}</span>
+					<span fg={COLORS.REASONING_DIM}>{COL_GAP}</span>
+					<span fg={COLORS.TYPING_PROMPT}>{inText.padStart(COL_WIDTH.IN)}</span>
+					<span fg={COLORS.REASONING_DIM}>{COL_GAP}</span>
+					<span fg={COLORS.TYPING_PROMPT}>{outText.padStart(COL_WIDTH.OUT)}</span>
+					<span fg={COLORS.REASONING_DIM}>{COL_GAP}</span>
 					<span fg={supportsCaching ? COLORS.DAEMON_TEXT : COLORS.REASONING_DIM}>
 						{cacheText.padStart(COL_WIDTH.CACHE)}
+					</span>
+					<span fg={COLORS.REASONING_DIM}>{COL_GAP}</span>
+					<span fg={supportsVision ? COLORS.DAEMON_TEXT : COLORS.REASONING_DIM}>
+						{imageText.padStart(COL_WIDTH.IMG)}
 					</span>
 				</text>
 			</box>
@@ -253,9 +287,9 @@ export function ModelMenu({
 				paddingRight={2}
 				paddingTop={1}
 				paddingBottom={1}
-				width="75%"
-				minWidth={60}
-				maxWidth={170}
+				width="55%"
+				minWidth={56}
+				maxWidth={120}
 			>
 				<box marginBottom={1}>
 					<text>
@@ -360,19 +394,7 @@ export function ModelMenu({
 							</box>
 						) : (
 							<>
-								<box marginBottom={1}>
-									<box flexDirection="row" justifyContent="space-between">
-										<text>
-											<span fg={COLORS.REASONING_DIM}>MODEL</span>
-										</text>
-										<text>
-											<span fg={COLORS.REASONING_DIM}>
-												{"CTX".padStart(COL_WIDTH.CTX)} {"IN".padStart(COL_WIDTH.IN)}{" "}
-												{"OUT".padStart(COL_WIDTH.OUT)} {"CACHE".padStart(COL_WIDTH.CACHE)}
-											</span>
-										</text>
-									</box>
-								</box>
+								{renderModelHeader()}
 								<scrollbox
 									ref={scrollRef}
 									height={scrollboxHeight}
@@ -412,19 +434,7 @@ export function ModelMenu({
 							</box>
 						) : (
 							<>
-								<box marginBottom={1}>
-									<box flexDirection="row" justifyContent="space-between">
-										<text>
-											<span fg={COLORS.REASONING_DIM}>MODEL</span>
-										</text>
-										<text>
-											<span fg={COLORS.REASONING_DIM}>
-												{"CTX".padStart(COL_WIDTH.CTX)} {"IN".padStart(COL_WIDTH.IN)}{" "}
-												{"OUT".padStart(COL_WIDTH.OUT)} {"CACHE".padStart(COL_WIDTH.CACHE)}
-											</span>
-										</text>
-									</box>
-								</box>
+								{renderModelHeader()}
 								<box flexDirection="column">
 									{sortedCurated.map((model, idx) =>
 										renderModelRow(model, idx === selectedIndex, model.id === currentModelId)
@@ -473,19 +483,7 @@ export function ModelMenu({
 							</box>
 						) : (
 							<>
-								<box marginBottom={1}>
-									<box flexDirection="row" justifyContent="space-between">
-										<text>
-											<span fg={COLORS.REASONING_DIM}>MODEL</span>
-										</text>
-										<text>
-											<span fg={COLORS.REASONING_DIM}>
-												{"CTX".padStart(COL_WIDTH.CTX)} {"IN".padStart(COL_WIDTH.IN)}{" "}
-												{"OUT".padStart(COL_WIDTH.OUT)} {"CACHE".padStart(COL_WIDTH.CACHE)}
-											</span>
-										</text>
-									</box>
-								</box>
+								{renderModelHeader()}
 								<scrollbox
 									ref={scrollRef}
 									height={scrollboxHeight}

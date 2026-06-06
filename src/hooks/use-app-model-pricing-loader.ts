@@ -30,6 +30,7 @@ export function useAppModelPricingLoader(params: UseAppModelPricingLoaderParams)
 						pricing: meta?.pricing,
 						contextLength: meta?.contextLength,
 						supportsCaching: meta?.supportsCaching,
+						supportsVision: meta?.supportsVision,
 					};
 				});
 				setModelsWithPricing(modelsWithPrices);

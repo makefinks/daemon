@@ -286,6 +286,17 @@ function formatLoadSkillResourceResult(result: unknown): string | null {
 	return `${path}:\n${content}`;
 }
 
+function formatReadImageResult(result: unknown): string | null {
+	if (!isRecord(result)) return null;
+	if (result.success === false && typeof result.error === "string") return `error: ${result.error}`;
+	if (result.success !== true) return null;
+
+	const filePath = typeof result.path === "string" ? result.path : "image";
+	const mediaType = typeof result.mediaType === "string" ? result.mediaType : "image";
+	const sizeBytes = typeof result.sizeBytes === "number" ? `, ${result.sizeBytes} bytes` : "";
+	return `${filePath}\n[Image: ${mediaType}${sizeBytes}]`;
+}
+
 function tryStringify(value: unknown): string {
 	if (typeof value === "string") return value;
 	if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint")
@@ -362,6 +373,7 @@ export function formatToolOutputPreview(toolName: string, result: unknown): stri
 	if (toolName === "webSearch") raw = formatExaSearchResult(result);
 	if (toolName === "fetchUrls") raw = formatExaFetchResult(result);
 	if (toolName === "readFile") raw = formatReadFileResult(result);
+	if (toolName === "readImage") raw = formatReadImageResult(result);
 	if (toolName === "loadSkill") raw = formatLoadSkillResult(result);
 	if (toolName === "loadSkillResource") raw = formatLoadSkillResourceResult(result);
 

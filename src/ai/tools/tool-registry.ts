@@ -5,6 +5,7 @@ import { groundingManager } from "./grounding-manager";
 import { loadSkill } from "./load-skill";
 import { loadSkillResource } from "./load-skill-resource";
 import { readFile } from "./read-file";
+import { readImage } from "./read-image";
 import { runBash } from "./run-bash";
 import { subagent } from "./subagents";
 import { todoManager } from "./todo-manager";
@@ -12,7 +13,9 @@ import { webSearch } from "./web-search";
 import { editFile } from "./edit-file";
 import { writeFile } from "./write-file";
 
+import { getModelProvider, getResponseModel } from "../model-config";
 import { getProviderCapabilities } from "../providers/capabilities";
+import { getModelMetadataForProvider } from "../../utils/model-metadata";
 import type { ToolToggleId, ToolToggles } from "../../types";
 
 export type ToolId = ToolToggleId;
@@ -43,6 +46,7 @@ type ToolGateResult = {
 
 export const TOOL_REGISTRY: ToolEntry[] = [
 	{ id: "readFile", toggleKey: "readFile", tool: readFile },
+	{ id: "readImage", toggleKey: "readImage", tool: readImage, gate: gateImageToolOutput },
 	{ id: "writeFile", toggleKey: "writeFile", tool: writeFile },
 	{ id: "editFile", toggleKey: "editFile", tool: editFile },
 	{ id: "runBash", toggleKey: "runBash", tool: runBash },
@@ -77,9 +81,35 @@ function gateSubagent(): Promise<ToolGateResult> {
 	});
 }
 
+async function gateImageToolOutput(): Promise<ToolGateResult> {
+	const capabilities = getProviderCapabilities();
+	if (!capabilities.supportsImageToolOutput) {
+		return {
+			envAvailable: false,
+			disabledReason: "Image reading is unavailable for the current model provider.",
+		};
+	}
+
+	const provider = getModelProvider();
+	if (provider === "openrouter") {
+		const metadata = await getModelMetadataForProvider(getResponseModel(), provider);
+		if (metadata?.supportsVision !== true) {
+			return {
+				envAvailable: false,
+				disabledReason: "Image reading is unavailable for the current OpenRouter model.",
+			};
+		}
+	}
+
+	return {
+		envAvailable: true,
+	};
+}
+
 function normalizeToggles(toggles?: ToolToggles): ToolToggles {
 	return {
 		readFile: toggles?.readFile ?? true,
+		readImage: toggles?.readImage ?? true,
 		writeFile: toggles?.writeFile ?? true,
 		editFile: toggles?.editFile ?? true,
 		runBash: toggles?.runBash ?? true,
@@ -181,6 +211,7 @@ export async function buildToolSet(
 export function getToolLabels(): Record<ToolId, string> {
 	return {
 		readFile: "readFile",
+		readImage: "readImage",
 		writeFile: "writeFile",
 		editFile: "editFile",
 		runBash: "runBash",
@@ -197,6 +228,7 @@ export function getToolLabels(): Record<ToolId, string> {
 export function getDefaultToolOrder(): ToolId[] {
 	return [
 		"readFile",
+		"readImage",
 		"writeFile",
 		"editFile",
 		"runBash",
@@ -213,6 +245,7 @@ export function getDefaultToolOrder(): ToolId[] {
 export function createToolAvailabilitySnapshot(availability: ToolAvailabilityMap): Record<ToolId, boolean> {
 	return {
 		readFile: availability.readFile?.enabled ?? false,
+		readImage: availability.readImage?.enabled ?? false,
 		writeFile: availability.writeFile?.enabled ?? false,
 		editFile: availability.editFile?.enabled ?? false,
 		runBash: availability.runBash?.enabled ?? false,

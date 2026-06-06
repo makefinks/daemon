@@ -293,6 +293,7 @@ export type VoiceInteractionType = "direct" | "review";
 
 export type ToolToggleId =
 	| "readFile"
+	| "readImage"
 	| "writeFile"
 	| "editFile"
 	| "runBash"
@@ -311,6 +312,7 @@ export type SkillToggles = Record<string, boolean>;
 
 export const DEFAULT_TOOL_TOGGLES: ToolToggles = {
 	readFile: true,
+	readImage: true,
 	writeFile: true,
 	editFile: true,
 	runBash: true,
@@ -397,6 +399,8 @@ export interface ModelOption {
 	pricing?: ModelPricing;
 	contextLength?: number;
 	supportsCaching?: boolean;
+	/** Whether this model accepts image input. */
+	supportsVision?: boolean;
 	/** Per-model support for reasoning effort controls (currently used by Copilot). */
 	supportsReasoningEffort?: boolean;
 	/** Whether this model supports Copilot's `xhigh` reasoning effort tier. */

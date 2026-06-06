@@ -75,6 +75,7 @@ export function buildDaemonSystemPrompt(options: SystemPromptOptions = {}): stri
 function normalizeToolAvailability(toolAvailability?: Partial<ToolAvailability>): ToolAvailability {
 	return {
 		readFile: toolAvailability?.readFile ?? true,
+		readImage: toolAvailability?.readImage ?? true,
 		writeFile: toolAvailability?.writeFile ?? true,
 		editFile: toolAvailability?.editFile ?? true,
 		runBash: toolAvailability?.runBash ?? true,
@@ -261,6 +262,12 @@ Fetch multiple URLs in one call:
   By default it reads up to 2000 lines from the start when no offset/limit are provided.
   For partial reads, you must provide both a 0-based line offset and a line limit.
 `,
+	readImage: `
+  ### 'readImage' (local image reader)
+  Use this to inspect local image files when the user asks about an image path, screenshot, diagram, photo, or other visual file.
+  It provides the actual image content to vision-capable models. Supported formats: PNG, JPEG, WebP, and GIF up to 10 MB.
+  Use readFile for text files and readImage for image files.
+`,
 	writeFile: `
   ### 'writeFile' (local file writer)
   Use this to write content to files. Creates new files or overwrites existing ones.
@@ -312,6 +319,7 @@ function buildToolDefinitions(availability: ToolAvailability, mcpToolGuidance?: 
 	if (availability.loadSkill) blocks.push(TOOL_SECTIONS.loadSkill);
 	if (availability.loadSkillResource) blocks.push(TOOL_SECTIONS.loadSkillResource);
 	if (availability.readFile) blocks.push(TOOL_SECTIONS.readFile);
+	if (availability.readImage) blocks.push(TOOL_SECTIONS.readImage);
 	if (availability.writeFile) blocks.push(TOOL_SECTIONS.writeFile);
 	if (availability.editFile) blocks.push(TOOL_SECTIONS.editFile);
 	if (availability.subagent) blocks.push(TOOL_SECTIONS.subagent);
