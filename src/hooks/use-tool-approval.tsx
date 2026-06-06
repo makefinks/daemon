@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from "react";
 import { daemonEvents } from "../state/daemon-events";
 import type { ToolApprovalRequest, ToolApprovalResponse } from "../types";
 
@@ -56,7 +56,10 @@ export function useToolApprovalForCall(
 	const approvalKey =
 		toolCallId && context ? findApprovalKey(context.pendingApprovals, toolCallId, sessionId) : undefined;
 	const approval = approvalKey ? context?.pendingApprovals.get(approvalKey) : undefined;
-	const isActive = approvalKey !== undefined && context?.activeApprovalId === approvalKey;
+	const isActive =
+		approvalKey !== undefined &&
+		(context?.activeApprovalId === approvalKey ||
+			(context?.activeApprovalId === null && context.pendingApprovals.size === 1));
 
 	const approve = useCallback(() => {
 		if (toolCallId && context) {
@@ -100,6 +103,13 @@ export function ToolApprovalProvider({ children }: ToolApprovalProviderProps) {
 		const first = approvals.keys().next();
 		return first.done ? null : first.value;
 	}, []);
+
+	useEffect(() => {
+		setActiveApprovalId((current) => {
+			if (current && pendingApprovals.has(current)) return current;
+			return getFirstPendingId(pendingApprovals);
+		});
+	}, [pendingApprovals, getFirstPendingId]);
 
 	useEffect(() => {
 		const handleAwaitingApprovals = (
@@ -233,11 +243,10 @@ export function ToolApprovalProvider({ children }: ToolApprovalProviderProps) {
 		});
 	}, []);
 
-	return (
-		<ToolApprovalContext.Provider
-			value={{ pendingApprovals, activeApprovalId, approveRequest, denyRequest, approveAll, denyAll }}
-		>
-			{children}
-		</ToolApprovalContext.Provider>
+	const contextValue = useMemo(
+		() => ({ pendingApprovals, activeApprovalId, approveRequest, denyRequest, approveAll, denyAll }),
+		[pendingApprovals, activeApprovalId, approveRequest, denyRequest, approveAll, denyAll]
 	);
+
+	return <ToolApprovalContext.Provider value={contextValue}>{children}</ToolApprovalContext.Provider>;
 }
