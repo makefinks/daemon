@@ -19,6 +19,7 @@ import { createToolAvailabilitySnapshot, resolveToolAvailability } from "../tool
 import { getModelMetadataForProvider } from "../../utils/model-metadata";
 import { getProviderCapabilities } from "./capabilities";
 import type { LlmProviderAdapter, ProviderStreamRequest, ProviderStreamResult } from "./types";
+import { buildUserModelMessage } from "./user-content";
 
 const openrouter = createOpenRouter();
 const MAX_AGENT_STEPS = 100;
@@ -78,6 +79,7 @@ async function createDaemonAgent(
 			toolAvailability: createToolAvailabilitySnapshot(toolAvailability),
 			mcpToolGuidance,
 			workspacePath,
+			cwdPath: process.cwd(),
 			memoryInjection,
 			skillCatalog,
 		}),
@@ -102,10 +104,11 @@ async function streamOpenRouterResponse(
 		abortSignal,
 		reasoningEffort,
 		memoryInjection,
+		imageAttachments = [],
 	} = request;
 
 	const messages: ModelMessage[] = [...conversationHistory];
-	messages.push({ role: "user" as const, content: userMessage });
+	messages.push(buildUserModelMessage(userMessage, imageAttachments));
 
 	const agent = await createDaemonAgent(interactionMode, reasoningEffort, memoryInjection);
 
@@ -122,6 +125,7 @@ async function streamOpenRouterResponse(
 		provider: "openrouter",
 		conversationMessages: conversationHistory.length,
 		userMessageLength: userMessage.length,
+		imageAttachments: imageAttachments.length,
 		interactionMode,
 		reasoningEffort,
 	});

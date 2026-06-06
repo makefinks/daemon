@@ -12,7 +12,13 @@ import { InlineStatusIndicator } from "../../components/InlineStatusIndicator";
 import { StatusBar } from "../../components/StatusBar";
 import { TokenUsageDisplay } from "../../components/TokenUsageDisplay";
 import { TypingInputBar } from "../../components/TypingInputBar";
-import type { ContentBlock, ConversationMessage, LlmProvider, TokenUsage } from "../../types";
+import type {
+	ContentBlock,
+	ConversationMessage,
+	LlmProvider,
+	PromptImageAttachment,
+	TokenUsage,
+} from "../../types";
 import { DaemonState } from "../../types";
 import { COLORS } from "../../ui/constants";
 import { renderReasoningTicker } from "../../ui/reasoning-ticker";
@@ -57,6 +63,9 @@ export interface TypingInputState {
 	onTypingSubmit: () => void;
 	onHistoryUp?: () => void;
 	onHistoryDown?: () => void;
+	onImageAttach: (attachment: PromptImageAttachment) => { id: string; label: string };
+	onImageAttachmentsChange: (attachmentIds: string[]) => void;
+	imageAttachmentCount: number;
 }
 
 export interface ConversationPaneProps {
@@ -125,7 +134,11 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 		onTypingSubmit,
 		onHistoryUp,
 		onHistoryDown,
+		onImageAttach,
+		onImageAttachmentsChange,
+		imageAttachmentCount,
 	} = typing;
+	const imagePasteEnabled = currentModelProvider !== "copilot" && modelMetadata?.supportsVision === true;
 
 	const showSessionDebug = Boolean(process.env.DEBUG_SESSION);
 
@@ -234,6 +247,10 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 									onHistoryUp={onHistoryUp}
 									onHistoryDown={onHistoryDown}
 									textareaRef={typingTextareaRef}
+									imagePasteEnabled={imagePasteEnabled}
+									onImageAttach={onImageAttach}
+									onImageAttachmentsChange={onImageAttachmentsChange}
+									imageAttachmentCount={imageAttachmentCount}
 									placeholder="Enter instructions..."
 									width="75%"
 									maxWidth={140}
@@ -455,6 +472,10 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 						onHistoryUp={onHistoryUp}
 						onHistoryDown={onHistoryDown}
 						textareaRef={typingTextareaRef}
+						imagePasteEnabled={imagePasteEnabled}
+						onImageAttach={onImageAttach}
+						onImageAttachmentsChange={onImageAttachmentsChange}
+						imageAttachmentCount={imageAttachmentCount}
 						placeholder="Enter instructions..."
 						height={4}
 						width="92%"

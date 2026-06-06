@@ -12,6 +12,7 @@ import type {
 	MemoryToastOperation,
 	MemoryToastPreview,
 	ReasoningEffort,
+	PromptImageAttachment,
 	StreamCallbacks,
 	TokenUsage,
 	TranscriptionResult,
@@ -96,7 +97,8 @@ export async function generateResponse(
 	conversationHistory: ModelMessage[] = [],
 	interactionMode: InteractionMode = "text",
 	abortSignal?: AbortSignal,
-	reasoningEffort?: ReasoningEffort
+	reasoningEffort?: ReasoningEffort,
+	imageAttachments: PromptImageAttachment[] = []
 ): Promise<void> {
 	const subagentProgressEmitter = {
 		onSubagentToolCall: (toolCallId: string, toolName: string, input?: unknown) => {
@@ -119,6 +121,7 @@ export async function generateResponse(
 			const provider = getProviderAdapter();
 			const result = await provider.streamResponse({
 				userMessage,
+				imageAttachments,
 				callbacks,
 				conversationHistory,
 				interactionMode,

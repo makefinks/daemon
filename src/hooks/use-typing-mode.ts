@@ -5,7 +5,7 @@
 import type { TextareaRenderable } from "@opentui/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getDaemonManager } from "../state/daemon-state";
-import { DaemonState } from "../types";
+import { DaemonState, type PromptImageAttachment } from "../types";
 
 export interface UseTypingModeParams {
 	daemonState: DaemonState;
@@ -26,6 +26,9 @@ export interface UseTypingModeReturn {
 	prefillTypingInput: (text: string) => void;
 	handleHistoryUp: () => void;
 	handleHistoryDown: () => void;
+	handleImageAttach: (attachment: PromptImageAttachment) => { id: string; label: string };
+	handleImageAttachmentsChange: (attachmentIds: string[]) => void;
+	imageAttachmentCount: number;
 }
 
 export function useTypingMode(params: UseTypingModeParams): UseTypingModeReturn {
@@ -40,7 +43,10 @@ export function useTypingMode(params: UseTypingModeParams): UseTypingModeReturn 
 	} = params;
 
 	const [typingInput, setTypingInput] = useState<string>("");
+	const [imageAttachmentCount, setImageAttachmentCount] = useState(0);
 	const typingTextareaRef = useRef<TextareaRenderable | null>(null);
+	const imageAttachmentsRef = useRef<Array<PromptImageAttachment & { id: string; label: string }>>([]);
+	const nextImageAttachmentIdRef = useRef(0);
 	const pendingPrefillRef = useRef<string | null>(null);
 
 	useEffect(() => {
@@ -65,6 +71,8 @@ export function useTypingMode(params: UseTypingModeParams): UseTypingModeReturn 
 				typingTextareaRef.current.setText("");
 			}
 			setTypingInput("");
+			setImageAttachmentCount(0);
+			imageAttachmentsRef.current = [];
 			pendingPrefillRef.current = null;
 			resetNavigation();
 		}
@@ -81,18 +89,44 @@ export function useTypingMode(params: UseTypingModeParams): UseTypingModeReturn 
 	const handleTypingSubmit = useCallback(() => {
 		const rawInput = typingTextareaRef.current?.plainText ?? typingInput;
 		const input = rawInput.trim();
-		if (input) {
+		const imageAttachments = imageAttachmentsRef.current;
+		if (input || imageAttachments.length > 0) {
 			const manager = getDaemonManager();
 			currentUserInputRef.current = input;
 			setCurrentTranscription(input);
-			manager.submitText(input);
+			manager.submitText(input, imageAttachments);
 		}
 		typingTextareaRef.current?.setText("");
 		setTypingInput("");
+		setImageAttachmentCount(0);
+		imageAttachmentsRef.current = [];
 	}, [typingInput, setCurrentTranscription, currentUserInputRef]);
+
+	const handleImageAttach = useCallback(
+		(attachment: PromptImageAttachment): { id: string; label: string } => {
+			const id = `image-${++nextImageAttachmentIdRef.current}`;
+			const bytes = Buffer.byteLength(attachment.data, "base64");
+			const label = `[Image ${imageAttachmentsRef.current.length + 1} ${formatBytes(bytes)}]`;
+			imageAttachmentsRef.current = [...imageAttachmentsRef.current, { ...attachment, id, label }];
+			const count = imageAttachmentsRef.current.length;
+			setImageAttachmentCount(count);
+			return { id, label };
+		},
+		[]
+	);
+
+	const handleImageAttachmentsChange = useCallback((attachmentIds: string[]) => {
+		const liveIds = new Set(attachmentIds);
+		const nextAttachments = imageAttachmentsRef.current.filter((attachment) => liveIds.has(attachment.id));
+		if (nextAttachments.length === imageAttachmentsRef.current.length) return;
+		imageAttachmentsRef.current = nextAttachments;
+		setImageAttachmentCount(nextAttachments.length);
+	}, []);
 
 	const prefillTypingInput = useCallback((text: string) => {
 		setTypingInput(text);
+		setImageAttachmentCount(0);
+		imageAttachmentsRef.current = [];
 		pendingPrefillRef.current = text;
 		if (typingTextareaRef.current) {
 			typingTextareaRef.current.setText(text);
@@ -103,6 +137,8 @@ export function useTypingMode(params: UseTypingModeParams): UseTypingModeReturn 
 
 	const setTextareaValue = useCallback((value: string) => {
 		setTypingInput(value);
+		setImageAttachmentCount(0);
+		imageAttachmentsRef.current = [];
 		if (typingTextareaRef.current) {
 			typingTextareaRef.current.setText(value);
 			typingTextareaRef.current.gotoBufferEnd();
@@ -133,5 +169,15 @@ export function useTypingMode(params: UseTypingModeParams): UseTypingModeReturn 
 		prefillTypingInput,
 		handleHistoryUp,
 		handleHistoryDown,
+		handleImageAttach,
+		handleImageAttachmentsChange,
+		imageAttachmentCount,
 	};
+}
+
+function formatBytes(bytes: number): string {
+	if (bytes < 1024) return `${bytes} B`;
+	const kb = bytes / 1024;
+	if (kb < 1024) return `${kb.toFixed(1)} KB`;
+	return `${(kb / 1024).toFixed(1)} MB`;
 }

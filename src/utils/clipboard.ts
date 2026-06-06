@@ -1,4 +1,6 @@
 import { platform, release } from "os";
+import fs from "node:fs/promises";
+import path from "node:path";
 
 async function readFromCommand(command: string, args: string[]): Promise<string> {
 	try {
@@ -11,6 +13,21 @@ async function readFromCommand(command: string, args: string[]): Promise<string>
 		return text;
 	} catch {
 		return "";
+	}
+}
+
+async function readBinaryFromCommand(command: string, args: string[]): Promise<Buffer | null> {
+	try {
+		const proc = Bun.spawn([command, ...args], {
+			stdout: "pipe",
+			stderr: "ignore",
+		});
+		const buffer = Buffer.from(await new Response(proc.stdout).arrayBuffer());
+		const exitCode = await proc.exited;
+		if (exitCode !== 0 || buffer.length === 0) return null;
+		return buffer;
+	} catch {
+		return null;
 	}
 }
 
@@ -54,6 +71,68 @@ export async function readClipboardText(): Promise<string> {
 	}
 
 	return "";
+}
+
+export interface ClipboardImageContent {
+	data: string;
+	mediaType: string;
+	filename: string;
+}
+
+async function readMacClipboardPng(): Promise<Buffer | null> {
+	if (!Bun.which("osascript")) return null;
+	const filePath = path.join("/tmp", `daemon-clipboard-${process.pid}-${Date.now()}.png`);
+	const script = [
+		"try",
+		"  set imageData to the clipboard as «class PNGf»",
+		`  set fileRef to open for access POSIX file "${filePath}" with write permission`,
+		"  set eof fileRef to 0",
+		"  write imageData to fileRef",
+		"  close access fileRef",
+		"on error",
+		"  try",
+		'    close access POSIX file "' + filePath + '"',
+		"  end try",
+		"  error number -128",
+		"end try",
+	];
+
+	try {
+		const proc = Bun.spawn(["osascript", ...script.flatMap((line) => ["-e", line])], {
+			stdout: "ignore",
+			stderr: "ignore",
+		});
+		if ((await proc.exited) !== 0) return null;
+		const data = await fs.readFile(filePath);
+		return data.length > 0 ? data : null;
+	} catch {
+		return null;
+	} finally {
+		void fs.unlink(filePath).catch(() => undefined);
+	}
+}
+
+export async function readClipboardImage(): Promise<ClipboardImageContent | null> {
+	const os = platform();
+	let buffer: Buffer | null = null;
+
+	if (os === "darwin") {
+		buffer = await readMacClipboardPng();
+	} else if (os === "linux") {
+		if (process.env.WAYLAND_DISPLAY && Bun.which("wl-paste")) {
+			buffer = await readBinaryFromCommand("wl-paste", ["-n", "-t", "image/png"]);
+		}
+		if (!buffer && Bun.which("xclip")) {
+			buffer = await readBinaryFromCommand("xclip", ["-selection", "clipboard", "-t", "image/png", "-o"]);
+		}
+	}
+
+	if (!buffer) return null;
+	return {
+		data: buffer.toString("base64"),
+		mediaType: "image/png",
+		filename: "clipboard.png",
+	};
 }
 
 export async function writeClipboardText(text: string): Promise<boolean> {

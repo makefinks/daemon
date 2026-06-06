@@ -113,6 +113,13 @@ export interface ConversationMessage {
 	pending?: boolean;
 }
 
+export interface PromptImageAttachment {
+	type: "image";
+	filename: string;
+	mediaType: string;
+	data: string;
+}
+
 /**
  * Persisted session snapshot for reloading UI and model context.
  */

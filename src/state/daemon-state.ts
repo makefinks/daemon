@@ -13,6 +13,7 @@ import type {
 	ReasoningEffort,
 	SkillToggles,
 	SpeechSpeed,
+	PromptImageAttachment,
 	ToolToggles,
 	VoiceInteractionType,
 } from "../types";
@@ -338,8 +339,8 @@ class DaemonStateManager {
 	/**
 	 * Submit text input (for typing mode)
 	 */
-	async submitText(text: string): Promise<void> {
-		if (!text.trim()) return;
+	async submitText(text: string, imageAttachments: PromptImageAttachment[] = []): Promise<void> {
+		if (!text.trim() && imageAttachments.length === 0) return;
 
 		const sessionId = await this.ensureSessionId();
 		if (!sessionId) {
@@ -349,15 +350,19 @@ class DaemonStateManager {
 
 		this._transcription = text;
 		sessionRuntimeStore.setCurrentTranscription(sessionId, text);
-		await this.generateResponseFromText(sessionId, text);
+		await this.generateResponseFromText(sessionId, text, imageAttachments);
 	}
 
 	/**
 	 * Generate a response from text input
 	 */
-	private async generateResponseFromText(sessionId: string, text: string): Promise<void> {
+	private async generateResponseFromText(
+		sessionId: string,
+		text: string,
+		imageAttachments: PromptImageAttachment[] = []
+	): Promise<void> {
 		const runtime = sessionRuntimeStore.ensure(sessionId);
-		const isFirstMessage = sessionRuntimeStore.beginUserMessage(sessionId, text);
+		const isFirstMessage = sessionRuntimeStore.beginUserMessage(sessionId, text, imageAttachments);
 		const titlePromise = isFirstMessage
 			? (this.onFirstMessageFn?.(sessionId, text) ?? Promise.resolve(null)).catch((error) => {
 					const err = error instanceof Error ? error : new Error(String(error));
@@ -393,6 +398,7 @@ class DaemonStateManager {
 				runner.run(
 					{
 						userText: text,
+						imageAttachments,
 						conversationHistory: runtime.modelHistory,
 						interactionMode: this._interactionMode,
 						reasoningEffort: this._reasoningEffort,
