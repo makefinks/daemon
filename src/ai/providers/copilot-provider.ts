@@ -653,7 +653,7 @@ async function streamCopilotResponse(request: ProviderStreamRequest): Promise<Pr
 
 async function generateCopilotSessionTitle(firstMessage: string): Promise<string> {
 	const titleSessionId = randomUUID();
-	const copilotTitleModel = "gpt-4.1";
+	const copilotTitleModel = getResponseModel();
 	const { session } = await getOrCreateCopilotSession(titleSessionId, {
 		model: copilotTitleModel,
 		streaming: false,
@@ -668,7 +668,7 @@ async function generateCopilotSessionTitle(firstMessage: string): Promise<string
 		const title = response?.data.content?.trim();
 		if (title) return title;
 	} finally {
-		void session.destroy().catch(() => {});
+		void session.disconnect().catch(() => {});
 	}
 
 	return "New Session";
