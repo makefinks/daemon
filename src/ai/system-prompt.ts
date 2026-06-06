@@ -1,3 +1,5 @@
+import { readdirSync, type Dirent } from "node:fs";
+import path from "node:path";
 import type { SkillCatalogEntry } from "./skills/skill-manager";
 import type { ToolToggleId } from "../types";
 
@@ -18,6 +20,7 @@ export interface SystemPromptOptions {
 	toolAvailability?: Partial<ToolAvailability>;
 	mcpToolGuidance?: string[];
 	workspacePath?: string;
+	cwdPath?: string;
 	memoryInjection?: string;
 	skillCatalog?: SkillCatalogEntry[];
 }
@@ -32,6 +35,59 @@ function formatLocalIsoDate(date: Date): string {
 	return `${year}-${month}-${day}`;
 }
 
+const SKIP_DIRS = new Set(["node_modules", "dist", "build", "__pycache__", "coverage"]);
+
+const TREE_MAX_DEPTH = 2;
+const TREE_MAX_ENTRIES_PER_DIR = 40;
+
+/**
+ * Recursively build a plain-text file tree for inclusion in the system prompt.
+ * Skips dotfiles, dotdirs, and common build/dependency directories (see SKIP_DIRS).
+ * @param dirPath - Absolute path to the directory to list
+ * @param depth - Current recursion depth (0 = root)
+ * @param prefix - Indentation prefix inherited from parent (used for nested levels)
+ * @returns Newline-separated tree listing, or empty string on error
+ */
+function buildFileTree(dirPath: string, depth = 0, prefix = ""): string {
+	if (depth > TREE_MAX_DEPTH) return "";
+
+	let entries: Dirent[];
+	try {
+		entries = readdirSync(dirPath, { withFileTypes: true });
+	} catch {
+		return "";
+	}
+
+	const filtered = entries
+		.filter((e) => !SKIP_DIRS.has(e.name) && !e.name.startsWith("."))
+		.sort((a, b) => {
+			if (a.isDirectory() !== b.isDirectory()) return a.isDirectory() ? -1 : 1;
+			return a.name.localeCompare(b.name);
+		});
+
+	const truncated = filtered.length > TREE_MAX_ENTRIES_PER_DIR;
+	const visible = filtered.slice(0, TREE_MAX_ENTRIES_PER_DIR);
+
+	const lines: string[] = [];
+	for (const entry of visible) {
+		const connector = depth === 0 ? "" : prefix;
+		if (entry.isDirectory()) {
+			lines.push(`${connector}${entry.name}/`);
+			if (depth < TREE_MAX_DEPTH) {
+				const childPrefix = depth === 0 ? "" : `${prefix}  `;
+				lines.push(buildFileTree(path.join(dirPath, entry.name), depth + 1, `${childPrefix}`));
+			}
+		} else {
+			lines.push(`${connector}${entry.name}`);
+		}
+	}
+	if (truncated) {
+		lines.push(`${prefix}... (${filtered.length - TREE_MAX_ENTRIES_PER_DIR} more entries)`);
+	}
+
+	return lines.filter((l) => l.length > 0).join("\n");
+}
+
 /**
  * Build the DAEMON system prompt with current date context.
  * @param mode - "text" for terminal output with markdown, "voice" for speech-optimized responses
@@ -43,6 +99,7 @@ export function buildDaemonSystemPrompt(options: SystemPromptOptions = {}): stri
 		toolAvailability,
 		mcpToolGuidance,
 		workspacePath,
+		cwdPath,
 		memoryInjection,
 		skillCatalog,
 	} = options;
@@ -50,6 +107,7 @@ export function buildDaemonSystemPrompt(options: SystemPromptOptions = {}): stri
 	const availability = normalizeToolAvailability(toolAvailability);
 	const toolDefinitions = buildToolDefinitions(availability, mcpToolGuidance);
 	const workspaceSection = workspacePath ? buildWorkspaceSection(workspacePath) : "";
+	const cwdSection = cwdPath ? buildCwdSection(cwdPath) : "";
 	const memorySection = memoryInjection ? buildMemorySection(memoryInjection) : "";
 	const skillsSection = buildSkillsSection(skillCatalog);
 
@@ -58,6 +116,7 @@ export function buildDaemonSystemPrompt(options: SystemPromptOptions = {}): stri
 			currentDateString,
 			toolDefinitions,
 			workspaceSection,
+			cwdSection,
 			memorySection,
 			skillsSection
 		);
@@ -67,11 +126,16 @@ export function buildDaemonSystemPrompt(options: SystemPromptOptions = {}): stri
 		currentDateString,
 		toolDefinitions,
 		workspaceSection,
+		cwdSection,
 		memorySection,
 		skillsSection
 	);
 }
 
+/**
+ * Merge caller-provided tool availability with defaults (all tools enabled).
+ * @param toolAvailability - Partial overrides; omitted keys default to `true`
+ */
 function normalizeToolAvailability(toolAvailability?: Partial<ToolAvailability>): ToolAvailability {
 	return {
 		readFile: toolAvailability?.readFile ?? true,
@@ -298,6 +362,10 @@ Fetch multiple URLs in one call:
 `,
 } as const;
 
+/**
+ * Build the MCP tool guidance section from prompt guidance strings provided by configured MCP servers.
+ * @param guidance - Array of guidance strings from MCP servers, or undefined if none
+ */
 function buildMcpToolGuidanceSection(guidance: string[] | undefined): string {
 	const blocks = (guidance ?? []).map((block) => block.trim()).filter((block) => block.length > 0);
 	if (blocks.length === 0) return "";
@@ -308,6 +376,11 @@ ${blocks.join("\n\n")}
 `;
 }
 
+/**
+ * Assemble the full tool definitions section, including per-tool usage guidance and MCP tools.
+ * @param availability - Which tools are enabled for this session
+ * @param mcpToolGuidance - Optional MCP prompt guidance strings to include
+ */
 function buildToolDefinitions(availability: ToolAvailability, mcpToolGuidance?: string[]): string {
 	const blocks: string[] = [];
 
@@ -353,6 +426,10 @@ ${mcpGuidanceSection}
 `;
 }
 
+/**
+ * Escape XML special characters for safe embedding in XML-tagged prompt sections.
+ * @param value - Raw string to escape
+ */
 function escapeXml(value: string): string {
 	return value
 		.replace(/&/g, "&amp;")
@@ -362,6 +439,10 @@ function escapeXml(value: string): string {
 		.replace(/'/g, "&apos;");
 }
 
+/**
+ * Build the skills catalog section listing available agent skills for the model to load.
+ * @param skillCatalog - Array of skill entries with name and description, or undefined if none
+ */
 function buildSkillsSection(skillCatalog: SkillCatalogEntry[] | undefined): string {
 	const skills = (skillCatalog ?? []).filter(
 		(skill) => skill.name.trim().length > 0 && skill.description.trim().length > 0
@@ -418,6 +499,10 @@ That environment left permanent marks on you:
 Some information from the conversation may be stored persistently across sessions. This is handled automatically; you do not need to take any action.
 `;
 
+/**
+ * Build the agent workspace section describing the persistent session workspace directory.
+ * @param workspacePath - Absolute path to the session workspace
+ */
 function buildWorkspaceSection(workspacePath: string): string {
 	return `
 # Agent Workspace
@@ -435,6 +520,36 @@ The user's current working directory remains your default for commands. Use runB
 `;
 }
 
+/**
+ * Build the "Current Working Directory" section of the system prompt.
+ * Shows the project path, a file tree, and guidance on when to write here vs. the workspace.
+ * @param cwdPath - Absolute path to the user's current working directory
+ */
+function buildCwdSection(cwdPath: string): string {
+	const tree = buildFileTree(cwdPath);
+	const treeBlock = tree ? `\n\`\`\`\n${tree}\n\`\`\`` : "(directory listing unavailable)";
+
+	return `
+# Current Working Directory
+DAEMON is running in: \`${cwdPath}\`
+
+This is where the user's project lives. Bash commands run here by default.
+
+<project_tree>
+${treeBlock}
+</project_tree>
+
+**When to write here vs. the workspace:**
+- **Write here** when the user explicitly asks you to modify, create, or work on files within their project (e.g., "add a function to src/utils.ts", "fix this bug", "refactor this module").
+- **Write to the workspace** when you need scratch files, temporary scripts, cloned repos, or any output that isn't directly part of the user's project.
+- If the user's request is ambiguous, **default to the workspace** and tell the user where the output was saved.
+`;
+}
+
+/**
+ * Build the memory injection section containing relevant memories retrieved for the current query.
+ * @param memoryInjection - Pre-formatted memory text to embed, or empty string if none
+ */
 function buildMemorySection(memoryInjection: string): string {
 	return `
 # Relevant Memories
@@ -449,6 +564,7 @@ function buildTextSystemPrompt(
 	currentDateString: string,
 	toolDefinitions: string,
 	workspaceSection: string,
+	cwdSection: string,
 	memorySection: string,
 	skillsSection: string
 ): string {
@@ -469,6 +585,8 @@ ${PERSONALITY_CONTENT}
 # Output Style
 - Use **Markdown** for structure (headings, bullets). Keep it compact.
 - Always generate complete and atomic answer at the end of your turn
+
+${cwdSection}
 
 ${memorySection}
 
@@ -493,6 +611,7 @@ function buildVoiceSystemPrompt(
 	currentDateString: string,
 	toolDefinitions: string,
 	workspaceSection: string,
+	cwdSection: string,
 	memorySection: string,
 	skillsSection: string
 ): string {
@@ -522,6 +641,8 @@ TOOL USAGE:
 - Use tools when needed, but summarize results verbally. Don't read raw output.
 - For bash commands: describe what you did and the outcome, not the exact command or output.
 - For web searches: give the answer, not the search process.
+
+${cwdSection}
 
 ${memorySection}
 
