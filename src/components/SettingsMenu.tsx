@@ -103,23 +103,6 @@ export function SettingsMenu({
 		(openRouterKeyMissing && (!memoryCountKnown || storedMemoryCount === 0));
 
 	useEffect(() => {
-		if ((!openAiKeyMissing && !memoryLockedByProvider) || !memoryEnabled) {
-			return;
-		}
-
-		manager.memoryEnabled = false;
-		setMemoryEnabled(false);
-		persistPreferences({ memoryEnabled: false });
-	}, [
-		manager,
-		memoryEnabled,
-		memoryLockedByProvider,
-		openAiKeyMissing,
-		persistPreferences,
-		setMemoryEnabled,
-	]);
-
-	useEffect(() => {
 		let cancelled = false;
 
 		const loadStoredMemoryCount = async () => {
@@ -257,7 +240,7 @@ export function SettingsMenu({
 				{
 					id: "memory-enabled",
 					label: "Memory",
-					value: !memoryLockedByProvider && memoryEnabled ? "ON" : "OFF",
+					value: !memoryToggleDisabled && memoryEnabled ? "ON" : "OFF",
 					description: memoryDescription,
 					isToggle: true,
 					disabled: memoryToggleDisabled,
