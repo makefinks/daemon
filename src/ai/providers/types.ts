@@ -1,5 +1,11 @@
 import type { ModelMessage } from "ai";
-import type { LlmProvider, ReasoningEffort, StreamCallbacks, TokenUsage } from "../../types";
+import type {
+	LlmProvider,
+	PromptImageAttachment,
+	ReasoningEffort,
+	StreamCallbacks,
+	TokenUsage,
+} from "../../types";
 import type { InteractionMode } from "../system-prompt";
 
 export interface ProviderCapabilities {
@@ -9,6 +15,7 @@ export interface ProviderCapabilities {
 
 export interface ProviderStreamRequest {
 	userMessage: string;
+	imageAttachments?: PromptImageAttachment[];
 	callbacks: StreamCallbacks;
 	conversationHistory: ModelMessage[];
 	interactionMode: InteractionMode;

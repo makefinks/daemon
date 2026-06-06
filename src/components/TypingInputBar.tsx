@@ -8,10 +8,13 @@ import {
 	type KeyEvent,
 	type PasteEvent,
 	type TextareaRenderable,
+	SyntaxStyle,
 	decodePasteBytes,
 } from "@opentui/core";
 import { type RefObject, useRef } from "react";
+import type { PromptImageAttachment } from "../types";
 import { COLORS } from "../ui/constants";
+import { readClipboardImage } from "../utils/clipboard";
 import { debug } from "../utils/debug-logger";
 import { pasteClipboardIntoTextarea } from "../utils/paste";
 
@@ -27,7 +30,26 @@ export interface TypingInputBarProps {
 	height?: number;
 	textareaRef?: RefObject<TextareaRenderable | null>;
 	keyBindings?: KeyBinding[];
+	imagePasteEnabled?: boolean;
+	onImageAttach?: (attachment: PromptImageAttachment) => { id: string; label: string };
+	onImageAttachmentsChange?: (attachmentIds: string[]) => void;
+	imageAttachmentCount?: number;
 }
+
+const IMAGE_ATTACHMENT_STYLE_NAME = "daemon.imageAttachment";
+const IMAGE_ATTACHMENT_TYPE_NAME = "daemon-image-attachment";
+const IMAGE_ATTACHMENT_SYNTAX_STYLE = SyntaxStyle.fromTheme([
+	{
+		scope: [IMAGE_ATTACHMENT_STYLE_NAME],
+		style: {
+			foreground: "#000000",
+			background: "#fbbf24",
+			bold: true,
+		},
+	},
+]);
+const IMAGE_ATTACHMENT_STYLE_ID =
+	IMAGE_ATTACHMENT_SYNTAX_STYLE.getStyleId(IMAGE_ATTACHMENT_STYLE_NAME) ?? undefined;
 
 export function TypingInputBar({
 	onSubmit,
@@ -44,13 +66,69 @@ export function TypingInputBar({
 		{ name: "return", action: "submit" },
 		{ name: "linefeed", action: "newline" },
 	],
+	imagePasteEnabled = false,
+	onImageAttach,
+	onImageAttachmentsChange,
+	imageAttachmentCount = 0,
 }: TypingInputBarProps) {
 	const localRef = useRef<TextareaRenderable | null>(null);
 	const activeRef = textareaRef ?? localRef;
+	const creatingImageAttachmentRef = useRef(false);
+
+	const syncImageAttachments = () => {
+		if (!onImageAttachmentsChange || !activeRef.current) return;
+		const typeId = activeRef.current.extmarks.getTypeId(IMAGE_ATTACHMENT_TYPE_NAME);
+		if (typeId === null) {
+			onImageAttachmentsChange([]);
+			return;
+		}
+		const ids = activeRef.current.extmarks
+			.getAllForTypeId(typeId)
+			.map((mark) => (typeof mark.data?.attachmentId === "string" ? mark.data.attachmentId : ""))
+			.filter((id) => id.length > 0);
+		onImageAttachmentsChange(ids);
+	};
 
 	const handleContentChange = () => {
 		const text = activeRef.current?.plainText ?? "";
+		if (!creatingImageAttachmentRef.current) syncImageAttachments();
 		onContentChange?.(text);
+	};
+
+	const pasteClipboardImage = async (source: string): Promise<boolean> => {
+		if (!imagePasteEnabled || !onImageAttach) return false;
+		const image = await readClipboardImage();
+		if (!image) return false;
+
+		const attachment = onImageAttach({
+			type: "image",
+			filename: image.filename,
+			mediaType: image.mediaType,
+			data: image.data,
+		});
+		const textarea = activeRef.current;
+		const start = textarea?.cursorOffset ?? 0;
+		creatingImageAttachmentRef.current = true;
+		textarea?.insertText(`${attachment.label} `);
+		if (textarea) {
+			const typeId = textarea.extmarks.registerType(IMAGE_ATTACHMENT_TYPE_NAME);
+			textarea.extmarks.create({
+				start,
+				end: start + attachment.label.length,
+				virtual: true,
+				styleId: IMAGE_ATTACHMENT_STYLE_ID,
+				typeId,
+				data: { attachmentId: attachment.id },
+			});
+		}
+		creatingImageAttachmentRef.current = false;
+		syncImageAttachments();
+		debug.log("[TypingInputBar] pasted image attachment", {
+			source,
+			mediaType: image.mediaType,
+			base64Length: image.data.length,
+		});
+		return true;
 	};
 
 	const handlePaste = (event: PasteEvent) => {
@@ -62,7 +140,10 @@ export function TypingInputBar({
 		});
 		if (!pasteText.trim()) {
 			event.preventDefault();
-			void pasteClipboardIntoTextarea(activeRef.current, { source: "typing-onPaste" });
+			void (async () => {
+				if (await pasteClipboardImage("typing-onPaste")) return;
+				await pasteClipboardIntoTextarea(activeRef.current, { source: "typing-onPaste" });
+			})();
 		}
 		// Otherwise, let the textarea handle it
 	};
@@ -84,7 +165,10 @@ export function TypingInputBar({
 		if (key.name !== "v") return;
 		if (!(key.ctrl || key.meta || key.super)) return;
 		key.preventDefault();
-		void pasteClipboardIntoTextarea(activeRef.current, { source: "typing-shortcut" });
+		void (async () => {
+			if (await pasteClipboardImage("typing-shortcut")) return;
+			await pasteClipboardIntoTextarea(activeRef.current, { source: "typing-shortcut" });
+		})();
 	};
 
 	return (
@@ -125,14 +209,22 @@ export function TypingInputBar({
 						focusedTextColor: "#e5e7eb",
 						cursorColor: COLORS.TYPING_PROMPT,
 						cursorStyle: { style: "block", blinking: true },
+						syntaxStyle: IMAGE_ATTACHMENT_SYNTAX_STYLE,
 					}}
 				/>
 			</box>
 			<box justifyContent="center" width="100%" marginTop={0}>
 				<text>
-					<span fg="#4b5563">Ctrl+V to paste · Ctrl+J for new line</span>
+					<span fg="#4b5563">
+						Ctrl+V to paste{textImageHint(imagePasteEnabled, imageAttachmentCount)} · Ctrl+J for new line
+					</span>
 				</text>
 			</box>
 		</box>
 	);
+}
+
+function textImageHint(enabled: boolean, count: number): string {
+	if (!enabled) return "";
+	return count > 0 ? ` · ${count} image${count === 1 ? "" : "s"} attached` : " images";
 }

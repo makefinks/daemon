@@ -2,6 +2,7 @@ import { generateResponse } from "./daemon-ai";
 import type {
 	InteractionMode,
 	ModelMessage,
+	PromptImageAttachment,
 	ReasoningEffort,
 	StreamCallbacks,
 	TokenUsage,
@@ -11,6 +12,7 @@ import type {
 
 export interface AgentTurnParams {
 	userText: string;
+	imageAttachments?: PromptImageAttachment[];
 	conversationHistory: ModelMessage[];
 	interactionMode: InteractionMode;
 	reasoningEffort: ReasoningEffort;
@@ -121,7 +123,8 @@ export class AgentTurnRunner {
 				params.conversationHistory,
 				params.interactionMode,
 				this.abortController.signal,
-				params.reasoningEffort
+				params.reasoningEffort,
+				params.imageAttachments ?? []
 			);
 		} catch (err) {
 			const e = err instanceof Error ? err : new Error(String(err));

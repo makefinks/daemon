@@ -9,6 +9,7 @@ import type {
 	ContentBlock,
 	ConversationMessage,
 	ModelMessage,
+	PromptImageAttachment,
 	SubagentStep,
 	TokenUsage,
 	ToolApprovalRequest,
@@ -197,6 +198,24 @@ function finalizePendingUserMessage(
 	return next;
 }
 
+function buildUserModelMessage(text: string, imageAttachments: PromptImageAttachment[] = []): ModelMessage {
+	if (imageAttachments.length === 0) return { role: "user", content: text };
+
+	const content: unknown[] = [];
+	const trimmed = text.trim();
+	if (trimmed) content.push({ type: "text", text: trimmed });
+	for (const image of imageAttachments) {
+		content.push({
+			type: "file",
+			mediaType: image.mediaType,
+			data: image.data,
+			filename: image.filename,
+		});
+	}
+
+	return { role: "user", content } as ModelMessage;
+}
+
 function mergeTokenUsage(prev: TokenUsage, usage: TokenUsage, isSubagent: boolean): TokenUsage {
 	const currentCost =
 		prev.cost !== undefined || usage.cost !== undefined ? (prev.cost ?? 0) + (usage.cost ?? 0) : undefined;
@@ -302,16 +321,17 @@ export class SessionRuntimeStore {
 		this.notify(sessionId);
 	}
 
-	beginUserMessage(sessionId: string, text: string): boolean {
+	beginUserMessage(sessionId: string, text: string, imageAttachments: PromptImageAttachment[] = []): boolean {
 		const runtime = this.ensure(sessionId);
-		if (!text.trim()) return false;
+		if (!text.trim() && imageAttachments.length === 0) return false;
 		if (runtime.state === DaemonState.RESPONDING) return false;
+		const userModelMessage = buildUserModelMessage(text, imageAttachments);
 
 		const userMessage: ConversationMessage = {
 			id: runtime.messageId++,
 			type: "user",
 			content: text,
-			messages: [{ role: "user", content: text }],
+			messages: [userModelMessage],
 			pending: true,
 		};
 

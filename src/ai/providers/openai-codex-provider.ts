@@ -17,6 +17,7 @@ import { getCachedToolAvailability, getDaemonTools } from "../tools/index";
 import { createToolAvailabilitySnapshot, resolveToolAvailability } from "../tools/tool-registry";
 import { getProviderCapabilities } from "./capabilities";
 import type { LlmProviderAdapter, ProviderStreamRequest, ProviderStreamResult } from "./types";
+import { buildUserModelMessage } from "./user-content";
 
 const openAiCodex = createOpenAI({
 	apiKey: "chatgpt-oauth",
@@ -75,6 +76,7 @@ async function createDaemonAgent(
 			toolAvailability: createToolAvailabilitySnapshot(toolAvailability),
 			mcpToolGuidance,
 			workspacePath,
+			cwdPath: process.cwd(),
 			memoryInjection,
 			skillCatalog,
 		}),
@@ -99,10 +101,11 @@ async function streamOpenAiCodexResponse(
 		abortSignal,
 		reasoningEffort,
 		memoryInjection,
+		imageAttachments = [],
 	} = request;
 
 	const messages: ModelMessage[] = [...conversationHistory];
-	messages.push({ role: "user" as const, content: userMessage });
+	messages.push(buildUserModelMessage(userMessage, imageAttachments));
 
 	const agent = await createDaemonAgent(interactionMode, reasoningEffort, memoryInjection);
 
