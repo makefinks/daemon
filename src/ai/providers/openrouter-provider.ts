@@ -9,12 +9,14 @@ import { getWorkspacePath } from "../../utils/workspace-manager";
 import { extractFinalAssistantText } from "../message-utils";
 import { getMcpManager } from "../mcp/mcp-manager";
 import { buildOpenRouterChatSettings, getResponseModel } from "../model-config";
+import { prepareOpenRouterMultimodalToolResults } from "./openrouter-multimodal-tool-results";
 import { sanitizeMessagesForInput } from "../sanitize-messages";
 import { getSkillCatalog } from "../skills/skill-manager";
 import { buildDaemonSystemPrompt } from "../system-prompt";
 import { coordinateToolApprovals } from "../tool-approval-coordinator";
 import { getCachedToolAvailability, getDaemonTools } from "../tools/index";
 import { createToolAvailabilitySnapshot, resolveToolAvailability } from "../tools/tool-registry";
+import { getModelMetadataForProvider } from "../../utils/model-metadata";
 import { getProviderCapabilities } from "./capabilities";
 import type { LlmProviderAdapter, ProviderStreamRequest, ProviderStreamResult } from "./types";
 
@@ -66,6 +68,8 @@ async function createDaemonAgent(
 	const workspacePath = sessionId ? getWorkspacePath(sessionId) : undefined;
 	const mcpToolGuidance = getMcpManager().getPromptGuidanceSnapshot();
 	const skillCatalog = await getSkillCatalog();
+	const modelMetadata = await getModelMetadataForProvider(getResponseModel(), "openrouter");
+	const supportsVision = modelMetadata?.supportsVision === true;
 
 	return new ToolLoopAgent({
 		model: openrouter.chat(getResponseModel(), modelConfig),
@@ -80,7 +84,9 @@ async function createDaemonAgent(
 		tools,
 		stopWhen: stepCountIs(MAX_AGENT_STEPS),
 		prepareStep: async ({ messages }) => ({
-			messages: sanitizeMessagesForInput(messages),
+			messages: prepareOpenRouterMultimodalToolResults(sanitizeMessagesForInput(messages), {
+				supportsVision,
+			}),
 		}),
 	});
 }

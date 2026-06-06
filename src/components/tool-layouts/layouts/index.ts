@@ -2,6 +2,7 @@ import "./bash";
 import "./web-search";
 import "./url-tools";
 import "./read-file";
+import "./read-image";
 import "./write-file.tsx";
 import "./edit-file";
 import "./subagent";

@@ -121,6 +121,8 @@ export function useAppCallbacks(params: UseAppCallbacksParams): UseAppCallbacksR
 		(model: ModelOption) => {
 			if (model.id !== currentModelId) {
 				setResponseModelForProvider(currentModelProvider, model.id);
+				invalidateDaemonToolsCache();
+				invalidateSubagentToolsCache();
 				setCurrentModelId(model.id);
 				if (currentModelProvider === "openrouter") {
 					setOpenRouterProviderTag(undefined);
@@ -193,6 +195,8 @@ export function useAppCallbacks(params: UseAppCallbacksParams): UseAppCallbacksR
 	const handleProviderSelect = useCallback(
 		(providerTag: string | undefined) => {
 			setOpenRouterProviderTag(providerTag);
+			invalidateDaemonToolsCache();
+			invalidateSubagentToolsCache();
 			setCurrentOpenRouterProviderTag(providerTag);
 			persistPreferences({ openRouterProviderTag: providerTag });
 		},

@@ -41,6 +41,9 @@ interface OpenRouterEndpointsResponse {
 	data?: {
 		id?: string;
 		name?: string;
+		architecture?: {
+			input_modalities?: string[];
+		};
 		endpoints?: OpenRouterEndpointsEndpoint[];
 	};
 }
@@ -52,6 +55,8 @@ export interface OpenRouterModelEndpointsMetadata {
 	providers: OpenRouterInferenceProvider[];
 	/** Whether ANY endpoint supports reasoning controls. */
 	supportsReasoning: boolean;
+	/** Whether the model accepts image input. */
+	supportsVision: boolean;
 }
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -112,6 +117,7 @@ async function fetchModelEndpointsMetadata(modelId: string): Promise<OpenRouterM
 	const endpoints = data.data?.endpoints ?? [];
 
 	const supportsReasoning = endpoints.some(endpointSupportsReasoning);
+	const supportsVision = data.data?.architecture?.input_modalities?.includes("image") === true;
 
 	const byTag = new Map<string, OpenRouterInferenceProvider>();
 	const pricingByTag = new Map<string, ModelPricing[]>();
@@ -179,6 +185,7 @@ async function fetchModelEndpointsMetadata(modelId: string): Promise<OpenRouterM
 		modelName: typeof data.data?.name === "string" ? data.data.name : undefined,
 		providers,
 		supportsReasoning,
+		supportsVision,
 	};
 }
 

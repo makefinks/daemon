@@ -22,6 +22,9 @@ interface OpenRouterModelItem {
 	};
 	supports_tools?: boolean;
 	supported_parameters?: string[];
+	architecture?: {
+		input_modalities?: string[];
+	};
 }
 
 interface OpenRouterModelsResponse {
@@ -93,6 +96,7 @@ function normalizeModels(items: OpenRouterModelItem[]): ModelOption[] {
 			name,
 			contextLength,
 			pricing,
+			supportsVision: item.architecture?.input_modalities?.includes("image") === true,
 		});
 	}
 

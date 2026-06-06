@@ -5,12 +5,15 @@ import type { ProviderCapabilities } from "./types";
 const PROVIDER_CAPABILITIES: Record<LlmProvider, ProviderCapabilities> = {
 	openrouter: {
 		supportsSubagentTool: true,
+		supportsImageToolOutput: true,
 	},
 	"openai-codex": {
 		supportsSubagentTool: true,
+		supportsImageToolOutput: true,
 	},
 	copilot: {
 		supportsSubagentTool: false,
+		supportsImageToolOutput: false,
 	},
 };
 

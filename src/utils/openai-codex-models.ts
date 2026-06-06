@@ -84,6 +84,7 @@ function normalizeModelInfo(model: OpenAiCodexModelInfo): NormalizedModelEntry |
 			contextLength: contextLength ?? 0,
 			supportsReasoning,
 			supportsCaching: false,
+			supportsVision: true,
 		},
 		priority: typeof model.priority === "number" ? model.priority : 0,
 	};

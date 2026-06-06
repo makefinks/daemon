@@ -53,4 +53,12 @@ describe("tool registry", () => {
 		expect(availability.subagent.envAvailable).toBe(false);
 		expect(availability.subagent.disabledReason).toBeDefined();
 	});
+
+	it("disables readImage when provider capabilities do not support image tool output", async () => {
+		setModelProvider("copilot");
+		const availability = await resolveToolAvailability({ ...DEFAULT_TOOL_TOGGLES });
+
+		expect(availability.readImage.envAvailable).toBe(false);
+		expect(availability.readImage.disabledReason).toBeDefined();
+	});
 });

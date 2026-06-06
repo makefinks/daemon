@@ -7,7 +7,7 @@ import type { LlmProvider, ModelPricing } from "../types";
 import { getOpenAiCodexModelMetadata } from "./openai-codex-models";
 import { debug } from "./debug-logger";
 import { getOpenRouterModelEndpointsMetadata } from "./openrouter-endpoints";
-import { mergePricingAverages } from "./openrouter-pricing";
+import { mergePricingAverages, mergePricingMinima } from "./openrouter-pricing";
 
 export interface ModelMetadata {
 	id: string;
@@ -18,6 +18,8 @@ export interface ModelMetadata {
 	supportsReasoning: boolean;
 	/** Whether any provider endpoint supports caching (best-effort). */
 	supportsCaching: boolean;
+	/** Whether this model accepts image input. */
+	supportsVision: boolean;
 }
 
 type CachedModelMetadataEntry = {
@@ -55,7 +57,7 @@ async function fetchModelMetadata(modelId: string): Promise<ModelMetadata | null
 			.map((p) => p.pricing)
 			.filter((p): p is ModelPricing => Boolean(p));
 
-		const pricing = pricingCandidates.length > 0 ? mergePricingAverages(pricingCandidates) : undefined;
+		const pricing = pricingCandidates.length > 0 ? mergePricingMinima(pricingCandidates) : undefined;
 
 		const supportsCaching = endpoints.providers.some((p) => p.supportsCaching);
 
@@ -66,6 +68,7 @@ async function fetchModelMetadata(modelId: string): Promise<ModelMetadata | null
 			pricing,
 			supportsReasoning: endpoints.supportsReasoning,
 			supportsCaching,
+			supportsVision: endpoints.supportsVision,
 		};
 
 		cachedByModelId.set(modelId, { timestamp: now, metadata });

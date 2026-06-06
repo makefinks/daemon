@@ -310,6 +310,7 @@ export function handleOnboardingKey(key: KeyEvent, ctx: OnboardingContext): bool
 			const selectedModel = models[selectedModelIdx];
 			if (selectedModel && selectedModel.id !== ctx.currentModelId) {
 				setResponseModel(selectedModel.id);
+				invalidateDaemonToolsCache();
 				ctx.setCurrentModelId(selectedModel.id);
 				ctx.persistPreferences({
 					modelProvider: ctx.currentModelProvider,
