@@ -9,4 +9,4 @@ SHIM_SRC="src/shim/better-sqlite3.mjs"
 [ -d "$MEM0AI_DIR" ] || exit 0
 
 cp "$SHIM_SRC" "$MEM0AI_DIR/better-sqlite3-shim.mjs"
-sed -i '' 's|import Database[0-9]* from "better-sqlite3"|import Database from "./better-sqlite3-shim.mjs"|g' "$MEM0AI_DIR/index.mjs"
+sed -i '' 's|import Database\([0-9]*\) from "better-sqlite3"|import Database\1 from "./better-sqlite3-shim.mjs"|g' "$MEM0AI_DIR/index.mjs"
