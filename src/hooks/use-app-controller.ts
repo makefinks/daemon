@@ -696,6 +696,7 @@ export function useAppController({
 		},
 		grounding: {
 			latestGroundingMap: session.latestGroundingMap,
+			allGroundingMaps: session.allGroundingMaps,
 			groundingInitialIndex: session.groundingInitialIndex,
 			groundingSelectedIndex: session.groundingSelectedIndex,
 			setGroundingSelectedIndex: session.setGroundingSelectedIndex,

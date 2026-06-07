@@ -278,15 +278,12 @@ Fetch multiple URLs in one call:
 `,
 	groundingManager: `
   ### 'groundingManager' (source attribution)
-  Manages a list of grounded statements (facts supported by sources).
-  You can 'set' (overwrite) the entire list or 'append' new items to the existing list.
+  Sets the list of grounded statements (facts supported by sources) for your current response.
+  Each call replaces the previous list — include ALL items that back your response.
 
   **MANDATORY usage rule:**
   - If you used webSearch or fetchUrls to answer the user's question, you MUST call groundingManager BEFORE writing your final answer.
-
-  **When to use which action:**
-  - 'set': Use when grounding a new topic or if previous facts are no longer relevant.
-  - 'append': Use when adding more facts to the current topic without losing previous context.
+  - Include all grounded items in a single call.
 
   **When not to use:**
   - If searches yielded no relevant info -> do not invent groundings or use irrelevant groundings.
@@ -301,6 +298,13 @@ Fetch multiple URLs in one call:
   - Prefer 6-15 words that are likely unique on the page.
   - Avoid URLs unless the URL itself appears as a contiguous text segment.
   - Do not include newlines, bullets, numbering, or markdown/table artifacts in \`source.textFragment\`.
+
+  **Inline attribution rule:**
+  - After calling groundingManager, include inline references in your response text.
+  - At the end of each sentence or paragraph that is backed by a grounded statement, append the grounding ID in bold parentheses: **(G1)**, **(G2)**, etc.
+  - The number corresponds to the 1-based index of the item in your groundingManager call (first item = G1, second = G2, ...).
+  - If a sentence is supported by multiple sources, list them together: **(G1)****(G2)**.
+  - Do NOT add a sources section to your response — the system handles source presentation separately.
 `,
 	runBash: `
   ### 'runBash' (local shell)

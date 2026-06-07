@@ -94,6 +94,7 @@ export interface SessionState {
 
 export interface GroundingState {
 	latestGroundingMap: GroundingMap | null;
+	allGroundingMaps: Map<number, GroundingMap>;
 	groundingInitialIndex: number;
 	groundingSelectedIndex: number;
 	setGroundingSelectedIndex: (index: number) => void;

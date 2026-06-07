@@ -1,13 +1,15 @@
 import { toast } from "@opentui-ui/toast/react";
 import { useCallback, useMemo } from "react";
 import { useMenuKeyboard } from "../hooks/use-menu-keyboard";
-import type { ContentBlock, ConversationMessage } from "../types";
+import type { ContentBlock, ConversationMessage, GroundingMap } from "../types";
 import { COLORS } from "../ui/constants";
 import { writeClipboardText } from "../utils/clipboard";
 
 interface CopyMenuProps {
 	conversationHistory: ConversationMessage[];
 	currentContentBlocks: ContentBlock[];
+	latestGroundingMap: GroundingMap | null;
+	allGroundingMaps: Map<number, GroundingMap>;
 	onClose: () => void;
 }
 
@@ -29,23 +31,72 @@ function textFromMessage(message: ConversationMessage): string {
 	return message.content.trim() || textFromBlocks(message.contentBlocks);
 }
 
-function formatTranscript(messages: ConversationMessage[], currentDaemonText: string): string {
+function extractGroundingRefs(text: string): Set<number> {
+	const refs = new Set<number>();
+	for (const match of text.matchAll(/\*\*\(G(\d+)\)\*\*/g)) {
+		const raw = match[1];
+		if (!raw) continue;
+		refs.add(Number.parseInt(raw, 10));
+	}
+	return refs;
+}
+
+function resolveSourcesForText(text: string, groundingMap: GroundingMap | null): string {
+	if (!groundingMap || groundingMap.items.length === 0) return text;
+
+	const refs = extractGroundingRefs(text);
+	if (refs.size === 0) return text;
+
+	const sorted = [...refs].sort((a, b) => a - b);
+	const lines: string[] = [];
+	for (const i of sorted) {
+		if (i >= 1 && i <= groundingMap.items.length) {
+			const item = groundingMap.items[i - 1];
+			if (item) {
+				lines.push(`(G${i}) ${item.source.url}`);
+			}
+		}
+	}
+
+	if (lines.length === 0) return text;
+	return `${text}\n\nSources:\n${lines.join("\n")}`;
+}
+
+function formatTranscript(
+	messages: ConversationMessage[],
+	currentDaemonText: string,
+	allGroundingMaps: Map<number, GroundingMap>,
+	latestGroundingMap: GroundingMap | null
+): string {
 	const lines = messages
 		.map((message) => {
 			const text = textFromMessage(message);
 			if (!text) return "";
-			return `${message.type === "user" ? "USER" : "DAEMON"}:\n${text}`;
+			let block = `${message.type === "user" ? "USER" : "DAEMON"}:\n${text}`;
+			if (message.type === "daemon") {
+				const map = allGroundingMaps.get(message.id);
+				const sources = resolveSourcesForText(text, map ?? null);
+				if (sources !== text) block = sources;
+			}
+			return block;
 		})
 		.filter(Boolean);
 
 	if (currentDaemonText) {
-		lines.push(`DAEMON:\n${currentDaemonText}`);
+		const withSources = resolveSourcesForText(currentDaemonText, latestGroundingMap);
+		lines.push(`DAEMON:\n${withSources}`);
 	}
 
 	return lines.join("\n\n");
 }
 
-export function CopyMenu({ conversationHistory, currentContentBlocks, onClose }: CopyMenuProps) {
+export function CopyMenu({
+	conversationHistory,
+	currentContentBlocks,
+	latestGroundingMap,
+	allGroundingMaps,
+	onClose,
+}: CopyMenuProps) {
 	const currentDaemonText = useMemo(() => textFromBlocks(currentContentBlocks), [currentContentBlocks]);
 
 	const copyItems = useMemo<CopyItem[]>(
@@ -64,7 +115,8 @@ export function CopyMenu({ conversationHistory, currentContentBlocks, onClose }:
 			{
 				label: "Full conversation",
 				description: "Copy the complete visible chat transcript",
-				getText: () => formatTranscript(conversationHistory, currentDaemonText),
+				getText: () =>
+					formatTranscript(conversationHistory, currentDaemonText, allGroundingMaps, latestGroundingMap),
 			},
 		],
 		[conversationHistory, currentDaemonText]
@@ -76,12 +128,14 @@ export function CopyMenu({ conversationHistory, currentContentBlocks, onClose }:
 			if (!item) return;
 
 			void (async () => {
-				const text = item.getText();
-				if (!text) {
+				const raw = item.getText();
+				if (!raw) {
 					toast.info("Nothing to copy yet");
 					return;
 				}
 
+				const isSingleMessage = index === 0;
+				const text = isSingleMessage ? resolveSourcesForText(raw, latestGroundingMap) : raw;
 				const didCopy = await writeClipboardText(text);
 				if (didCopy) {
 					toast.info(`${item.label} copied to clipboard`);
@@ -91,7 +145,7 @@ export function CopyMenu({ conversationHistory, currentContentBlocks, onClose }:
 				}
 			})();
 		},
-		[copyItems, onClose]
+		[copyItems, latestGroundingMap, onClose]
 	);
 
 	const { selectedIndex } = useMenuKeyboard({

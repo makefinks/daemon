@@ -6,6 +6,7 @@ import type {
 	AppContextValue,
 	DeviceCallbacks,
 	GroundingCallbacks,
+	GroundingState,
 	ModelCallbacks,
 	OnboardingCallbacks,
 	SessionCallbacks,
@@ -15,7 +16,6 @@ import type {
 	AppPreferences,
 	AudioDevice,
 	BashApprovalLevel,
-	GroundingMap,
 	LlmProvider,
 	ModelOption,
 	OnboardingStep,
@@ -102,12 +102,7 @@ export interface UseAppContextBuilderParams {
 		currentSessionId: string | null;
 	};
 
-	grounding: {
-		latestGroundingMap: GroundingMap | null;
-		groundingInitialIndex: number;
-		groundingSelectedIndex: number;
-		setGroundingSelectedIndex: (index: number) => void;
-	};
+	grounding: GroundingState;
 
 	onboarding: {
 		onboardingActive: boolean;

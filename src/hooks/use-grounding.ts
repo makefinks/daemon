@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import type { GroundingMap } from "../types";
-import { loadLatestGroundingMap } from "../state/session-store";
+import { loadLatestGroundingMap, loadGroundingMapsBySession } from "../state/session-store";
 import { daemonEvents } from "../state/daemon-events";
 
 export interface UseGroundingReturn {
@@ -43,4 +43,43 @@ export function useGrounding(sessionId: string | null): UseGroundingReturn {
 		hasGrounding: latestGroundingMap !== null && latestGroundingMap.items.length > 0,
 		refreshGrounding,
 	};
+}
+
+export interface UseGroundingMapsReturn {
+	groundingMapsByMessage: Map<number, GroundingMap>;
+	refreshGroundingMaps: () => Promise<void>;
+}
+
+export function useGroundingMaps(sessionId: string | null): UseGroundingMapsReturn {
+	const [groundingMapsByMessage, setGroundingMapsByMessage] = useState<Map<number, GroundingMap>>(
+		() => new Map()
+	);
+
+	const refreshGroundingMaps = useCallback(async () => {
+		if (!sessionId) {
+			setGroundingMapsByMessage(new Map());
+			return;
+		}
+		const maps = await loadGroundingMapsBySession(sessionId);
+		setGroundingMapsByMessage(maps);
+	}, [sessionId]);
+
+	useEffect(() => {
+		void refreshGroundingMaps();
+	}, [refreshGroundingMaps]);
+
+	useEffect(() => {
+		const handleGroundingSaved = (savedSessionId: string) => {
+			if (savedSessionId === sessionId) {
+				void refreshGroundingMaps();
+			}
+		};
+
+		daemonEvents.on("groundingSaved", handleGroundingSaved);
+		return () => {
+			daemonEvents.off("groundingSaved", handleGroundingSaved);
+		};
+	}, [sessionId, refreshGroundingMaps]);
+
+	return { groundingMapsByMessage, refreshGroundingMaps };
 }
