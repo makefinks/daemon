@@ -33,6 +33,8 @@ export const REASONING_ANIMATION = {
 	SEGMENT_LENGTH: 3,
 	PREFIX_COLOR: "#7a7a7a",
 	INTENSITY: 0.5,
+	FADE_MS: 1500,
+	TAIL_LENGTH: 40,
 } as const;
 
 // UI colors

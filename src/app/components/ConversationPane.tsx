@@ -46,6 +46,7 @@ export interface ReasoningDisplayState {
 	showToolOutput: boolean;
 	reasoningQueue: string;
 	reasoningDisplay: string;
+	lastCharTimestamp: number;
 }
 
 export interface ProgressDisplayState {
@@ -125,7 +126,8 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 		resetNotification,
 		escPendingCancel,
 	} = status;
-	const { showFullReasoning, showToolOutput, reasoningQueue, reasoningDisplay } = reasoning;
+	const { showFullReasoning, showToolOutput, reasoningQueue, reasoningDisplay, lastCharTimestamp } =
+		reasoning;
 	const { showWorkingSpinner, isToolCalling, responseElapsedMs, currentTodoLabel } = progress;
 	const {
 		typingTextareaRef,
@@ -420,6 +422,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 												showFullReasoning={showFullReasoning}
 												showToolOutput={showToolOutput}
 												reasoningDisplay={reasoningDisplay}
+												lastCharTimestamp={lastCharTimestamp}
 												showReasoningTicker={hasReasoningContent}
 											/>
 										</box>
@@ -432,7 +435,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 							currentContentBlocks.length === 0 &&
 							(reasoningDisplay || reasoningQueue) && (
 								<box marginBottom={1}>
-									{reasoningDisplay ? renderReasoningTicker(reasoningDisplay) : null}
+									{reasoningDisplay ? renderReasoningTicker(reasoningDisplay, lastCharTimestamp) : null}
 								</box>
 							)}
 

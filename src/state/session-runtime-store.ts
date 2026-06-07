@@ -849,7 +849,10 @@ export class SessionRuntimeStore {
 				[...blocks].reverse().find((block) => block.type === "reasoning" && block.durationMs === undefined) ??
 				null;
 		}
-		if (target && target.type === "reasoning") target.durationMs = durationMs;
+		if (target && target.type === "reasoning") {
+			target.durationMs = durationMs;
+			target.completedAt = Date.now();
+		}
 		runtime.reasoningStartAt = null;
 		runtime.currentReasoningBlock = null;
 	}

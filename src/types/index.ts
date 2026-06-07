@@ -95,7 +95,7 @@ export interface ToolCall {
  * These are derived from ModelMessage content for rendering.
  */
 export type ContentBlock =
-	| { type: "reasoning"; content: string; durationMs?: number }
+	| { type: "reasoning"; content: string; durationMs?: number; completedAt?: number }
 	| { type: "tool"; call: ToolCall; result?: unknown }
 	| {
 			type: "backgroundNotification";

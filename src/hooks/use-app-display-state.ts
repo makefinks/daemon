@@ -11,6 +11,7 @@ export interface UseAppDisplayStateParams {
 	currentResponse: string;
 	reasoningDisplay: string;
 	reasoningQueue: string;
+	lastCharTimestamp: number;
 	responseElapsedMs: number;
 	hasInteracted: boolean;
 

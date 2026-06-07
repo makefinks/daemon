@@ -9,6 +9,7 @@ export interface ReasoningState {
 export interface UseReasoningAnimationReturn {
 	reasoningQueue: string;
 	reasoningDisplay: string;
+	lastCharTimestamp: number;
 	setReasoningQueue: (queue: string | ((prev: string) => string)) => void;
 	clearReasoningState: () => void;
 	clearReasoningTicker: () => void;
@@ -17,34 +18,35 @@ export interface UseReasoningAnimationReturn {
 export function useReasoningAnimation(): UseReasoningAnimationReturn {
 	const [reasoningQueue, setReasoningQueue] = useState<string>("");
 	const [reasoningDisplay, setReasoningDisplay] = useState<string>("");
+	const lastCharTsRef = useRef(0);
+	const renderTickRef = useRef(0);
+	const [renderTick, setRenderTick] = useState(0);
 	const reasoningAnimRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const clearReasoningState = () => {
 		setReasoningQueue("");
 		setReasoningDisplay("");
+		lastCharTsRef.current = 0;
 	};
 	const clearReasoningTicker = () => {
 		setReasoningQueue("");
 		setReasoningDisplay("");
 	};
 
-	// Smooth flowing animation for reasoning text
-	// This creates a "ticker" effect where text flows through the single line
+	// Ticker animation: move chars from queue to display
 	useEffect(() => {
-		// Clear any existing animation
 		if (reasoningAnimRef.current) {
 			clearTimeout(reasoningAnimRef.current);
 			reasoningAnimRef.current = null;
 		}
 
-		// If no queue content, nothing to animate
 		if (!reasoningQueue) return;
 
 		const tick = () => {
 			setReasoningQueue((queue: string) => {
 				if (!queue) return queue;
 
-				// Take characters from the front of the queue
 				const charsToMove = Math.min(REASONING_ANIMATION.CHARS_PER_TICK, queue.length);
 				const movedChars = queue.slice(0, charsToMove);
 				const remainingQueue = queue.slice(charsToMove);
@@ -54,7 +56,6 @@ export function useReasoningAnimation(): UseReasoningAnimationReturn {
 				const maxWidth = terminalWidth ? Math.max(20, terminalWidth - 14) : REASONING_ANIMATION.LINE_WIDTH;
 				const lineWidth = Math.min(REASONING_ANIMATION.LINE_WIDTH, maxWidth);
 
-				// Add to display, restart when reaching the line width
 				setReasoningDisplay((display: string) => {
 					const newDisplay = display + movedChars;
 					if (newDisplay.length >= lineWidth) {
@@ -63,14 +64,16 @@ export function useReasoningAnimation(): UseReasoningAnimationReturn {
 					return newDisplay;
 				});
 
+				lastCharTsRef.current = Date.now();
+				renderTickRef.current += 1;
+				setRenderTick(renderTickRef.current);
+
 				return remainingQueue;
 			});
 
-			// Schedule next tick if there's still content in the queue
 			reasoningAnimRef.current = setTimeout(tick, REASONING_ANIMATION.TICK_INTERVAL_MS);
 		};
 
-		// Start the animation
 		reasoningAnimRef.current = setTimeout(tick, REASONING_ANIMATION.TICK_INTERVAL_MS);
 
 		return () => {
@@ -81,9 +84,41 @@ export function useReasoningAnimation(): UseReasoningAnimationReturn {
 		};
 	}, [reasoningQueue]);
 
+	// Periodic re-render to drive fade animation; stops once fade completes
+	useEffect(() => {
+		if (fadeTimerRef.current) {
+			clearTimeout(fadeTimerRef.current);
+			fadeTimerRef.current = null;
+		}
+
+		const elapsed = Date.now() - lastCharTsRef.current;
+		const fadeDone = elapsed >= REASONING_ANIMATION.FADE_MS;
+		if (!reasoningQueue && fadeDone) return;
+
+		const tick = () => {
+			const now = Date.now();
+			const age = now - lastCharTsRef.current;
+			if (!reasoningQueue && age >= REASONING_ANIMATION.FADE_MS) return;
+
+			renderTickRef.current += 1;
+			setRenderTick(renderTickRef.current);
+			fadeTimerRef.current = setTimeout(tick, 100);
+		};
+
+		fadeTimerRef.current = setTimeout(tick, 100);
+
+		return () => {
+			if (fadeTimerRef.current) {
+				clearTimeout(fadeTimerRef.current);
+				fadeTimerRef.current = null;
+			}
+		};
+	}, [reasoningQueue, reasoningDisplay, renderTick]);
+
 	return {
 		reasoningQueue,
 		reasoningDisplay,
+		lastCharTimestamp: lastCharTsRef.current,
 		setReasoningQueue,
 		clearReasoningState,
 		clearReasoningTicker,

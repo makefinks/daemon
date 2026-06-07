@@ -3,9 +3,10 @@
  */
 
 import type { ContentBlock } from "../types";
-import { COLORS, REASONING_MARKDOWN_STYLE } from "../ui/constants";
+import { COLORS } from "../ui/constants";
+import { renderReasoningBlock } from "../ui/reasoning-block";
 import { renderReasoningTicker } from "../ui/reasoning-ticker";
-import { formatElapsedTime, hasVisibleText } from "../utils/formatters";
+import { hasVisibleText, formatElapsedTime } from "../utils/formatters";
 import { DaemonText } from "./DaemonText";
 import { ToolCallView } from "./ToolCallView";
 
@@ -18,6 +19,7 @@ interface ContentBlockViewProps {
 	showFullReasoning: boolean;
 	showToolOutput?: boolean;
 	reasoningDisplay?: string;
+	lastCharTimestamp?: number;
 	showReasoningTicker?: boolean;
 }
 
@@ -30,6 +32,7 @@ export function ContentBlockView({
 	showFullReasoning,
 	showToolOutput = true,
 	reasoningDisplay,
+	lastCharTimestamp,
 	showReasoningTicker,
 }: ContentBlockViewProps) {
 	if (block.type === "reasoning") {
@@ -41,36 +44,15 @@ export function ContentBlockView({
 
 		// Show full reasoning if enabled
 		if (showFullReasoning) {
-			const durationLabel =
-				block.durationMs !== undefined
-					? ` · ${formatElapsedTime(block.durationMs, { style: "detailed" })}`
-					: "";
-			return (
-				<box
-					flexDirection="column"
-					border={["left"]}
-					borderStyle="heavy"
-					borderColor={COLORS.REASONING_DIM}
-					paddingLeft={1}
-				>
-					<text>
-						<span fg={COLORS.REASONING}>{"REASONING"}</span>
-						<span fg={COLORS.REASONING_DIM}>{durationLabel}</span>
-					</text>
-					<code
-						content={cleanedContent}
-						filetype="markdown"
-						syntaxStyle={REASONING_MARKDOWN_STYLE}
-						streaming={isStreaming && isLastBlock}
-						drawUnstyledText={false}
-					/>
-				</box>
-			);
+			const fadeTimestamp = isLastReasoningBlock
+				? (lastCharTimestamp ?? block.completedAt)
+				: block.completedAt;
+			return renderReasoningBlock(cleanedContent, block.durationMs, fadeTimestamp);
 		}
 
 		// For non-full-reasoning mode, show animated display only for the latest reasoning block
 		if (showReasoningTicker && isLastReasoningBlock && reasoningDisplay) {
-			return renderReasoningTicker(reasoningDisplay);
+			return renderReasoningTicker(reasoningDisplay, lastCharTimestamp);
 		}
 		const durationLabel =
 			block.durationMs !== undefined

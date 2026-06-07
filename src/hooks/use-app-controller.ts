@@ -518,6 +518,7 @@ export function useAppController({
 		currentResponse: daemon.currentResponse,
 		reasoningDisplay: daemon.reasoning.reasoningDisplay,
 		reasoningQueue: daemon.reasoning.reasoningQueue,
+		lastCharTimestamp: daemon.reasoning.lastCharTimestamp,
 		responseElapsedMs: daemon.responseElapsedMs,
 		hasInteracted: daemon.hasInteracted,
 		currentModelProvider,
@@ -788,6 +789,7 @@ export function useAppController({
 				showToolOutput,
 				reasoningQueue: daemon.reasoning.reasoningQueue,
 				reasoningDisplay: daemon.reasoning.reasoningDisplay,
+				lastCharTimestamp: daemon.reasoning.lastCharTimestamp,
 			},
 			progress: {
 				showWorkingSpinner,
