@@ -320,6 +320,7 @@ export type ToolToggleId =
 	| "loadSkillResource"
 	| "webSearch"
 	| "fetchUrls"
+	| "codeSearch"
 	| "todoManager"
 	| "groundingManager"
 	| "subagent";
@@ -340,6 +341,7 @@ export const DEFAULT_TOOL_TOGGLES: ToolToggles = {
 	loadSkillResource: true,
 	webSearch: true,
 	fetchUrls: true,
+	codeSearch: true,
 	todoManager: true,
 	groundingManager: true,
 	subagent: true,

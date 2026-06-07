@@ -1,6 +1,7 @@
 import "./bash";
 import "./background-jobs";
 import "./web-search";
+import "./code-search";
 import "./url-tools";
 import "./read-file";
 import "./read-image";

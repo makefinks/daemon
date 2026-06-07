@@ -148,6 +148,7 @@ function normalizeToolAvailability(toolAvailability?: Partial<ToolAvailability>)
 		loadSkillResource: toolAvailability?.loadSkillResource ?? true,
 		webSearch: toolAvailability?.webSearch ?? true,
 		fetchUrls: toolAvailability?.fetchUrls ?? true,
+		codeSearch: toolAvailability?.codeSearch ?? true,
 		todoManager: toolAvailability?.todoManager ?? true,
 		groundingManager: toolAvailability?.groundingManager ?? true,
 		subagent: toolAvailability?.subagent ?? true,
@@ -275,6 +276,32 @@ Fetch multiple URLs in one call:
 }
 </tool-input>
 </multi-url-example>
+`,
+	codeSearch: `
+### 'codeSearch'
+Searches for code examples, documentation snippets, and technical patterns using Exa's code search API. Returns token-efficient code snippets from GitHub repos, official docs, and Stack Overflow.
+
+**Use codeSearch when:**
+- You need real-world code examples for a library, framework, or language feature
+- You want to see how others implement a specific pattern or API usage
+- You need to confirm exact function signatures, method names, or config options
+- The user asks "how do I do X with Y library?" or "show me an example of Z"
+
+**Do not use codeSearch when:**
+- The question is about general concepts (use your training knowledge)
+- You need to read the user's own files (use readFile)
+- You need up-to-date news or non-code information (use webSearch)
+- The user provides all necessary code context in the prompt
+
+**Examples (use codeSearch):**
+- "How do I use bun:sqlite with WAL mode?"
+- "Show me a React useEffect cleanup pattern with async functions"
+- "What's the correct way to configure tsconfig paths in a monorepo?"
+
+**Examples (don't use codeSearch):**
+- "What is a mutex?"
+- "Fix the bug in my function" (use readFile first)
+- "What's the latest Bun release?" (use webSearch)
 `,
 	groundingManager: `
   ### 'groundingManager' (source attribution)
@@ -404,6 +431,7 @@ function buildToolDefinitions(availability: ToolAvailability, mcpToolGuidance?: 
 	if (availability.todoManager) blocks.push(TOOL_SECTIONS.todoManager);
 	if (availability.webSearch) blocks.push(TOOL_SECTIONS.webSearch);
 	if (availability.fetchUrls) blocks.push(TOOL_SECTIONS.fetchUrls);
+	if (availability.codeSearch) blocks.push(TOOL_SECTIONS.codeSearch);
 	if (availability.groundingManager) blocks.push(TOOL_SECTIONS.groundingManager);
 	if (availability.runBash) blocks.push(TOOL_SECTIONS.runBash);
 	if (availability.backgroundJobs) blocks.push(TOOL_SECTIONS.backgroundJobs);

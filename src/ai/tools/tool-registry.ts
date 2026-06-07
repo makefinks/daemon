@@ -1,6 +1,7 @@
 import type { ToolSet } from "ai";
 
 import { backgroundJobs } from "./background-jobs";
+import { codeSearch } from "./code-search";
 import { fetchUrls } from "./fetch-urls";
 import { groundingManager } from "./grounding-manager";
 import { loadSkill } from "./load-skill";
@@ -56,6 +57,7 @@ export const TOOL_REGISTRY: ToolEntry[] = [
 	{ id: "loadSkillResource", toggleKey: "loadSkillResource", tool: loadSkillResource },
 	{ id: "webSearch", toggleKey: "webSearch", tool: webSearch, gate: gateExa },
 	{ id: "fetchUrls", toggleKey: "fetchUrls", tool: fetchUrls, gate: gateExa },
+	{ id: "codeSearch", toggleKey: "codeSearch", tool: codeSearch, gate: gateExa },
 	{ id: "todoManager", toggleKey: "todoManager", tool: todoManager },
 	{ id: "groundingManager", toggleKey: "groundingManager", tool: groundingManager },
 	{ id: "subagent", toggleKey: "subagent", tool: subagent, gate: gateSubagent },
@@ -120,6 +122,7 @@ function normalizeToggles(toggles?: ToolToggles): ToolToggles {
 		loadSkillResource: toggles?.loadSkillResource ?? true,
 		webSearch: toggles?.webSearch ?? true,
 		fetchUrls: toggles?.fetchUrls ?? true,
+		codeSearch: toggles?.codeSearch ?? true,
 		todoManager: toggles?.todoManager ?? true,
 		groundingManager: toggles?.groundingManager ?? true,
 		subagent: toggles?.subagent ?? true,
@@ -223,6 +226,7 @@ export function getToolLabels(): Record<ToolId, string> {
 		loadSkillResource: "loadSkillResource",
 		webSearch: "webSearch",
 		fetchUrls: "fetchUrls",
+		codeSearch: "codeSearch",
 		todoManager: "todoManager",
 		groundingManager: "groundingManager",
 		subagent: "subagent",
@@ -241,6 +245,7 @@ export function getDefaultToolOrder(): ToolId[] {
 		"loadSkillResource",
 		"webSearch",
 		"fetchUrls",
+		"codeSearch",
 		"todoManager",
 		"groundingManager",
 		"subagent",
@@ -259,6 +264,7 @@ export function createToolAvailabilitySnapshot(availability: ToolAvailabilityMap
 		loadSkillResource: availability.loadSkillResource?.enabled ?? false,
 		webSearch: availability.webSearch?.enabled ?? false,
 		fetchUrls: availability.fetchUrls?.enabled ?? false,
+		codeSearch: availability.codeSearch?.enabled ?? false,
 		todoManager: availability.todoManager?.enabled ?? false,
 		groundingManager: availability.groundingManager?.enabled ?? false,
 		subagent: availability.subagent?.enabled ?? false,
