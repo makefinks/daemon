@@ -140,8 +140,8 @@ async function main() {
 	const three = new ThreeCliRenderer(cli, {
 		width: opts.width,
 		height: opts.height,
-		alpha: true,
-		backgroundColor: RGBA.fromValues(0, 0, 0, 0),
+		alpha: false,
+		backgroundColor: RGBA.fromValues(0, 0, 0, 1),
 		superSample: SuperSampleType.GPU,
 		autoResize: false,
 	});
@@ -155,16 +155,31 @@ async function main() {
 	try {
 		await three.init();
 		rig = createDaemonRig({ aspectRatio: three.aspectRatio });
+		rig.skipSpawn();
+		rig.camera.aspect = three.aspectRatio;
+		rig.camera.updateProjectionMatrix();
 		three.setActiveCamera(rig.camera);
 
 		const deltaS = 1 / opts.fps;
 
+		// Access internal canvas context to work around double-buffering.
+		// drawScene renders to texture A, then readPixelsIntoBuffer calls switchTextures()
+		// on the GPUCanvasContextMock, making texture B current. saveToFile reads the
+		// *current* texture (B, blank). We swap back so saveToFile reads texture A.
+		const ctx = (three as unknown as Record<string, Record<string, () => unknown>>).canvas
+			?.gpuCanvasContext as { switchTextures(): unknown } | undefined;
+
 		for (let frame = 0; frame < opts.frames; frame++) {
+			buffer.clear(RGBA.fromValues(0, 0, 0, 0));
 			rig.update(deltaS);
 			await three.drawScene(rig.scene, buffer, deltaS);
 
+			ctx?.switchTextures();
+
 			const filename = `frame_${String(frame).padStart(4, "0")}.png`;
 			await three.saveToFile(join(opts.outDir, filename));
+
+			ctx?.switchTextures();
 		}
 
 		if (opts.mp4) {
