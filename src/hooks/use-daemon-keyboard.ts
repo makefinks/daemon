@@ -329,9 +329,10 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 				return;
 			}
 
-			// 'E' key to cycle reasoning effort without opening settings.
+			// Ctrl+E to cycle reasoning effort without opening settings.
 			if (
-				(key.sequence === "e" || key.sequence === "E") &&
+				key.ctrl &&
+				(key.name === "e" || key.sequence === "e") &&
 				key.eventType === "press" &&
 				(currentState === DaemonState.IDLE ||
 					currentState === DaemonState.SPEAKING ||

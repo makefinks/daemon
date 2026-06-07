@@ -70,7 +70,7 @@ Primary controls:
 Session and display controls:
 
 - \`R\`: toggle full reasoning previews on/off.
-- \`E\`: cycle reasoning effort directly, without opening Settings. This only works when the current model/provider supports reasoning effort.
+- \`Ctrl+E\`: cycle reasoning effort directly, without opening Settings. This only works when the current model/provider supports reasoning effort.
 - \`O\`: toggle tool output previews on/off.
 - \`Ctrl+Y\`: open copy menu for messages/transcripts.
 - \`Ctrl+N\`: start a new session.
@@ -108,10 +108,10 @@ Open Settings with \`S\`. Settings exposes these controls:
 
 When the user asks how to change reasoning effort, answer with both options:
 
-- Quick path: press \`E\` to cycle reasoning effort directly.
+- Quick path: press \`Ctrl+E\` to cycle reasoning effort directly.
 - Menu path: press \`S\`, select \`Reasoning Effort\`, then press \`Enter\` to cycle values.
 
-Mention that reasoning effort depends on the current model/provider; if unsupported, the setting shows \`N/A\` and \`E\` will do nothing.
+Mention that reasoning effort depends on the current model/provider; if unsupported, the setting shows \`N/A\` and \`Ctrl+E\` will do nothing.
 
 ## Tools Menu
 
