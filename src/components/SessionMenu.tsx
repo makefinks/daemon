@@ -59,7 +59,12 @@ export function SessionMenu({ items, currentSessionId, onClose, onSelect, onDele
 	}, [items, searchQuery]);
 
 	useEffect(() => {
-		if (!filteredItems.some((item) => item.runtimeStatus?.isRunning)) return;
+		if (
+			!filteredItems.some(
+				(item) => item.runtimeStatus?.isRunning || item.runtimeStatus?.hasRunningBackgroundJobs
+			)
+		)
+			return;
 		const interval = setInterval(() => setRuntimeTick((tick) => tick + 1), 1000);
 		return () => clearInterval(interval);
 	}, [filteredItems]);
@@ -115,8 +120,8 @@ export function SessionMenu({ items, currentSessionId, onClose, onSelect, onDele
 	});
 
 	const scrollRef = useRef<ScrollBoxRenderable | null>(null);
-	const nameColumnWidth = "42%";
-	const statusColumnWidth = "12%";
+	const nameColumnWidth = "38%";
+	const statusColumnWidth = "16%";
 	const costColumnWidth = "12%";
 	const tokensColumnWidth = "12%";
 	const updatedColumnWidth = "22%";
@@ -316,19 +321,24 @@ export function SessionMenu({ items, currentSessionId, onClose, onSelect, onDele
 								const runtimeStatus = item.runtimeStatus;
 								const isAwaitingApproval = runtimeStatus?.isAwaitingApproval ?? false;
 								const isRunning = (runtimeStatus?.isRunning ?? false) && !isAwaitingApproval;
+								const hasBgJobs =
+									(runtimeStatus?.hasRunningBackgroundJobs ?? false) && !isRunning && !isAwaitingApproval;
 								const runningLabel = isRunning
 									? `RUNNING (${formatRuntimeDuration(runtimeStatus?.startedAt)})`
 									: "";
 								const approvalLabel = isAwaitingApproval
 									? `APPROVAL${runtimeStatus?.pendingApprovalCount ? ` (${runtimeStatus.pendingApprovalCount})` : ""}`
 									: "";
+								const bgJobsLabel = hasBgJobs ? "BG JOBS" : "";
 								const statusColor = isAwaitingApproval
 									? "#fb923c"
 									: isRunning
 										? COLORS.STATUS_RUNNING
-										: COLORS.REASONING_DIM;
+										: hasBgJobs
+											? COLORS.TOOLS
+											: COLORS.REASONING_DIM;
 								const detailColor = COLORS.REASONING_DIM;
-								const detail = item.isNew ? "Start fresh" : `Updated ${formatTimestamp(item.updatedAt)}`;
+								const detail = item.isNew ? "Start fresh" : formatTimestamp(item.updatedAt);
 								const tokenCount = runtimeStatus?.totalTokens ?? item.totalTokens;
 								const costValue = runtimeStatus?.cost ?? item.cost;
 
@@ -363,6 +373,13 @@ export function SessionMenu({ items, currentSessionId, onClose, onSelect, onDele
 												<text>
 													<span fg={statusColor}>{approvalLabel.trim()}</span>
 												</text>
+											) : bgJobsLabel ? (
+												<box flexDirection="row" alignItems="center">
+													<spinner name="dots" color={statusColor} />
+													<text marginLeft={1}>
+														<span fg={statusColor}>{bgJobsLabel}</span>
+													</text>
+												</box>
 											) : (
 												<text>
 													<span fg={statusColor}>IDLE</span>
