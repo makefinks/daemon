@@ -14,6 +14,7 @@ import {
 import { type RefObject, useRef } from "react";
 import type { PromptImageAttachment } from "../types";
 import { COLORS } from "../ui/constants";
+import { toast } from "@opentui-ui/toast/react";
 import { readClipboardImage } from "../utils/clipboard";
 import { debug } from "../utils/debug-logger";
 import { pasteClipboardIntoTextarea } from "../utils/paste";
@@ -96,9 +97,12 @@ export function TypingInputBar({
 	};
 
 	const pasteClipboardImage = async (source: string): Promise<boolean> => {
-		if (!imagePasteEnabled || !onImageAttach) return false;
 		const image = await readClipboardImage();
 		if (!image) return false;
+		if (!imagePasteEnabled || !onImageAttach) {
+			toast.warning("Model does not support images");
+			return true;
+		}
 
 		const attachment = onImageAttach({
 			type: "image",
