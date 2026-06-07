@@ -7,14 +7,14 @@ import { COLORS } from "../ui/constants";
 import { formatContextWindowK, formatPrice } from "../utils/formatters";
 
 const COL_WIDTH = {
-	CTX: 6,
-	IN: 10,
-	OUT: 10,
-	CACHE: 6,
-	IMG: 3,
+	CTX: 7,
+	IN: 12,
+	OUT: 12,
+	CACHE: 7,
+	IMG: 4,
 } as const;
 
-const COL_GAP = "   ";
+const COL_GAP = "    ";
 
 const ALL_MODEL_ITEM_HEIGHT = 1;
 const MAX_ALL_SCROLLBOX_HEIGHT = 20;
@@ -202,7 +202,11 @@ export function ModelMenu({
 			const currentSuffix = model.id === currentModelId ? " ●" : "";
 			return Math.max(max, `${model.name}${freeSuffix}${currentSuffix}`.length);
 		}, 0);
-		return Math.min(Math.max(raw + 2, 28), 72);
+		const fixedCols = COL_WIDTH.CTX + COL_WIDTH.IN + COL_WIDTH.OUT + COL_WIDTH.CACHE + COL_WIDTH.IMG;
+		const gaps = 5 * COL_GAP.length;
+		const containerInner = 120 - 6;
+		const maxModel = containerInner - 2 - fixedCols - gaps;
+		return Math.min(Math.max(raw + 2, 28), maxModel);
 	}, [currentModelId, menuItems]);
 
 	const renderModelHeader = () => (
@@ -287,8 +291,8 @@ export function ModelMenu({
 				paddingRight={2}
 				paddingTop={1}
 				paddingBottom={1}
-				width="55%"
-				minWidth={56}
+				width="75%"
+				minWidth={72}
 				maxWidth={120}
 			>
 				<box marginBottom={1}>
