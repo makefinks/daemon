@@ -2,7 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { daemonEvents } from "../../state/daemon-events";
 import { getRuntimeContext } from "../../state/runtime-context";
-import { loadLatestGroundingMap, saveGroundingMap } from "../../state/session-store";
+import { saveGroundingMap } from "../../state/session-store";
 
 const groundingSourceSchema = z.object({
 	url: z.string().url().describe("The source URL where the information was found."),
@@ -45,16 +45,12 @@ const itemsSchema = z.preprocess((val) => {
 
 export const groundingManager = tool({
 	description:
-		"Manage the list of grounded statements (facts supported by sources) for the current session. " +
-		"You can 'set' (overwrite) the entire list or 'append' new items to the existing list. " +
-		"Use this to maintain a persistent list of verified claims and their sources.",
+		"Set the grounded statements (facts supported by sources) for the current response. " +
+		"Call this with ALL items that back your response. Each call replaces the previous list.",
 	inputSchema: z.object({
-		action: z
-			.enum(["set", "append"])
-			.describe("Action to perform: 'set' replaces all groundings, 'append' adds to existing ones."),
 		items: itemsSchema,
 	}),
-	execute: async ({ action, items }) => {
+	execute: async ({ items }) => {
 		const context = getRuntimeContext();
 
 		if (!context.sessionId) {
@@ -65,25 +61,14 @@ export const groundingManager = tool({
 		}
 
 		try {
-			let finalItems = items;
-
-			if (action === "append") {
-				const existingMap = await loadLatestGroundingMap(context.sessionId);
-				if (existingMap) {
-					finalItems = [...existingMap.items, ...items];
-				}
-			}
-
-			const groundingMap = await saveGroundingMap(context.sessionId, context.messageId, finalItems);
+			const groundingMap = await saveGroundingMap(context.sessionId, context.messageId, items);
 
 			daemonEvents.emit("groundingSaved", context.sessionId, context.messageId, groundingMap.id);
 
 			return {
 				success: true,
-				action,
-				addedCount: items.length,
-				totalCount: finalItems.length,
-				currentItems: finalItems,
+				itemCount: items.length,
+				currentItems: items,
 			};
 		} catch (error) {
 			const err = error instanceof Error ? error : new Error(String(error));

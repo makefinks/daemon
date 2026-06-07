@@ -124,9 +124,10 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 
 			{menus.showHotkeysPane && <HotkeysPane onClose={() => menus.setShowHotkeysPane(false)} />}
 
-			{menus.showGroundingMenu && grounding.latestGroundingMap && (
+			{menus.showGroundingMenu && grounding.allGroundingMaps.size > 0 && (
 				<GroundingMenu
-					groundingMap={grounding.latestGroundingMap}
+					allGroundingMaps={grounding.allGroundingMaps}
+					conversationHistory={conversationHistory}
 					initialIndex={grounding.groundingInitialIndex}
 					onClose={() => menus.setShowGroundingMenu(false)}
 					onSelect={groundingCallbacks.onGroundingSelect}
@@ -157,6 +158,8 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 				<CopyMenu
 					conversationHistory={conversationHistory}
 					currentContentBlocks={currentContentBlocks}
+					latestGroundingMap={grounding.latestGroundingMap}
+					allGroundingMaps={grounding.allGroundingMaps}
 					onClose={() => menus.setShowCopyMenu(false)}
 				/>
 			)}

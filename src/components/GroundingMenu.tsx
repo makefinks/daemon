@@ -1,8 +1,8 @@
 import type { KeyEvent, ScrollBoxRenderable } from "@opentui/core";
 import { useKeyboard, useRenderer } from "@opentui/react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMenuKeyboard } from "../hooks/use-menu-keyboard";
-import type { GroundedStatement, GroundingMap } from "../types";
+import type { ConversationMessage, GroundedStatement, GroundingMap } from "../types";
 import { COLORS } from "../ui/constants";
 
 const QUOTE_INDENT = 2;
@@ -44,6 +44,21 @@ function wrapText(text: string, maxWidth: number): string[] {
 	return lines;
 }
 
+function findUserMessage(
+	daemonMessageId: number,
+	conversationHistory: ConversationMessage[]
+): ConversationMessage | undefined {
+	const daemonIndex = conversationHistory.findIndex((m) => m.id === daemonMessageId);
+	if (daemonIndex <= 0) return undefined;
+	const prev = conversationHistory[daemonIndex - 1];
+	return prev?.type === "user" ? prev : undefined;
+}
+
+function messageContent(message: ConversationMessage): string {
+	const text = (message.content || "").trim().replace(/\s+/g, " ");
+	return text || `Message #${message.id}`;
+}
+
 interface LayoutItem {
 	item: GroundedStatement;
 	statementLines: string[];
@@ -54,7 +69,8 @@ interface LayoutItem {
 }
 
 interface GroundingMenuProps {
-	groundingMap: GroundingMap;
+	allGroundingMaps: Map<number, GroundingMap>;
+	conversationHistory: ConversationMessage[];
 	initialIndex?: number;
 	onClose: () => void;
 	onSelect: (index: number) => void;
@@ -63,16 +79,35 @@ interface GroundingMenuProps {
 }
 
 export function GroundingMenu({
-	groundingMap,
+	allGroundingMaps,
+	conversationHistory,
 	initialIndex = 0,
 	onClose,
 	onSelect,
 	onCopyHighlight,
 	onSelectedIndexChange,
 }: GroundingMenuProps) {
-	const items = groundingMap.items;
 	const scrollRef = useRef<ScrollBoxRenderable | null>(null);
 	const renderer = useRenderer();
+
+	const sortedMaps = useMemo(
+		() => [...allGroundingMaps.values()].sort((a, b) => a.messageId - b.messageId),
+		[allGroundingMaps]
+	);
+
+	const [mapIndex, setMapIndex] = useState(() => (sortedMaps.length > 0 ? sortedMaps.length - 1 : 0));
+
+	// Jump to latest on mount and when maps change
+	useEffect(() => {
+		if (sortedMaps.length > 0) {
+			setMapIndex(sortedMaps.length - 1);
+		}
+	}, [allGroundingMaps]);
+
+	const activeMap = sortedMaps[mapIndex] ?? sortedMaps[sortedMaps.length - 1] ?? null;
+	const items = activeMap?.items ?? [];
+	const totalMaps = sortedMaps.length;
+	const mapPosition = totalMaps > 0 ? mapIndex + 1 : 0;
 
 	const menuWidth = useMemo(() => {
 		return Math.max(80, Math.min(300, Math.floor(renderer.terminalWidth * 0.85)));
@@ -93,6 +128,24 @@ export function GroundingMenu({
 		onClose,
 		onSelect,
 	});
+
+	const handleCycleKey = useCallback(
+		(key: KeyEvent) => {
+			if (key.eventType !== "press") return;
+			if (totalMaps <= 1) return;
+
+			if (key.name === "left" || key.sequence === "h") {
+				setMapIndex((prev) => (prev <= 0 ? totalMaps - 1 : prev - 1));
+				key.preventDefault();
+			} else if (key.name === "right" || key.sequence === "l") {
+				setMapIndex((prev) => (prev >= totalMaps - 1 ? 0 : prev + 1));
+				key.preventDefault();
+			}
+		},
+		[totalMaps]
+	);
+
+	useKeyboard(handleCycleKey);
 
 	const handleCopyKey = useCallback(
 		(key: KeyEvent) => {
@@ -218,24 +271,101 @@ export function GroundingMenu({
 			>
 				<box marginBottom={1} flexDirection="row" width="100%">
 					<text>
-						<span fg={COLORS.DAEMON_LABEL}>[ GROUNDING ]</span>
-						<span fg={COLORS.REASONING_DIM}>
-							{" "}
-							— {items.length} source{items.length !== 1 ? "s" : ""}
-						</span>
+						<strong>
+							<span fg={COLORS.DAEMON_LABEL}>[ GROUNDING ]</span>
+						</strong>
+						{totalMaps > 1 && <span fg={COLORS.REASONING_DIM}>{"  "}</span>}
+						{totalMaps > 1 && <span fg={COLORS.TYPING_PROMPT}>◀ </span>}
+						{totalMaps > 1 && (
+							<strong>
+								<span fg={COLORS.TYPING_PROMPT}>
+									{mapPosition}/{totalMaps}
+								</span>
+							</strong>
+						)}
+						{totalMaps > 1 && <span fg={COLORS.TYPING_PROMPT}> ▶</span>}
+						{activeMap && <span fg={COLORS.REASONING_DIM}>{"  "}</span>}
+						{activeMap && (
+							<strong>
+								<span fg={COLORS.DAEMON_TEXT}>
+									{items.length} source{items.length !== 1 ? "s" : ""}
+								</span>
+							</strong>
+						)}
 					</text>
 					<box flexGrow={1} />
 					<text>
 						<span fg={COLORS.USER_LABEL}>
+							{totalMaps > 1 && (
+								<>
+									<span fg={COLORS.DAEMON_LABEL}>←/→</span>
+									<span> switch · </span>
+								</>
+							)}
 							<span fg={COLORS.DAEMON_LABEL}>ENTER</span>
 							<span> open · </span>
 							<span fg={COLORS.DAEMON_LABEL}>C</span>
-							<span> copy highlight · </span>
+							<span> copy · </span>
 							<span fg={COLORS.DAEMON_LABEL}>ESC</span>
 							<span> close</span>
 						</span>
 					</text>
 				</box>
+
+				{activeMap &&
+					totalMaps > 0 &&
+					(() => {
+						const daemonMsg = conversationHistory.find((m) => m.id === activeMap.messageId);
+						const userMsg = daemonMsg ? findUserMessage(activeMap.messageId, conversationHistory) : undefined;
+						return (
+							<box flexDirection="column" marginBottom={1}>
+								{userMsg && (
+									<box
+										marginBottom={0}
+										backgroundColor={COLORS.USER_BG}
+										paddingLeft={1}
+										paddingRight={1}
+										flexDirection="row"
+										alignSelf="flex-start"
+									>
+										<box width={9}>
+											<text>
+												<strong>
+													<span fg={COLORS.USER_LABEL}>MESSAGE</span>
+												</strong>
+											</text>
+										</box>
+										<text>
+											<span fg={COLORS.REASONING_DIM}>│ </span>
+											<span fg={COLORS.USER_TEXT}>{truncateText(messageContent(userMsg), 80)}</span>
+										</text>
+									</box>
+								)}
+								{daemonMsg && (
+									<box
+										marginTop={userMsg ? 0 : 0}
+										backgroundColor={COLORS.MENU_SELECTED_BG}
+										paddingLeft={1}
+										paddingRight={1}
+										flexDirection="row"
+										alignSelf="flex-start"
+									>
+										<box width={9}>
+											<text>
+												<strong>
+													<span fg={COLORS.DAEMON_LABEL}>RESPONSE</span>
+												</strong>
+											</text>
+										</box>
+										<text>
+											<span fg={COLORS.REASONING_DIM}>│ </span>
+											<span fg={COLORS.DAEMON_TEXT}>{truncateText(messageContent(daemonMsg), 80)}</span>
+										</text>
+									</box>
+								)}
+							</box>
+						);
+					})()}
 
 				{items.length === 0 ? (
 					<box height={3} justifyContent="center" alignItems="center">

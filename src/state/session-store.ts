@@ -374,6 +374,18 @@ export async function loadLatestGroundingMap(sessionId: string): Promise<Groundi
 	}
 }
 
+export async function loadGroundingMapsBySession(sessionId: string): Promise<Map<number, GroundingMap>> {
+	const maps = await listGroundingMaps(sessionId);
+	const byMessage = new Map<number, GroundingMap>();
+	for (const map of maps) {
+		// listGroundingMaps returns DESC by created_at, so first entry per messageId is the latest
+		if (!byMessage.has(map.messageId)) {
+			byMessage.set(map.messageId, map);
+		}
+	}
+	return byMessage;
+}
+
 function parseTodoItems(raw: string): TodoItem[] {
 	try {
 		const parsed = JSON.parse(raw) as unknown;

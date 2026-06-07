@@ -2,10 +2,11 @@ import { useEffect } from "react";
 import type { MutableRefObject } from "react";
 
 import { useAppSessions } from "./use-app-sessions";
-import { useGrounding } from "./use-grounding";
+import { useGrounding, useGroundingMaps } from "./use-grounding";
 import { useGroundingMenuController } from "./use-grounding-menu-controller";
 
 import { getDaemonManager } from "../state/daemon-state";
+import type { GroundingMap } from "../types";
 
 export interface SessionControllerResult {
 	currentSessionId: string | null;
@@ -18,6 +19,7 @@ export interface SessionControllerResult {
 
 	latestGroundingMap: ReturnType<typeof useGrounding>["latestGroundingMap"];
 	hasGrounding: boolean;
+	allGroundingMaps: Map<number, GroundingMap>;
 
 	groundingInitialIndex: number;
 	groundingSelectedIndex: number;
@@ -49,6 +51,7 @@ export function useSessionController({
 	}, [ensureSessionId]);
 
 	const { latestGroundingMap, hasGrounding } = useGrounding(currentSessionId);
+	const { groundingMapsByMessage } = useGroundingMaps(currentSessionId);
 	const {
 		groundingInitialIndex,
 		groundingSelectedIndex,
@@ -56,7 +59,10 @@ export function useSessionController({
 		onGroundingSelect,
 		onGroundingCopyHighlight,
 		onGroundingIndexChange,
-	} = useGroundingMenuController({ sessionId: currentSessionId, latestGroundingMap });
+	} = useGroundingMenuController({
+		sessionId: currentSessionId,
+		latestGroundingMap,
+	});
 
 	useEffect(() => {
 		setGroundingSelectedIndex(0);
@@ -72,6 +78,7 @@ export function useSessionController({
 		handleFirstMessage,
 		latestGroundingMap,
 		hasGrounding,
+		allGroundingMaps: groundingMapsByMessage,
 		groundingInitialIndex,
 		groundingSelectedIndex,
 		setGroundingSelectedIndex,
