@@ -204,7 +204,11 @@ export class RigEngine {
 
 	public dispose(): void {
 		this.disposables.forEach((d) => {
-			d.dispose();
+			try {
+				d.dispose();
+			} catch {
+				// Object may already be disposed by the renderer
+			}
 		});
 	}
 }
