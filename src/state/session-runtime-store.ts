@@ -82,6 +82,7 @@ export interface SessionRuntimeStatus {
 	startedAt: number | null;
 	updatedAt: number;
 	totalTokens: number;
+	cost?: number;
 }
 
 interface SessionRuntimeInternal extends SessionRuntimeSnapshot {
@@ -155,6 +156,41 @@ function findExistingToolCall(
 	return [...runtime.toolCalls]
 		.reverse()
 		.find((call) => call.name === toolName && isInProgressToolCall(call));
+}
+
+function findHistoricalToolCall(runtime: SessionRuntimeInternal, toolCallId: string): ToolCall | undefined {
+	for (let i = runtime.conversationHistory.length - 1; i >= 0; i--) {
+		const message = runtime.conversationHistory[i];
+		const blocks = message?.contentBlocks;
+		if (!blocks) continue;
+		for (const block of blocks) {
+			if (block.type === "tool" && block.call.toolCallId === toolCallId) {
+				return block.call;
+			}
+		}
+	}
+	return undefined;
+}
+
+function findHistoricalToolBlock(
+	runtime: SessionRuntimeInternal,
+	toolCallId: string
+): ContentBlock | undefined {
+	for (let i = runtime.conversationHistory.length - 1; i >= 0; i--) {
+		const message = runtime.conversationHistory[i];
+		const blocks = message?.contentBlocks;
+		if (!blocks) continue;
+		for (const block of blocks) {
+			if (block.type === "tool" && block.call.toolCallId === toolCallId) {
+				return block;
+			}
+		}
+	}
+	return undefined;
+}
+
+function findSubagentToolCall(runtime: SessionRuntimeInternal, toolCallId: string): ToolCall | undefined {
+	return runtime.toolCallsById.get(toolCallId) ?? findHistoricalToolCall(runtime, toolCallId);
 }
 
 function finalizePendingUserMessage(
@@ -274,6 +310,7 @@ export class SessionRuntimeStore {
 			startedAt: runtime.startedAt,
 			updatedAt: runtime.updatedAt,
 			totalTokens: runtime.sessionUsage.totalTokens + (runtime.sessionUsage.subagentTotalTokens ?? 0),
+			cost: runtime.sessionUsage.cost,
 		}));
 	}
 
@@ -321,10 +358,31 @@ export class SessionRuntimeStore {
 		this.notify(sessionId);
 	}
 
-	beginUserMessage(sessionId: string, text: string, imageAttachments: PromptImageAttachment[] = []): boolean {
+	beginUserMessage(
+		sessionId: string,
+		text: string,
+		imageAttachments: PromptImageAttachment[] = [],
+		options: { hidden?: boolean; notificationBlock?: ContentBlock } = {}
+	): boolean {
 		const runtime = this.ensure(sessionId);
 		if (!text.trim() && imageAttachments.length === 0) return false;
 		if (runtime.state === DaemonState.RESPONDING) return false;
+		const isFirstMessage = runtime.conversationHistory.length === 0;
+		if (options.notificationBlock) {
+			runtime.conversationHistory = [
+				...runtime.conversationHistory,
+				{
+					id: runtime.messageId++,
+					type: "daemon",
+					content:
+						options.notificationBlock.type === "backgroundNotification"
+							? options.notificationBlock.content
+							: "",
+					messages: [],
+					contentBlocks: [options.notificationBlock],
+				},
+			];
+		}
 		const userModelMessage = buildUserModelMessage(text, imageAttachments);
 
 		const userMessage: ConversationMessage = {
@@ -333,6 +391,7 @@ export class SessionRuntimeStore {
 			content: text,
 			messages: [userModelMessage],
 			pending: true,
+			hidden: options.hidden,
 		};
 
 		runtime.currentUserInput = text;
@@ -341,7 +400,24 @@ export class SessionRuntimeStore {
 		runtime.updatedAt = Date.now();
 		void this.persist(runtime);
 		this.notify(sessionId);
-		return runtime.conversationHistory.length === 1;
+		return isFirstMessage;
+	}
+
+	addNotificationBlock(sessionId: string, block: ContentBlock): void {
+		const runtime = this.ensure(sessionId);
+		if (runtime.state !== DaemonState.RESPONDING) return;
+		const blocks = runtime.contentBlocks;
+		let insertAt = blocks.length;
+		for (let i = blocks.length - 1; i >= 0; i--) {
+			if (blocks[i]?.type === "tool") {
+				insertAt = i + 1;
+				break;
+			}
+		}
+		blocks.splice(insertAt, 0, block);
+		runtime.currentContentBlocks = [...blocks];
+		runtime.updatedAt = Date.now();
+		this.notify(sessionId);
 	}
 
 	beginResponse(sessionId: string): void {
@@ -548,7 +624,7 @@ export class SessionRuntimeStore {
 
 	subagentToolCall(sessionId: string, toolCallId: string, toolName: string, input?: unknown): void {
 		const runtime = this.ensure(sessionId);
-		const toolCall = runtime.toolCallsById.get(toolCallId);
+		const toolCall = findSubagentToolCall(runtime, toolCallId);
 		if (!toolCall?.subagentSteps) return;
 		const step: SubagentStep = { toolName, status: "running", input };
 		toolCall.subagentSteps = [...toolCall.subagentSteps, step];
@@ -557,15 +633,21 @@ export class SessionRuntimeStore {
 		this.notify(sessionId);
 	}
 
-	subagentToolResult(sessionId: string, toolCallId: string, toolName: string, success: boolean): void {
+	subagentToolResult(
+		sessionId: string,
+		toolCallId: string,
+		toolName: string,
+		success: boolean,
+		result?: unknown
+	): void {
 		const runtime = this.ensure(sessionId);
-		const toolCall = runtime.toolCallsById.get(toolCallId);
+		const toolCall = findSubagentToolCall(runtime, toolCallId);
 		if (!toolCall?.subagentSteps) return;
 		let updated = false;
 		toolCall.subagentSteps = toolCall.subagentSteps.map((step) => {
 			if (!updated && step.toolName === toolName && step.status === "running") {
 				updated = true;
-				return { ...step, status: success ? "completed" : "failed" };
+				return { ...step, result, status: success ? "completed" : "failed" };
 			}
 			return step;
 		});
@@ -576,7 +658,7 @@ export class SessionRuntimeStore {
 
 	subagentComplete(sessionId: string, toolCallId: string, success: boolean): void {
 		const runtime = this.ensure(sessionId);
-		const toolCall = runtime.toolCallsById.get(toolCallId);
+		const toolCall = findSubagentToolCall(runtime, toolCallId);
 		if (!toolCall) return;
 		toolCall.status = success ? "completed" : "failed";
 		runtime.currentContentBlocks = [...runtime.contentBlocks];
@@ -586,6 +668,11 @@ export class SessionRuntimeStore {
 
 	toolResult(sessionId: string, toolName: string, result: unknown, toolCallId?: string): void {
 		const runtime = this.ensure(sessionId);
+		const isBackgroundStartResult =
+			typeof result === "object" &&
+			result !== null &&
+			"background" in result &&
+			(result as { background?: unknown }).background === true;
 		const errorMessage =
 			typeof result === "object" &&
 			result !== null &&
@@ -598,7 +685,7 @@ export class SessionRuntimeStore {
 			(toolCallId ? runtime.toolCallsById.get(toolCallId) : undefined) ??
 			[...runtime.toolCalls].reverse().find((t) => t.name === toolName && t.status === "running");
 		if (toolCall) {
-			toolCall.status = isErrorResult ? "failed" : "completed";
+			toolCall.status = isErrorResult ? "failed" : isBackgroundStartResult ? "running" : "completed";
 			if (isErrorResult) toolCall.error = errorMessage;
 			const toolBlock = [...runtime.contentBlocks]
 				.reverse()
@@ -614,6 +701,25 @@ export class SessionRuntimeStore {
 		}
 		runtime.currentContentBlocks = [...runtime.contentBlocks];
 		runtime.updatedAt = Date.now();
+		this.notify(sessionId);
+	}
+
+	backgroundToolComplete(sessionId: string, toolCallId: string, success: boolean, result?: unknown): void {
+		const runtime = this.ensure(sessionId);
+		const toolCall = runtime.toolCallsById.get(toolCallId) ?? findHistoricalToolCall(runtime, toolCallId);
+		if (!toolCall) return;
+		toolCall.status = success ? "completed" : "failed";
+		if (!success && result && typeof result === "object" && "error" in result) {
+			const error = (result as { error?: unknown }).error;
+			if (typeof error === "string") toolCall.error = error;
+		}
+		const toolBlock =
+			[...runtime.contentBlocks].reverse().find((b) => b.type === "tool" && b.call === toolCall) ??
+			findHistoricalToolBlock(runtime, toolCallId);
+		if (toolBlock && toolBlock.type === "tool") toolBlock.result = result;
+		runtime.currentContentBlocks = [...runtime.contentBlocks];
+		runtime.updatedAt = Date.now();
+		void this.persist(runtime);
 		this.notify(sessionId);
 	}
 

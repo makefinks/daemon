@@ -99,7 +99,6 @@ export function useDaemonRuntimeController({
 		sessionId,
 		sessionIdRef,
 		ensureSessionId,
-		addToHistory,
 		onFirstMessage,
 	});
 
@@ -113,6 +112,7 @@ export function useDaemonRuntimeController({
 		navigateUp,
 		navigateDown,
 		resetNavigation,
+		addToHistory,
 	});
 
 	useEffect(() => {

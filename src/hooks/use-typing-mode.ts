@@ -15,6 +15,7 @@ export interface UseTypingModeParams {
 	navigateUp: (currentInput: string) => string | null;
 	navigateDown: () => string | null;
 	resetNavigation: () => void;
+	addToHistory: (input: string) => void;
 }
 
 export interface UseTypingModeReturn {
@@ -40,6 +41,7 @@ export function useTypingMode(params: UseTypingModeParams): UseTypingModeReturn 
 		navigateUp,
 		navigateDown,
 		resetNavigation,
+		addToHistory,
 	} = params;
 
 	const [typingInput, setTypingInput] = useState<string>("");
@@ -94,13 +96,14 @@ export function useTypingMode(params: UseTypingModeParams): UseTypingModeReturn 
 			const manager = getDaemonManager();
 			currentUserInputRef.current = input;
 			setCurrentTranscription(input);
+			addToHistory(input);
 			manager.submitText(input, imageAttachments);
 		}
 		typingTextareaRef.current?.setText("");
 		setTypingInput("");
 		setImageAttachmentCount(0);
 		imageAttachmentsRef.current = [];
-	}, [typingInput, setCurrentTranscription, currentUserInputRef]);
+	}, [typingInput, setCurrentTranscription, currentUserInputRef, addToHistory]);
 
 	const handleImageAttach = useCallback(
 		(attachment: PromptImageAttachment): { id: string; label: string } => {

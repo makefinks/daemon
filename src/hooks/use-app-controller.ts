@@ -47,7 +47,6 @@ export interface AppControllerResult {
 		renderAvatar: boolean;
 		stats: DaemonStats | null;
 		showHud: boolean;
-		runningSessionCount: number;
 		approvalSessionCount: number;
 	};
 	isListeningDim: boolean;
@@ -590,7 +589,6 @@ export function useAppController({
 	const showMainMenuHud =
 		onboardingComplete && !daemon.hasInteracted && terminalSize.height >= 30 && terminalSize.width >= 100;
 	const showHud = showStats && showMainMenuHud;
-	const runningSessionCount = session.sessionMenuItems.filter((item) => item.runtimeStatus?.isRunning).length;
 	const approvalSessionCount = session.sessionMenuItems.filter(
 		(item) => item.runtimeStatus?.isAwaitingApproval
 	).length;
@@ -763,7 +761,6 @@ export function useAppController({
 			renderAvatar: preferencesLoaded,
 			stats: daemonStats,
 			showHud,
-			runningSessionCount,
 			approvalSessionCount,
 		},
 		isListeningDim,

@@ -12,7 +12,7 @@ describe("provider capabilities", () => {
 		expect(getProviderCapabilities("openrouter").supportsImageToolOutput).toBe(true);
 		expect(getProviderCapabilities("openai-codex").supportsSubagentTool).toBe(true);
 		expect(getProviderCapabilities("openai-codex").supportsImageToolOutput).toBe(true);
-		expect(getProviderCapabilities("copilot").supportsSubagentTool).toBe(false);
+		expect(getProviderCapabilities("copilot").supportsSubagentTool).toBe(true);
 		expect(getProviderCapabilities("copilot").supportsImageToolOutput).toBe(false);
 	});
 

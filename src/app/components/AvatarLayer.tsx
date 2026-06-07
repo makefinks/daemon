@@ -23,7 +23,6 @@ export interface AvatarLayerProps {
 	renderAvatar?: boolean;
 	stats?: DaemonStats | null;
 	showHud?: boolean;
-	runningSessionCount?: number;
 	approvalSessionCount?: number;
 }
 
@@ -43,7 +42,6 @@ function AvatarLayerImpl(props: AvatarLayerProps) {
 		renderAvatar = true,
 		stats = null,
 		showHud = false,
-		runningSessionCount = 0,
 		approvalSessionCount = 0,
 	} = props;
 
@@ -95,16 +93,17 @@ function AvatarLayerImpl(props: AvatarLayerProps) {
 		}
 	}, [avatarRef, startupAnimationActive]);
 
-	// Avatar pulse trigger: zoom in briefly on TYPING/LISTENING transitions
+	// Avatar pulse trigger: zoom in briefly when entering TYPING or LISTENING mode
 	const prevAvatarStateRef = useRef(daemonState);
 	useEffect(() => {
 		const prev = prevAvatarStateRef.current;
 		prevAvatarStateRef.current = daemonState;
 		const ref = avatarRef.current;
 		if (!ref) return;
+		// Only trigger zoom on initial activation (entering TYPING/LISTENING), not on deactivation
 		if (
-			(daemonState === DaemonState.TYPING) !== (prev === DaemonState.TYPING) ||
-			(daemonState === DaemonState.LISTENING) !== (prev === DaemonState.LISTENING)
+			(daemonState === DaemonState.TYPING && prev !== DaemonState.TYPING) ||
+			(daemonState === DaemonState.LISTENING && prev !== DaemonState.LISTENING)
 		) {
 			ref.triggerPulse();
 		}
@@ -121,7 +120,6 @@ function AvatarLayerImpl(props: AvatarLayerProps) {
 				visible={renderAvatar && showHud}
 				staggeredReveal={startupAnimationActive}
 				daemonState={daemonState}
-				runningSessionCount={runningSessionCount}
 				approvalSessionCount={approvalSessionCount}
 			/>
 			{showBanner && (

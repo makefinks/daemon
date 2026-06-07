@@ -54,59 +54,56 @@ export function App() {
 				backgroundColor={COLORS.BACKGROUND}
 				onMouseUp={controller.handleCopyOnSelectMouseUp}
 			>
-				<>
-					<Toaster
-						position="top-right"
-						stackingMode="stack"
-						visibleToasts={2}
-						maxWidth={60}
-						toastOptions={TOAST_OPTIONS}
-					/>
+				<Toaster
+					position="top-right"
+					stackingMode="stack"
+					visibleToasts={2}
+					maxWidth={60}
+					toastOptions={TOAST_OPTIONS}
+				/>
 
-					<AvatarLayer
-						avatarRef={controller.avatarLayerProps.avatarRef}
-						daemonState={controller.avatarLayerProps.daemonState}
-						applyAvatarForState={controller.avatarLayerProps.applyAvatarForState}
-						width={controller.avatarLayerProps.width}
-						height={controller.avatarLayerProps.height}
-						terminalWidth={controller.avatarLayerProps.terminalWidth}
-						terminalHeight={controller.avatarLayerProps.terminalHeight}
-						zIndex={controller.avatarLayerProps.zIndex}
-						showBanner={controller.avatarLayerProps.showBanner}
-						animateBanner={controller.avatarLayerProps.animateBanner}
-						startupAnimationActive={controller.avatarLayerProps.startupAnimationActive}
-						renderAvatar={controller.avatarLayerProps.renderAvatar}
-						stats={controller.avatarLayerProps.stats}
-						showHud={controller.avatarLayerProps.showHud}
-						runningSessionCount={controller.avatarLayerProps.runningSessionCount}
-						approvalSessionCount={controller.avatarLayerProps.approvalSessionCount}
-					/>
+				<AvatarLayer
+					avatarRef={controller.avatarLayerProps.avatarRef}
+					daemonState={controller.avatarLayerProps.daemonState}
+					applyAvatarForState={controller.avatarLayerProps.applyAvatarForState}
+					width={controller.avatarLayerProps.width}
+					height={controller.avatarLayerProps.height}
+					terminalWidth={controller.avatarLayerProps.terminalWidth}
+					terminalHeight={controller.avatarLayerProps.terminalHeight}
+					zIndex={controller.avatarLayerProps.zIndex}
+					showBanner={controller.avatarLayerProps.showBanner}
+					animateBanner={controller.avatarLayerProps.animateBanner}
+					startupAnimationActive={controller.avatarLayerProps.startupAnimationActive}
+					renderAvatar={controller.avatarLayerProps.renderAvatar}
+					stats={controller.avatarLayerProps.stats}
+					showHud={controller.avatarLayerProps.showHud}
+					approvalSessionCount={controller.avatarLayerProps.approvalSessionCount}
+				/>
 
-					{controller.isListeningDim ? (
-						<box
-							position="absolute"
-							top={controller.listeningDimTop}
-							left={0}
-							width="100%"
-							height="100%"
-							backgroundColor={COLORS.LISTENING_DIM}
-							zIndex={1}
-						/>
-					) : null}
-
+				{controller.isListeningDim ? (
 					<box
-						flexDirection="column"
+						position="absolute"
+						top={controller.listeningDimTop}
+						left={0}
 						width="100%"
 						height="100%"
-						zIndex={controller.conversationContainerZIndex}
-					>
-						<ConversationPane {...controller.conversationPaneProps} />
-					</box>
+						backgroundColor={COLORS.LISTENING_DIM}
+						zIndex={1}
+					/>
+				) : null}
 
-					<AppProvider value={controller.appContextValue}>
-						<AppOverlays {...controller.overlaysProps} />
-					</AppProvider>
-				</>
+				<box
+					flexDirection="column"
+					width="100%"
+					height="100%"
+					zIndex={controller.conversationContainerZIndex}
+				>
+					<ConversationPane {...controller.conversationPaneProps} />
+				</box>
+
+				<AppProvider value={controller.appContextValue}>
+					<AppOverlays {...controller.overlaysProps} />
+				</AppProvider>
 			</box>
 		</ToolApprovalProvider>
 	);

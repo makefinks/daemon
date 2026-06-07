@@ -62,7 +62,7 @@ function parseFetchUrlsXml(result: string): {
 		const lineOffset = attrs.lineOffset !== undefined ? Number(attrs.lineOffset) : undefined;
 		const lineLimit = attrs.lineLimit !== undefined ? Number(attrs.lineLimit) : undefined;
 		const totalLines = attrs.totalLines !== undefined ? Number(attrs.totalLines) : undefined;
-		let remainingLines: number | null | undefined = undefined;
+		let remainingLines: number | null | undefined;
 		if (attrs.remainingLines === "unknown") remainingLines = null;
 		else if (attrs.remainingLines !== undefined) remainingLines = Number(attrs.remainingLines);
 		const error = attrs.error;

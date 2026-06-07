@@ -32,7 +32,6 @@ export interface UseDaemonEventsParams {
 	sessionId: string | null;
 	sessionIdRef: React.RefObject<string | null>;
 	ensureSessionId: () => Promise<string>;
-	addToHistory: (input: string) => void;
 	onFirstMessage?: (sessionId: string, message: string) => Promise<string | null>;
 }
 

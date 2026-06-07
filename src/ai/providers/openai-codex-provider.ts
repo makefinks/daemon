@@ -15,6 +15,10 @@ import { buildDaemonSystemPrompt } from "../system-prompt";
 import { coordinateToolApprovals } from "../tool-approval-coordinator";
 import { getCachedToolAvailability, getDaemonTools } from "../tools/index";
 import { createToolAvailabilitySnapshot, resolveToolAvailability } from "../tools/tool-registry";
+import {
+	createBackgroundNotificationInjector,
+	type BackgroundNotificationInjector,
+} from "./background-notification-injection";
 import { getProviderCapabilities } from "./capabilities";
 import type { LlmProviderAdapter, ProviderStreamRequest, ProviderStreamResult } from "./types";
 import { buildUserModelMessage } from "./user-content";
@@ -59,7 +63,8 @@ function buildProviderOptions(
 async function createDaemonAgent(
 	interactionMode: ProviderStreamRequest["interactionMode"] = "text",
 	reasoningEffort?: ReasoningEffort,
-	memoryInjection?: string
+	memoryInjection?: string,
+	getNotificationInjector?: () => BackgroundNotificationInjector | null
 ) {
 	const { sessionId } = getRuntimeContext();
 	const tools = await getDaemonTools();
@@ -84,7 +89,9 @@ async function createDaemonAgent(
 		providerOptions: buildProviderOptions(reasoningEffort, sessionId ?? undefined),
 		stopWhen: stepCountIs(MAX_AGENT_STEPS),
 		prepareStep: async ({ messages }) => ({
-			messages: sanitizeMessagesForInput(messages),
+			messages: sanitizeMessagesForInput(
+				getNotificationInjector?.()?.prepareStepMessages(messages) ?? messages
+			),
 		}),
 	});
 }
@@ -107,7 +114,14 @@ async function streamOpenAiCodexResponse(
 	const messages: ModelMessage[] = [...conversationHistory];
 	messages.push(buildUserModelMessage(userMessage, imageAttachments));
 
-	const agent = await createDaemonAgent(interactionMode, reasoningEffort, memoryInjection);
+	const { sessionId } = getRuntimeContext();
+	let activeNotificationInjector: BackgroundNotificationInjector | null = null;
+	const agent = await createDaemonAgent(
+		interactionMode,
+		reasoningEffort,
+		memoryInjection,
+		() => activeNotificationInjector
+	);
 
 	let currentMessages = messages;
 	let fullText = "";
@@ -115,6 +129,8 @@ async function streamOpenAiCodexResponse(
 	let allResponseMessages: ModelMessage[] = [];
 
 	while (true) {
+		const notificationInjector = createBackgroundNotificationInjector(sessionId ?? null, callbacks);
+		activeNotificationInjector = notificationInjector;
 		const stream = await agent.stream({
 			messages: currentMessages,
 		});
@@ -185,7 +201,9 @@ async function streamOpenAiCodexResponse(
 		}
 
 		const rawResponseMessages = await stream.response.then((response) => response.messages);
-		const responseMessages = sanitizeMessagesForInput(rawResponseMessages);
+		const responseMessages = notificationInjector.applyToResponseMessages(
+			sanitizeMessagesForInput(rawResponseMessages)
+		);
 		allResponseMessages = [...allResponseMessages, ...responseMessages];
 		currentMessages = [...currentMessages, ...responseMessages];
 

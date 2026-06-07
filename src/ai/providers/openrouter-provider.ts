@@ -17,6 +17,10 @@ import { coordinateToolApprovals } from "../tool-approval-coordinator";
 import { getCachedToolAvailability, getDaemonTools } from "../tools/index";
 import { createToolAvailabilitySnapshot, resolveToolAvailability } from "../tools/tool-registry";
 import { getModelMetadataForProvider } from "../../utils/model-metadata";
+import {
+	createBackgroundNotificationInjector,
+	type BackgroundNotificationInjector,
+} from "./background-notification-injection";
 import { getProviderCapabilities } from "./capabilities";
 import type { LlmProviderAdapter, ProviderStreamRequest, ProviderStreamResult } from "./types";
 import { buildUserModelMessage } from "./user-content";
@@ -54,7 +58,8 @@ function summarizeValue(value: unknown): Record<string, unknown> {
 async function createDaemonAgent(
 	interactionMode: ProviderStreamRequest["interactionMode"] = "text",
 	reasoningEffort?: ReasoningEffort,
-	memoryInjection?: string
+	memoryInjection?: string,
+	getNotificationInjector?: () => BackgroundNotificationInjector | null
 ) {
 	const openRouterReasoningEffort = reasoningEffort === "xhigh" ? "high" : reasoningEffort;
 	const modelConfig = buildOpenRouterChatSettings(
@@ -86,9 +91,12 @@ async function createDaemonAgent(
 		tools,
 		stopWhen: stepCountIs(MAX_AGENT_STEPS),
 		prepareStep: async ({ messages }) => ({
-			messages: prepareOpenRouterMultimodalToolResults(sanitizeMessagesForInput(messages), {
-				supportsVision,
-			}),
+			messages: prepareOpenRouterMultimodalToolResults(
+				sanitizeMessagesForInput(getNotificationInjector?.()?.prepareStepMessages(messages) ?? messages),
+				{
+					supportsVision,
+				}
+			),
 		}),
 	});
 }
@@ -110,7 +118,14 @@ async function streamOpenRouterResponse(
 	const messages: ModelMessage[] = [...conversationHistory];
 	messages.push(buildUserModelMessage(userMessage, imageAttachments));
 
-	const agent = await createDaemonAgent(interactionMode, reasoningEffort, memoryInjection);
+	const { sessionId } = getRuntimeContext();
+	let activeNotificationInjector: BackgroundNotificationInjector | null = null;
+	const agent = await createDaemonAgent(
+		interactionMode,
+		reasoningEffort,
+		memoryInjection,
+		() => activeNotificationInjector
+	);
 
 	const streamRunId = ++streamRunCounter;
 	let currentMessages = messages;
@@ -132,6 +147,8 @@ async function streamOpenRouterResponse(
 
 	while (true) {
 		stepIndex += 1;
+		const notificationInjector = createBackgroundNotificationInjector(sessionId ?? null, callbacks);
+		activeNotificationInjector = notificationInjector;
 		const stream = await agent.stream({
 			messages: currentMessages,
 		});
@@ -255,7 +272,9 @@ async function streamOpenRouterResponse(
 			callbacks.onError?.(err);
 			return null;
 		}
-		const responseMessages = sanitizeMessagesForInput(rawResponseMessages);
+		const responseMessages = notificationInjector.applyToResponseMessages(
+			sanitizeMessagesForInput(rawResponseMessages)
+		);
 		allResponseMessages = [...allResponseMessages, ...responseMessages];
 		currentMessages = [...currentMessages, ...responseMessages];
 		debug.info("agent-stream-step-complete", {

@@ -1,4 +1,5 @@
 import "./bash";
+import "./background-jobs";
 import "./web-search";
 import "./url-tools";
 import "./read-file";

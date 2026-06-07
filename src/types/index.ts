@@ -97,6 +97,14 @@ export interface ToolCall {
 export type ContentBlock =
 	| { type: "reasoning"; content: string; durationMs?: number }
 	| { type: "tool"; call: ToolCall; result?: unknown }
+	| {
+			type: "backgroundNotification";
+			title: string;
+			content: string;
+			preview?: string;
+			jobId?: string;
+			state?: string;
+	  }
 	| { type: "text"; content: string };
 
 /**
@@ -111,6 +119,7 @@ export interface ConversationMessage {
 	messages: ModelMessage[];
 	contentBlocks?: ContentBlock[];
 	pending?: boolean;
+	hidden?: boolean;
 }
 
 export interface PromptImageAttachment {
@@ -137,6 +146,7 @@ export interface SessionInfo {
 	createdAt: string;
 	updatedAt: string;
 	totalTokens?: number;
+	cost?: number;
 }
 
 /**
@@ -184,10 +194,11 @@ export interface StreamCallbacks {
 	) => void;
 	onSubagentToolCall?: (toolCallId: string, toolName: string, input?: unknown) => void;
 	onSubagentUsage?: (usage: TokenUsage) => void;
-	onSubagentToolResult?: (toolCallId: string, toolName: string, success: boolean) => void;
+	onSubagentToolResult?: (toolCallId: string, toolName: string, success: boolean, result?: unknown) => void;
 	onSubagentComplete?: (toolCallId: string, success: boolean) => void;
 	onStepUsage?: (usage: TokenUsage) => void;
 	onMemorySaved?: (preview: MemoryToastPreview) => void;
+	onBackgroundNotification?: (job: BackgroundJobSnapshot) => void;
 	onComplete?: (
 		fullText: string,
 		responseMessages: ModelMessage[],
@@ -304,6 +315,7 @@ export type ToolToggleId =
 	| "writeFile"
 	| "editFile"
 	| "runBash"
+	| "backgroundJobs"
 	| "loadSkill"
 	| "loadSkillResource"
 	| "webSearch"
@@ -323,6 +335,7 @@ export const DEFAULT_TOOL_TOGGLES: ToolToggles = {
 	writeFile: true,
 	editFile: true,
 	runBash: true,
+	backgroundJobs: true,
 	loadSkill: true,
 	loadSkillResource: true,
 	webSearch: true,
@@ -462,8 +475,30 @@ export interface SubagentProgressEmitter {
 		cachedInputTokens?: number;
 		cost?: number;
 	}) => void;
-	onSubagentToolResult: (toolCallId: string, toolName: string, success: boolean) => void;
+	onSubagentToolResult: (toolCallId: string, toolName: string, success: boolean, result?: unknown) => void;
 	onSubagentComplete: (toolCallId: string, success: boolean) => void;
+}
+
+export type BackgroundJobType = "bash" | "subagent";
+export type BackgroundJobState = "running" | "completed" | "failed" | "cancelled";
+
+export interface BackgroundJobSnapshot {
+	id: string;
+	type: BackgroundJobType;
+	state: BackgroundJobState;
+	sessionId: string | null;
+	description: string;
+	command?: string;
+	workdir?: string;
+	task?: string;
+	toolCallId?: string;
+	startedAt: number;
+	completedAt?: number;
+	exitCode?: number | null;
+	stdout?: string;
+	stderr?: string;
+	response?: string;
+	error?: string;
 }
 
 /**

@@ -80,6 +80,7 @@ Example write with status:
 					return {
 						success: true,
 						todos: formatTodoList(currentTodos),
+						todoItems: currentTodos,
 					};
 				}
 				currentTodos = newTodos.map((t) => ({
@@ -91,6 +92,7 @@ Example write with status:
 				return {
 					success: true,
 					todos: formatTodoList(currentTodos),
+					todoItems: currentTodos,
 				};
 			}
 
@@ -117,6 +119,7 @@ Example write with status:
 				return {
 					success: true,
 					todos: formatTodoList(currentTodos),
+					todoItems: currentTodos,
 				};
 			}
 
@@ -124,6 +127,7 @@ Example write with status:
 				return {
 					success: true,
 					todos: formatTodoList(currentTodos),
+					todoItems: currentTodos,
 				};
 			}
 

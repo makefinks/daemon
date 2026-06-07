@@ -94,6 +94,49 @@ export function ContentBlockView({
 		);
 	}
 
+	if (block.type === "backgroundNotification") {
+		const notificationColor =
+			block.state === "completed"
+				? COLORS.STATUS_COMPLETED
+				: block.state === "failed" || block.state === "cancelled"
+					? COLORS.STATUS_FAILED
+					: COLORS.TOOLS;
+		return (
+			<box
+				flexDirection="column"
+				borderStyle="single"
+				borderColor={COLORS.TOOL_INPUT_BORDER}
+				backgroundColor={COLORS.TOOL_INPUT_BG}
+				paddingLeft={1}
+				paddingRight={1}
+				width="100%"
+			>
+				<text>
+					<span fg={notificationColor}>{"↯ BACKGROUND"}</span>
+					<span fg={COLORS.TOOL_INPUT_TEXT}>{` ${block.title}`}</span>
+				</text>
+				<text>
+					<span fg={COLORS.REASONING_DIM}>{block.content}</span>
+				</text>
+				{block.preview && (
+					<box flexDirection="column" marginTop={1} paddingLeft={2}>
+						{block.preview
+							.split("\n")
+							.filter((line) => line.trim().length > 0)
+							.slice(0, 6)
+							.map((line, index) => (
+								<text key={index}>
+									<span
+										fg={COLORS.REASONING_DIM}
+									>{`› ${line.length > 160 ? `${line.slice(0, 159)}…` : line}`}</span>
+								</text>
+							))}
+					</box>
+				)}
+			</box>
+		);
+	}
+
 	if (block.type === "text") {
 		return (
 			<box flexDirection="column">

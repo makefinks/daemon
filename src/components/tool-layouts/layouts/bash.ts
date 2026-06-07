@@ -10,6 +10,7 @@ function isRecord(value: unknown): value is UnknownRecord {
 interface BashInput {
 	command: string;
 	description: string;
+	runInBackground?: boolean;
 }
 
 function extractBashInput(input: unknown): BashInput | null {
@@ -17,7 +18,12 @@ function extractBashInput(input: unknown): BashInput | null {
 	if (!("command" in input) || typeof input.command !== "string") return null;
 	const description =
 		"description" in input && typeof input.description === "string" ? input.description : "";
-	return { command: input.command, description };
+	const runInBackground = input.run_in_background === true;
+	return { command: input.command, description, runInBackground };
+}
+
+function isBackgroundResult(result: unknown): boolean {
+	return isRecord(result) && result.background === true && typeof result.jobId === "string";
 }
 
 function pickFirstNonEmpty(...parts: Array<string | undefined | null>): string {
@@ -69,11 +75,14 @@ function formatBashResult(result: unknown): string[] | null {
 export const bashLayout: ToolLayoutConfig = {
 	abbreviation: "bash",
 
-	getHeader: (input): ToolHeader | null => {
+	getHeader: (input, result): ToolHeader | null => {
 		const bashInput = extractBashInput(input);
 		if (!bashInput) return null;
 		return {
-			secondary: bashInput.description,
+			secondary:
+				bashInput.runInBackground || isBackgroundResult(result)
+					? `${bashInput.description} · background task`
+					: bashInput.description,
 			secondaryStyle: "italic",
 		};
 	},

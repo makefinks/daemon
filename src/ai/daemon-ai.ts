@@ -107,8 +107,8 @@ export async function generateResponse(
 		onSubagentUsage: (usage: TokenUsage) => {
 			callbacks.onSubagentUsage?.(usage);
 		},
-		onSubagentToolResult: (toolCallId: string, toolName: string, success: boolean) => {
-			callbacks.onSubagentToolResult?.(toolCallId, toolName, success);
+		onSubagentToolResult: (toolCallId: string, toolName: string, success: boolean, result?: unknown) => {
+			callbacks.onSubagentToolResult?.(toolCallId, toolName, success, result);
 		},
 		onSubagentComplete: (toolCallId: string, success: boolean) => {
 			callbacks.onSubagentComplete?.(toolCallId, success);

@@ -6,10 +6,20 @@ import path from "node:path";
 
 const args = process.argv.slice(2);
 const bunCmd = process.platform === "win32" ? "bun.exe" : "bun";
+const headlessPrompt = args.length > 0 && !args[0]?.startsWith("-") ? args.join(" ") : null;
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const entry = path.join(packageRoot, "src", "index.tsx");
-const child = spawn(bunCmd, [entry, ...args], { stdio: "inherit" });
+const child = spawn(bunCmd, headlessPrompt ? [entry] : [entry, ...args], {
+	stdio: "inherit",
+	env: headlessPrompt
+		? {
+				...process.env,
+				DAEMON_HEADLESS: "1",
+				DAEMON_PROMPT: headlessPrompt,
+			}
+		: process.env,
+});
 
 child.once("error", (error) => {
 	if ((error as NodeJS.ErrnoException).code === "ENOENT") {

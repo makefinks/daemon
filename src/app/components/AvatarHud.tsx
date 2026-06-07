@@ -13,7 +13,6 @@ export interface AvatarHudProps {
 	visible: boolean;
 	staggeredReveal?: boolean;
 	daemonState?: DaemonState;
-	runningSessionCount?: number;
 	approvalSessionCount?: number;
 }
 
@@ -118,7 +117,6 @@ function AvatarHudImpl(props: AvatarHudProps) {
 		visible,
 		staggeredReveal = false,
 		daemonState,
-		runningSessionCount = 0,
 		approvalSessionCount = 0,
 	} = props;
 	const [elapsedMs, setElapsedMs] = useState(() => (staggeredReveal ? 0 : Number.POSITIVE_INFINITY));
@@ -128,7 +126,7 @@ function AvatarHudImpl(props: AvatarHudProps) {
 	const [pulseElapsed, setPulseElapsed] = useState(Number.POSITIVE_INFINITY);
 	const prevDaemonStateRef = useRef(daemonState);
 
-	// Pulse trigger: watch for transitions to/from TYPING or LISTENING states
+	// Pulse trigger: only when entering TYPING or LISTENING mode (initial activation)
 	useEffect(() => {
 		const prevDS = prevDaemonStateRef.current;
 		prevDaemonStateRef.current = daemonState;
@@ -136,8 +134,8 @@ function AvatarHudImpl(props: AvatarHudProps) {
 		if (!visible) return;
 
 		if (
-			(daemonState === DaemonState.TYPING) !== (prevDS === DaemonState.TYPING) ||
-			(daemonState === DaemonState.LISTENING) !== (prevDS === DaemonState.LISTENING)
+			(daemonState === DaemonState.TYPING && prevDS !== DaemonState.TYPING) ||
+			(daemonState === DaemonState.LISTENING && prevDS !== DaemonState.LISTENING)
 		) {
 			startPulse();
 		}
@@ -194,9 +192,7 @@ function AvatarHudImpl(props: AvatarHudProps) {
 	const sessions =
 		approvalSessionCount > 0
 			? `${formatNumber(stats.totalSessions)} !${approvalSessionCount}`
-			: runningSessionCount > 0
-				? `${formatNumber(stats.totalSessions)} +${runningSessionCount}`
-				: formatNumber(stats.totalSessions);
+			: formatNumber(stats.totalSessions);
 	const memories = formatNumber(stats.totalMemories);
 	const artifacts = formatNumber(stats.totalArtifacts);
 	const centerX = Math.floor(width / 2);
