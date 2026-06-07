@@ -18,6 +18,7 @@ export interface BackgroundJobNotification {
 
 interface BackgroundJobEvents {
 	completed: (job: BackgroundJobSnapshot) => void;
+	statusChanged: () => void;
 }
 
 class TypedBackgroundJobEvents extends EventEmitter {
@@ -127,6 +128,7 @@ export class BackgroundJobManager {
 			abortController,
 		};
 		this.jobs.set(key, job);
+		this.events.emit("statusChanged");
 
 		const proc = spawn("bash", ["-c", params.command], {
 			cwd,
@@ -201,6 +203,7 @@ export class BackgroundJobManager {
 			abortController,
 		};
 		this.jobs.set(key, job);
+		this.events.emit("statusChanged");
 
 		void params
 			.run(abortController.signal)
@@ -259,6 +262,7 @@ export class BackgroundJobManager {
 		this.jobs.clear();
 		this.queuedNotifications.clear();
 		this.notificationHandler = null;
+		this.events.emit("statusChanged");
 	}
 
 	private completeJob(
@@ -273,6 +277,7 @@ export class BackgroundJobManager {
 		Object.assign(job, updates);
 		const snapshot = cloneJob(job);
 		this.events.emit("completed", snapshot);
+		this.events.emit("statusChanged");
 		if (snapshot.sessionId && this.notificationHandler) {
 			this.notificationHandler(snapshot.sessionId, snapshot, buildCompletionNotification(snapshot));
 		}

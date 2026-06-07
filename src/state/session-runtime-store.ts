@@ -17,6 +17,7 @@ import type {
 } from "../types";
 import { DaemonState } from "../types";
 import { hasVisibleText } from "../utils/formatters";
+import { backgroundJobManager } from "./background-job-manager";
 import { buildModelHistoryFromConversation, saveSessionSnapshot } from "./session-store";
 
 const DEFAULT_SESSION_USAGE: TokenUsage = {
@@ -78,6 +79,7 @@ export interface SessionRuntimeStatus {
 	state: DaemonState;
 	isRunning: boolean;
 	isAwaitingApproval: boolean;
+	hasRunningBackgroundJobs: boolean;
 	pendingApprovalCount: number;
 	startedAt: number | null;
 	updatedAt: number;
@@ -285,6 +287,12 @@ export class SessionRuntimeStore {
 	readonly events = new TypedRuntimeEvents();
 	private runtimes = new Map<string, SessionRuntimeInternal>();
 
+	constructor() {
+		backgroundJobManager.events.on("statusChanged", () => {
+			this.events.emit("statusChanged");
+		});
+	}
+
 	ensure(sessionId: string): SessionRuntimeInternal {
 		let runtime = this.runtimes.get(sessionId);
 		if (!runtime) {
@@ -306,6 +314,9 @@ export class SessionRuntimeStore {
 			state: runtime.state,
 			isRunning: runtime.state === DaemonState.RESPONDING,
 			isAwaitingApproval: runtime.pendingApprovalCount > 0,
+			hasRunningBackgroundJobs: backgroundJobManager
+				.listJobs(runtime.sessionId)
+				.some((j) => j.state === "running"),
 			pendingApprovalCount: runtime.pendingApprovalCount,
 			startedAt: runtime.startedAt,
 			updatedAt: runtime.updatedAt,
@@ -778,9 +789,10 @@ export class SessionRuntimeStore {
 		runtime.updatedAt = Date.now();
 		void this.persist(runtime);
 		this.notify(sessionId);
-		if (!isSessionViewVisible || visibleSessionId !== sessionId) {
+		const hasBgJobs = backgroundJobManager.listJobs(sessionId).some((j) => j.state === "running");
+		if (!hasBgJobs && (!isSessionViewVisible || visibleSessionId !== sessionId)) {
 			const title = sessionTitle?.trim();
-			toast.success("Background session complete", {
+			toast.success("Session completed", {
 				description: title ? title : sessionId,
 			});
 		}
