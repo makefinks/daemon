@@ -11,7 +11,7 @@ interface MemoryMenuProps {
 	onClose: () => void;
 }
 
-const MEMORY_ITEM_HEIGHT = 2;
+const MEMORY_ITEM_HEIGHT = 4;
 const MAX_SCROLLBOX_HEIGHT = 16;
 
 function formatTimestamp(value: string | undefined): string {
@@ -179,9 +179,9 @@ export function MemoryMenu({ onClose }: MemoryMenuProps) {
 				paddingRight={2}
 				paddingTop={1}
 				paddingBottom={1}
-				width="80%"
+				width="64%"
 				minWidth={60}
-				maxWidth={140}
+				maxWidth={120}
 			>
 				<box marginBottom={1}>
 					<text>
@@ -310,17 +310,22 @@ export function MemoryMenu({ onClose }: MemoryMenuProps) {
 										paddingRight={1}
 										flexDirection="column"
 										width="100%"
+										marginBottom={1}
 									>
-										<box>
-											<text>
-												<span fg={labelColor}>
-													{isSelected ? "▶ " : "  "}
-													{truncateText(memory.memory, 80)}
-												</span>
-												{scoreText && <span fg={COLORS.STATUS_COMPLETED}>{scoreText}</span>}
-											</text>
+										<box flexDirection="row">
+											<box width={2}>
+												<text>
+													<span fg={labelColor}>{isSelected ? "▶ " : "  "}</span>
+												</text>
+											</box>
+											<box flexGrow={1}>
+												<text>
+													<span fg={labelColor}>{truncateText(memory.memory, 200)}</span>
+													{scoreText && <span fg={COLORS.STATUS_COMPLETED}>{scoreText}</span>}
+												</text>
+											</box>
 										</box>
-										<box marginLeft={4}>
+										<box marginLeft={3}>
 											<text>
 												<span fg={detailColor}>
 													{dateText}
