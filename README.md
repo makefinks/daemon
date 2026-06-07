@@ -12,10 +12,10 @@ but can also interact with and **control** your system through the terminal with
 ## Installation
 
 ```bash
-npm i -g @makefinks/daemon
+npm i -g @makefinks/daemon --loglevel=error
 
 # Additional installs (Audio)
-brew install sox 
+brew install sox
 ```
 
 Then run with:
@@ -96,16 +96,11 @@ DAEMON can persist user-specific facts across sessions using [mem0](https://gith
 
 ## 📦 Install (npm)
 
-DAEMON is published as a CLI package. It **requires Bun** at runtime, even if you install via npm.
+DAEMON is published as a CLI package.
 
-To install bun on macOs/Linux
-```bash
-curl -fsSL https://bun.com/install | bash
-```
-Then install DAEMON:
 ```bash
 # Global npm install
-npm i -g @makefinks/daemon
+npm i -g @makefinks/daemon --loglevel=error
 
 # Then run
 daemon
