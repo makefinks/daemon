@@ -12,7 +12,7 @@ const PROVIDER_CAPABILITIES: Record<LlmProvider, ProviderCapabilities> = {
 		supportsImageToolOutput: true,
 	},
 	copilot: {
-		supportsSubagentTool: false,
+		supportsSubagentTool: true,
 		supportsImageToolOutput: false,
 	},
 };

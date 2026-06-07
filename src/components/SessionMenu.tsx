@@ -4,6 +4,7 @@ import { useKeyboard } from "@opentui/react";
 import type { SessionInfo } from "../types";
 import type { SessionRuntimeStatus } from "../state/session-runtime-store";
 import { useMenuKeyboard } from "../hooks/use-menu-keyboard";
+import { formatCost } from "../utils/model-metadata";
 import { COLORS } from "../ui/constants";
 
 export interface SessionMenuItem extends SessionInfo {
@@ -114,10 +115,11 @@ export function SessionMenu({ items, currentSessionId, onClose, onSelect, onDele
 	});
 
 	const scrollRef = useRef<ScrollBoxRenderable | null>(null);
-	const nameColumnWidth = "38%";
-	const statusColumnWidth = "31%";
+	const nameColumnWidth = "42%";
+	const statusColumnWidth = "12%";
+	const costColumnWidth = "12%";
 	const tokensColumnWidth = "12%";
-	const updatedColumnWidth = "19%";
+	const updatedColumnWidth = "22%";
 	const scrollboxHeight = Math.min(
 		MAX_SCROLLBOX_HEIGHT,
 		Math.max(SESSION_ITEM_HEIGHT, filteredItems.length * SESSION_ITEM_HEIGHT)
@@ -263,6 +265,11 @@ export function SessionMenu({ items, currentSessionId, onClose, onSelect, onDele
 								<span fg={COLORS.USER_LABEL}>TOKENS</span>
 							</text>
 						</box>
+						<box width={costColumnWidth} justifyContent="flex-end">
+							<text>
+								<span fg={COLORS.USER_LABEL}>COST</span>
+							</text>
+						</box>
 						<box width={updatedColumnWidth} justifyContent="flex-end">
 							<text>
 								<span fg={COLORS.USER_LABEL}>UPDATED AT</span>
@@ -323,6 +330,7 @@ export function SessionMenu({ items, currentSessionId, onClose, onSelect, onDele
 								const detailColor = COLORS.REASONING_DIM;
 								const detail = item.isNew ? "Start fresh" : `Updated ${formatTimestamp(item.updatedAt)}`;
 								const tokenCount = runtimeStatus?.totalTokens ?? item.totalTokens;
+								const costValue = runtimeStatus?.cost ?? item.cost;
 
 								return (
 									<box
@@ -364,6 +372,11 @@ export function SessionMenu({ items, currentSessionId, onClose, onSelect, onDele
 										<box width={tokensColumnWidth} justifyContent="flex-end">
 											<text>
 												<span fg={detailColor}>{formatTokenCount(tokenCount)}</span>
+											</text>
+										</box>
+										<box width={costColumnWidth} justifyContent="flex-end">
+											<text>
+												<span fg={detailColor}>{costValue != null ? formatCost(costValue) : "—"}</span>
 											</text>
 										</box>
 										<box width={updatedColumnWidth} justifyContent="flex-end">

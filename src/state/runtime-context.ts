@@ -5,21 +5,14 @@ interface RuntimeContext {
 	messageId: number;
 }
 
-const storage = new AsyncLocalStorage<RuntimeContext>();
+const store = new AsyncLocalStorage<RuntimeContext>();
+
+const EMPTY_CONTEXT: RuntimeContext = { sessionId: null, messageId: 0 };
 
 export function runWithRuntimeContext<T>(runtimeContext: RuntimeContext, fn: () => T): T {
-	return storage.run(runtimeContext, fn);
-}
-
-export function setRuntimeContext(sessionId: string | null, messageId: number): void {
-	void sessionId;
-	void messageId;
+	return store.run({ ...runtimeContext }, fn);
 }
 
 export function getRuntimeContext(): RuntimeContext {
-	const scoped = storage.getStore();
-	if (scoped) return { ...scoped };
-	return { sessionId: null, messageId: 0 };
+	return store.getStore() ?? EMPTY_CONTEXT;
 }
-
-export function clearRuntimeContext(): void {}

@@ -46,12 +46,12 @@ describe("tool registry", () => {
 		expect("groundingManager" in tools).toBe(false);
 	});
 
-	it("disables subagent when provider capabilities do not support it", async () => {
+	it("enables subagent for copilot", async () => {
 		setModelProvider("copilot");
 		const availability = await resolveToolAvailability({ ...DEFAULT_TOOL_TOGGLES });
 
-		expect(availability.subagent.envAvailable).toBe(false);
-		expect(availability.subagent.disabledReason).toBeDefined();
+		expect(availability.subagent.envAvailable).toBe(true);
+		expect(availability.subagent.disabledReason).toBeUndefined();
 	});
 
 	it("disables readImage when provider capabilities do not support image tool output", async () => {

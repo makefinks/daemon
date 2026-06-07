@@ -1,5 +1,6 @@
 import { generateResponse } from "./daemon-ai";
 import type {
+	BackgroundJobSnapshot,
 	InteractionMode,
 	ModelMessage,
 	PromptImageAttachment,
@@ -84,9 +85,9 @@ export class AgentTurnRunner {
 				if (!isActive()) return;
 				callbacks.onSubagentUsage?.(usage);
 			},
-			onSubagentToolResult: (toolCallId, toolName, success) => {
+			onSubagentToolResult: (toolCallId, toolName, success, resultValue) => {
 				if (!isActive()) return;
-				callbacks.onSubagentToolResult?.(toolCallId, toolName, success);
+				callbacks.onSubagentToolResult?.(toolCallId, toolName, success, resultValue);
 			},
 			onSubagentComplete: (toolCallId, success) => {
 				if (!isActive()) return;
@@ -103,6 +104,10 @@ export class AgentTurnRunner {
 			onMemorySaved: (preview) => {
 				if (!isCurrent()) return;
 				callbacks.onMemorySaved?.(preview);
+			},
+			onBackgroundNotification: (job) => {
+				if (!isActive()) return;
+				callbacks.onBackgroundNotification?.(job);
 			},
 			onComplete: (fullText, responseMessages, usage, finalText) => {
 				if (!isActive()) return;

@@ -5,8 +5,11 @@
 
 import { AgentTurnRunner } from "../ai/agent-turn-runner";
 import { transcribeAudio } from "../ai/daemon-ai";
+import { backgroundJobManager } from "./background-job-manager";
 import type {
 	BashApprovalLevel,
+	BackgroundJobSnapshot,
+	ContentBlock,
 	InteractionMode,
 	McpServerToggles,
 	ModelMessage,
@@ -27,13 +30,25 @@ import { ModelHistoryStore } from "./model-history-store";
 import { runWithRuntimeContext } from "./runtime-context";
 import { sessionRuntimeStore } from "./session-runtime-store";
 
+function buildBackgroundNotificationBlock(job: BackgroundJobSnapshot): ContentBlock {
+	const label = [job.type, `#${job.id}`, job.state].filter(Boolean).join(" ");
+	const preview = job.type === "bash" ? job.stdout?.trim() || job.stderr?.trim() : job.response?.trim();
+	return {
+		type: "backgroundNotification",
+		title: label || "job finished",
+		content: job.description || "A background job finished.",
+		preview,
+		jobId: job.id,
+		state: job.state,
+	};
+}
+
 /**
  * Daemon state manager - handles the full interaction flow
  */
 class DaemonStateManager {
 	private _state: DaemonState = DaemonState.IDLE;
 	private _transcription: string = "";
-	private _response: string = "";
 	private modelHistory = new ModelHistoryStore();
 	private ensureSessionIdFn: (() => Promise<string>) | null = null;
 	private getCurrentSessionIdFn: (() => string | null) | null = null;
@@ -60,6 +75,20 @@ class DaemonStateManager {
 	private speechRunId = 0;
 
 	constructor() {
+		backgroundJobManager.setNotificationHandler((sessionId, job, notification) => {
+			void this.injectBackgroundNotification(sessionId, job, notification);
+		});
+
+		backgroundJobManager.events.on("completed", (job: BackgroundJobSnapshot) => {
+			if (!job.sessionId || !job.toolCallId) return;
+			sessionRuntimeStore.backgroundToolComplete(
+				job.sessionId,
+				job.toolCallId,
+				job.state === "completed",
+				job
+			);
+		});
+
 		this.voiceInput.on("micLevel", (level: number) => {
 			if (this._state !== DaemonState.LISTENING) return;
 			this.emitEvent("micLevel", level);
@@ -88,10 +117,6 @@ class DaemonStateManager {
 
 	get transcription(): string {
 		return this._transcription;
-	}
-
-	get response(): string {
-		return this._response;
 	}
 
 	get conversationHistory(): ModelMessage[] {
@@ -273,7 +298,6 @@ class DaemonStateManager {
 		}
 
 		this._transcription = "";
-		this._response = "";
 		this.setState(DaemonState.LISTENING);
 		this.voiceInput.start();
 	}
@@ -359,10 +383,14 @@ class DaemonStateManager {
 	private async generateResponseFromText(
 		sessionId: string,
 		text: string,
-		imageAttachments: PromptImageAttachment[] = []
+		imageAttachments: PromptImageAttachment[] = [],
+		options: { hiddenUserMessage?: boolean; notificationBlock?: ContentBlock } = {}
 	): Promise<void> {
 		const runtime = sessionRuntimeStore.ensure(sessionId);
-		const isFirstMessage = sessionRuntimeStore.beginUserMessage(sessionId, text, imageAttachments);
+		const isFirstMessage = sessionRuntimeStore.beginUserMessage(sessionId, text, imageAttachments, {
+			hidden: options.hiddenUserMessage,
+			notificationBlock: options.notificationBlock,
+		});
 		const titlePromise = isFirstMessage
 			? (this.onFirstMessageFn?.(sessionId, text) ?? Promise.resolve(null)).catch((error) => {
 					const err = error instanceof Error ? error : new Error(String(error));
@@ -383,7 +411,6 @@ class DaemonStateManager {
 		if (this.getCurrentSessionId() === sessionId) {
 			this.setState(DaemonState.RESPONDING);
 		}
-		this._response = "";
 		const turnId = ++this._turnId;
 		messageDebug.info("agent-turn-start", {
 			turnId,
@@ -430,16 +457,20 @@ class DaemonStateManager {
 						onSubagentToolCall: (toolCallId, toolName, input) =>
 							sessionRuntimeStore.subagentToolCall(sessionId, toolCallId, toolName, input),
 						onSubagentUsage: (usage) => sessionRuntimeStore.subagentUsage(sessionId, usage),
-						onSubagentToolResult: (toolCallId, toolName, success) =>
-							sessionRuntimeStore.subagentToolResult(sessionId, toolCallId, toolName, success),
+						onSubagentToolResult: (toolCallId, toolName, success, result) =>
+							sessionRuntimeStore.subagentToolResult(sessionId, toolCallId, toolName, success, result),
 						onSubagentComplete: (toolCallId, success) =>
 							sessionRuntimeStore.subagentComplete(sessionId, toolCallId, success),
 						onToken: (token) => {
-							this._response += token;
 							sessionRuntimeStore.appendToken(sessionId, token);
 						},
 						onStepUsage: (usage) => sessionRuntimeStore.stepUsage(sessionId, usage),
 						onMemorySaved: (preview) => this.emitEvent("memorySaved", preview),
+						onBackgroundNotification: (job) => {
+							if (!job.sessionId) return;
+							const block = buildBackgroundNotificationBlock(job);
+							sessionRuntimeStore.addNotificationBlock(job.sessionId, block);
+						},
 					}
 				)
 			);
@@ -476,25 +507,63 @@ class DaemonStateManager {
 			} else {
 				if (this.getCurrentSessionId() === sessionId) this.setState(DaemonState.IDLE);
 			}
+
+			setImmediate(() => {
+				void this.flushQueuedBackgroundNotifications(sessionId);
+			});
 		} catch (error) {
 			const err = error instanceof Error ? error : new Error(String(error));
+			const snapshot = sessionRuntimeStore.getSnapshot(sessionId);
 			debug.error("agent-turn-error", {
 				turnId,
 				message: err.message,
 				stack: err.stack,
-				partialResponseLength: this._response.length,
+				partialResponseLength: snapshot?.currentResponse.length ?? 0,
 			});
 			if (this.getCurrentSessionId() === sessionId && this._state === DaemonState.RESPONDING) {
 				messageDebug.info("agent-turn-error-finalizing-partial", {
 					turnId,
 					message: err.message,
-					partialResponse: this._response,
+					partialResponse: snapshot?.currentResponse ?? "",
 				});
 				sessionRuntimeStore.cancelResponse(sessionId);
 			}
 			this.emitEvent("error", err);
 			if (this.getCurrentSessionId() === sessionId) this.setState(DaemonState.IDLE);
 		}
+	}
+
+	async injectBackgroundNotification(
+		sessionId: string,
+		job: BackgroundJobSnapshot,
+		notification: string
+	): Promise<void> {
+		const runtime = sessionRuntimeStore.getSnapshot(sessionId);
+		if (runtime?.state === DaemonState.RESPONDING) {
+			backgroundJobManager.queueNotification(sessionId, job, notification);
+			return;
+		}
+
+		await this.generateResponseFromText(sessionId, notification, [], {
+			hiddenUserMessage: true,
+			notificationBlock: buildBackgroundNotificationBlock(job),
+		});
+	}
+
+	private async flushQueuedBackgroundNotifications(sessionId: string): Promise<void> {
+		const runtime = sessionRuntimeStore.getSnapshot(sessionId);
+		if (runtime?.state === DaemonState.RESPONDING) return;
+		const notifications = backgroundJobManager.takeQueuedNotifications(sessionId);
+		if (notifications.length === 0) return;
+		const [first, ...rest] = notifications;
+		if (!first) return;
+		const combinedNotification = [first.notification, ...rest.map((entry) => entry.notification)].join(
+			"\n\n"
+		);
+		await this.generateResponseFromText(sessionId, combinedNotification, [], {
+			hiddenUserMessage: true,
+			notificationBlock: buildBackgroundNotificationBlock(first.job),
+		});
 	}
 
 	/**
@@ -617,7 +686,6 @@ class DaemonStateManager {
 		}
 
 		this._transcription = "";
-		this._response = "";
 		this.emitEvent("cancelled");
 		this.setState(DaemonState.IDLE);
 	}
@@ -628,7 +696,6 @@ class DaemonStateManager {
 		sessionRuntimeStore.cancelResponse(sessionId);
 		if (this.getCurrentSessionId() === sessionId) {
 			this._transcription = "";
-			this._response = "";
 			this.emitEvent("cancelled");
 			this.setState(DaemonState.IDLE);
 		}
@@ -640,7 +707,6 @@ class DaemonStateManager {
 	clearHistory(): void {
 		this.modelHistory.clear();
 		this._transcription = "";
-		this._response = "";
 	}
 
 	/**
@@ -655,6 +721,7 @@ class DaemonStateManager {
 	 * Clean up resources
 	 */
 	destroy(): void {
+		backgroundJobManager.setNotificationHandler(null);
 		this.agentTurnRunner.cancel();
 		for (const runner of this.sessionAgentTurnRunners.values()) {
 			runner.cancel();

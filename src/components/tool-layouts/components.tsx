@@ -9,9 +9,17 @@ interface ToolHeaderViewProps {
 	isRunning: boolean;
 	toolColor: string;
 	requestSize?: string | null;
+	runningLabel?: string | null;
 }
 
-export function ToolHeaderView({ toolName, header, isRunning, toolColor, requestSize }: ToolHeaderViewProps) {
+export function ToolHeaderView({
+	toolName,
+	header,
+	isRunning,
+	toolColor,
+	requestSize,
+	runningLabel,
+}: ToolHeaderViewProps) {
 	const displayName = toolName.toUpperCase();
 	return (
 		<box flexDirection="row" alignItems="center" justifyContent="space-between" width="100%">
@@ -29,7 +37,16 @@ export function ToolHeaderView({ toolName, header, isRunning, toolColor, request
 				)}
 				{requestSize && <span fg={COLORS.REASONING_DIM}>{` · ${requestSize}`}</span>}
 			</text>
-			{isRunning && <spinner name="dots" color={COLORS.STATUS_RUNNING} />}
+			{isRunning && runningLabel ? (
+				<box flexDirection="row" alignItems="center">
+					<text>
+						<span fg={COLORS.STATUS_RUNNING}>{`${runningLabel} `}</span>
+					</text>
+					<spinner name="dots" color={COLORS.STATUS_RUNNING} />
+				</box>
+			) : isRunning ? (
+				<spinner name="dots" color={COLORS.STATUS_RUNNING} />
+			) : null}
 		</box>
 	);
 }

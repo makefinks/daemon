@@ -1,5 +1,6 @@
 import type { ToolSet } from "ai";
 
+import { backgroundJobs } from "./background-jobs";
 import { fetchUrls } from "./fetch-urls";
 import { groundingManager } from "./grounding-manager";
 import { loadSkill } from "./load-skill";
@@ -50,6 +51,7 @@ export const TOOL_REGISTRY: ToolEntry[] = [
 	{ id: "writeFile", toggleKey: "writeFile", tool: writeFile },
 	{ id: "editFile", toggleKey: "editFile", tool: editFile },
 	{ id: "runBash", toggleKey: "runBash", tool: runBash },
+	{ id: "backgroundJobs", toggleKey: "backgroundJobs", tool: backgroundJobs },
 	{ id: "loadSkill", toggleKey: "loadSkill", tool: loadSkill },
 	{ id: "loadSkillResource", toggleKey: "loadSkillResource", tool: loadSkillResource },
 	{ id: "webSearch", toggleKey: "webSearch", tool: webSearch, gate: gateExa },
@@ -113,6 +115,7 @@ function normalizeToggles(toggles?: ToolToggles): ToolToggles {
 		writeFile: toggles?.writeFile ?? true,
 		editFile: toggles?.editFile ?? true,
 		runBash: toggles?.runBash ?? true,
+		backgroundJobs: toggles?.backgroundJobs ?? true,
 		loadSkill: toggles?.loadSkill ?? true,
 		loadSkillResource: toggles?.loadSkillResource ?? true,
 		webSearch: toggles?.webSearch ?? true,
@@ -215,6 +218,7 @@ export function getToolLabels(): Record<ToolId, string> {
 		writeFile: "writeFile",
 		editFile: "editFile",
 		runBash: "runBash",
+		backgroundJobs: "backgroundJobs",
 		loadSkill: "loadSkill",
 		loadSkillResource: "loadSkillResource",
 		webSearch: "webSearch",
@@ -232,6 +236,7 @@ export function getDefaultToolOrder(): ToolId[] {
 		"writeFile",
 		"editFile",
 		"runBash",
+		"backgroundJobs",
 		"loadSkill",
 		"loadSkillResource",
 		"webSearch",
@@ -249,6 +254,7 @@ export function createToolAvailabilitySnapshot(availability: ToolAvailabilityMap
 		writeFile: availability.writeFile?.enabled ?? false,
 		editFile: availability.editFile?.enabled ?? false,
 		runBash: availability.runBash?.enabled ?? false,
+		backgroundJobs: availability.backgroundJobs?.enabled ?? false,
 		loadSkill: availability.loadSkill?.enabled ?? false,
 		loadSkillResource: availability.loadSkillResource?.enabled ?? false,
 		webSearch: availability.webSearch?.enabled ?? false,

@@ -166,13 +166,17 @@ export async function listSessions(): Promise<SessionInfo[]> {
 			updated_at: string;
 			usage_json: string;
 		}>;
-		return rows.map((row) => ({
-			id: row.id,
-			title: row.title && row.title.trim() ? row.title : formatSessionTitle(row.created_at),
-			createdAt: row.created_at,
-			updatedAt: row.updated_at,
-			totalTokens: parseSessionUsage(row.usage_json).totalTokens,
-		}));
+		return rows.map((row) => {
+			const usage = parseSessionUsage(row.usage_json);
+			return {
+				id: row.id,
+				title: row.title && row.title.trim() ? row.title : formatSessionTitle(row.created_at),
+				createdAt: row.created_at,
+				updatedAt: row.updated_at,
+				totalTokens: usage.totalTokens,
+				cost: usage.cost,
+			};
+		});
 	} catch (error) {
 		const err = error instanceof Error ? error : new Error(String(error));
 		debug.error("session-list-failed", { message: err.message });

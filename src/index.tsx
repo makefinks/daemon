@@ -7,6 +7,7 @@ import { ConsolePosition, createCliRenderer, decodePasteBytes } from "@opentui/c
 import { createRoot } from "@opentui/react";
 import { App } from "./app/App";
 import { ensureSkillsDir } from "./ai/skills/skill-manager";
+import { runHeadless } from "./headless-runner";
 import { COLORS } from "./ui/constants";
 import { cleanupAppRuntime, registerAppRuntime, shutdownApp } from "./utils/app-shutdown";
 import { debug } from "./utils/debug-logger";
@@ -16,6 +17,11 @@ await ensureSkillsDir().catch((error) => {
 	const err = error instanceof Error ? error : new Error(String(error));
 	debug.warn("skills-dir-create-failed", { message: err.message });
 });
+
+if (process.env.DAEMON_HEADLESS === "1") {
+	await runHeadless(process.env.DAEMON_PROMPT ?? "");
+	process.exit(process.exitCode ?? 0);
+}
 
 // Main entry point
 const renderer = await createCliRenderer({

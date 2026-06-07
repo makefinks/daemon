@@ -59,6 +59,16 @@ function ApprovalResultBadge({ result }: { result: "approved" | "denied" }) {
 	);
 }
 
+function isBackgroundToolRunning(call: ToolCall, result: unknown): boolean {
+	return (
+		call.status === "running" &&
+		typeof result === "object" &&
+		result !== null &&
+		"background" in result &&
+		(result as { background?: unknown }).background === true
+	);
+}
+
 function ToolSectionDivider({ label }: { label: string }) {
 	return (
 		<box flexDirection="column" paddingLeft={2} marginTop={1}>
@@ -74,6 +84,7 @@ export function ToolCallView({ call, result, showOutput = true }: ToolCallViewPr
 	const mcpMeta = useMemo(() => getMcpManager().getToolMeta(call.name), [call.name]);
 	const isAwaitingApproval = call.status === "awaiting_approval";
 	const isRunning = call.status === "running" || call.status === "streaming";
+	const runningLabel = isBackgroundToolRunning(call, result) ? "running in background" : null;
 	const isFailed = call.status === "failed";
 
 	const { needsApproval, isActive, approve, deny, approveAll, denyAll } = useToolApprovalForCall(
@@ -156,6 +167,7 @@ export function ToolCallView({ call, result, showOutput = true }: ToolCallViewPr
 				isRunning={isRunning}
 				toolColor={toolColor}
 				requestSize={requestSize}
+				runningLabel={runningLabel}
 			/>
 
 			{customBody}

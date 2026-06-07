@@ -21,6 +21,10 @@ function extractSubagentSummary(input: unknown): string | null {
 	return null;
 }
 
+function isBackgroundSubagent(input: unknown, result?: unknown): boolean {
+	return (isRecord(input) && input.background === true) || (isRecord(result) && result.background === true);
+}
+
 function extractSearchQuery(input: unknown): string | null {
 	if (!isRecord(input)) return null;
 	if ("query" in input && typeof input.query === "string") {
@@ -59,6 +63,39 @@ function extractCommand(input: unknown): string | null {
 	return null;
 }
 
+function extractTodoItemByIndex(result: unknown, index: number): UnknownRecord | null {
+	if (!isRecord(result) || !Array.isArray(result.todoItems)) return null;
+	const item = result.todoItems[index - 1];
+	return isRecord(item) ? item : null;
+}
+
+function extractTodoText(input: unknown, result?: unknown): string | null {
+	if (!isRecord(input)) return null;
+	if (input.action === "write" && Array.isArray(input.todos)) {
+		const active = input.todos.find(
+			(todo: unknown) => isRecord(todo) && todo.status === "in_progress" && typeof todo.content === "string"
+		);
+		if (isRecord(active) && typeof active.content === "string") return active.content;
+
+		const first = input.todos.find((todo: unknown) => isRecord(todo) && typeof todo.content === "string");
+		if (isRecord(first) && typeof first.content === "string") return first.content;
+	}
+	if (input.action === "update" && typeof input.index === "number") {
+		const item = extractTodoItemByIndex(result, input.index);
+		if (typeof item?.content === "string") return item.content;
+	}
+	return null;
+}
+
+function extractTodoStatus(input: unknown, result: unknown, fallback: ToolCallStatus): string {
+	if (isRecord(input) && typeof input.status === "string") return input.status;
+	if (isRecord(input) && typeof input.index === "number") {
+		const item = extractTodoItemByIndex(result, input.index);
+		if (typeof item?.status === "string") return item.status;
+	}
+	return fallback === "running" ? "started" : fallback;
+}
+
 function truncateLabel(text: string, maxLength: number): string {
 	if (text.length <= maxLength) return text;
 	if (maxLength <= 3) return text.slice(0, maxLength);
@@ -76,7 +113,12 @@ function abbreviateToolName(name: string): string {
 	return abbreviations[name] ?? name.slice(0, 8);
 }
 
-function formatStepLabel(step: { toolName: string; input?: unknown }): string {
+function formatStepLabel(step: {
+	toolName: string;
+	status: ToolCallStatus;
+	input?: unknown;
+	result?: unknown;
+}): string {
 	const toolLabel = abbreviateToolName(step.toolName);
 	const MAX_URL_LENGTH = 56;
 	const MAX_PATH_LENGTH = 56;
@@ -123,6 +165,15 @@ function formatStepLabel(step: { toolName: string; input?: unknown }): string {
 		return toolLabel;
 	}
 
+	if (step.toolName === "todoManager") {
+		const todoText = extractTodoText(step.input, step.result);
+		const status = extractTodoStatus(step.input, step.result, step.status);
+		if (todoText) {
+			return `${toolLabel}: "${truncateLabel(todoText, MAX_QUERY_LENGTH)}" ${status}`;
+		}
+		return `${toolLabel}: ${status}`;
+	}
+
 	return toolLabel;
 }
 
@@ -154,6 +205,7 @@ function getStepStatusColor(status: ToolCallStatus): string {
 
 function formatSubagentResponse(result: unknown): string | null {
 	if (!isRecord(result)) return null;
+	if (result.background === true) return null;
 	if (typeof result.response !== "string") return null;
 	const raw = result.response.trim();
 	if (!raw) return null;
@@ -189,23 +241,30 @@ function SubagentBody({ call, result }: ToolLayoutRenderProps) {
 	const renderedResponse = responseText ? formatMarkdownTables(responseText, { maxWidth }) : "";
 
 	return (
-		<box flexDirection="column" paddingLeft={2} marginTop={0}>
+		<box flexDirection="column" paddingLeft={1} marginTop={0}>
 			{steps.map((step, idx) => {
 				const stepLabel = formatStepLabel(step);
 				const inputLabel = stepLabel.slice(stepLabel.indexOf(":") + 1).trim();
 				const toolLabel = stepLabel.includes(":")
 					? stepLabel.slice(0, stepLabel.indexOf(":") + 1)
 					: stepLabel;
+				const isLast = idx === steps.length - 1 && !responseText;
+				const treePrefix = isLast ? "└─" : "├─";
 
 				return (
 					<box key={`${step.toolName}-${idx}`} flexDirection="row" alignItems="center">
-						{step.status === "running" ? (
-							<spinner name="dots" color={getStepStatusColor(step.status)} />
-						) : (
-							<text>
-								<span fg={getStepStatusColor(step.status)}>{getStepStatusIcon(step.status)}</span>
-							</text>
-						)}
+						<box width={2} flexShrink={0}>
+							{step.status === "running" ? (
+								<spinner name="dots" color={getStepStatusColor(step.status)} />
+							) : (
+								<text>
+									<span fg={getStepStatusColor(step.status)}>{getStepStatusIcon(step.status)}</span>
+								</text>
+							)}
+						</box>
+						<text>
+							<span fg={COLORS.REASONING_DIM}>{treePrefix}</span>
+						</text>
 						<text marginLeft={1}>
 							<span fg={COLORS.TOOL_INPUT_TEXT}>{toolLabel}</span>
 							{stepLabel.includes(":") && <span fg={COLORS.REASONING_DIM}>{` ${inputLabel}`}</span>}
@@ -214,10 +273,16 @@ function SubagentBody({ call, result }: ToolLayoutRenderProps) {
 				);
 			})}
 			{responseText && (
-				<box flexDirection="column" marginTop={steps.length > 0 ? 1 : 0}>
-					<text>
-						<span fg={COLORS.REASONING_DIM}>{"response"}</span>
-					</text>
+				<box flexDirection="column" marginTop={steps.length > 0 ? 0 : 0}>
+					<box flexDirection="row" alignItems="center">
+						<box width={2} flexShrink={0} />
+						<text>
+							<span fg={COLORS.REASONING_DIM}>{"└─"}</span>
+						</text>
+						<text marginLeft={1}>
+							<span fg={COLORS.REASONING_DIM}>{"response"}</span>
+						</text>
+					</box>
 					<box
 						borderStyle="single"
 						borderColor={COLORS.TOOL_INPUT_BORDER}
@@ -243,9 +308,15 @@ function SubagentBody({ call, result }: ToolLayoutRenderProps) {
 export const subagentLayout: ToolLayoutConfig = {
 	abbreviation: "agent",
 
-	getHeader: (input): ToolHeader | null => {
+	getHeader: (input, result): ToolHeader | null => {
 		const summary = extractSubagentSummary(input);
-		return summary ? { primary: summary } : null;
+		const background = isBackgroundSubagent(input, result);
+		if (!summary && !background) return null;
+		return {
+			primary: summary ?? undefined,
+			secondary: background ? "background task" : undefined,
+			secondaryStyle: "italic",
+		};
 	},
 
 	renderBody: SubagentBody,

@@ -333,7 +333,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 					>
 						{conversationHistory.map((msg: ConversationMessage) => (
 							<box key={msg.id} flexDirection="column">
-								{msg.type === "user" ? (
+								{msg.type === "user" && !msg.hidden ? (
 									<box
 										marginBottom={1}
 										paddingLeft={2}

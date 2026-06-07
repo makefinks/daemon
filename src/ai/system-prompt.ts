@@ -143,6 +143,7 @@ function normalizeToolAvailability(toolAvailability?: Partial<ToolAvailability>)
 		writeFile: toolAvailability?.writeFile ?? true,
 		editFile: toolAvailability?.editFile ?? true,
 		runBash: toolAvailability?.runBash ?? true,
+		backgroundJobs: toolAvailability?.backgroundJobs ?? true,
 		loadSkill: toolAvailability?.loadSkill ?? true,
 		loadSkillResource: toolAvailability?.loadSkillResource ?? true,
 		webSearch: toolAvailability?.webSearch ?? true,
@@ -309,6 +310,16 @@ Fetch multiple URLs in one call:
   - Prefer **read-only** inspection commands first.
   - Before anything that modifies the system, **ask for confirmation** and explain what it will change.
   - Never run destructive/wipe commands or anything that exfiltrates data.
+  - For long-running commands where you can do useful work in the meantime, set \`run_in_background: true\`.
+`,
+	backgroundJobs: `
+  ### 'backgroundJobs' (background task management)
+  Lists, inspects, and cancels background jobs started by runBash or subagent.
+
+  Background execution is optional. Use it when a command or subagent may take a while and you can keep doing useful work.
+  You will receive a notification when a background job completes, but you may also check status when that helps decide the next step.
+  If a background job is still running and you have no other useful work to do, finish your response and wait. You will be awakened automatically when it completes.
+  Do not call backgroundJobs repeatedly just to wait for completion.
 `,
 	loadSkill: `
   ### 'loadSkill' (Agent Skill loader)
@@ -359,6 +370,8 @@ Fetch multiple URLs in one call:
   ### 'subagent'
   Call this tool to spawn subagents for specific tasks.
   **Call multiple times in parallel** for concurrent execution.
+  For longer independent work, set \`background: true\` so the subagent can run asynchronously while you continue.
+  After starting a background subagent, do not wait by repeatedly checking it. If there is nothing else useful to do, tell the user it is running and end the turn.
 `,
 } as const;
 
@@ -389,6 +402,7 @@ function buildToolDefinitions(availability: ToolAvailability, mcpToolGuidance?: 
 	if (availability.fetchUrls) blocks.push(TOOL_SECTIONS.fetchUrls);
 	if (availability.groundingManager) blocks.push(TOOL_SECTIONS.groundingManager);
 	if (availability.runBash) blocks.push(TOOL_SECTIONS.runBash);
+	if (availability.backgroundJobs) blocks.push(TOOL_SECTIONS.backgroundJobs);
 	if (availability.loadSkill) blocks.push(TOOL_SECTIONS.loadSkill);
 	if (availability.loadSkillResource) blocks.push(TOOL_SECTIONS.loadSkillResource);
 	if (availability.readFile) blocks.push(TOOL_SECTIONS.readFile);
