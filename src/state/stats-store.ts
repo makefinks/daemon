@@ -187,13 +187,6 @@ export function setEnabledSkillCount(count: number): void {
 
 // ── Increment / decrement functions ──
 
-export function incrementTokens(n: number): void {
-	if (n <= 0) return;
-	ensureLoaded().totalTokens += n;
-	dirty = true;
-	scheduleFlush();
-}
-
 export function incrementSessions(): void {
 	ensureLoaded().totalSessions++;
 	dirty = true;
@@ -223,12 +216,6 @@ export function decrementMemories(): void {
 		dirty = true;
 		scheduleFlush();
 	}
-}
-
-export function setMemoryCount(count: number): void {
-	ensureLoaded().totalMemories = count;
-	dirty = true;
-	scheduleFlush();
 }
 
 export function incrementArtifacts(n: number): void {

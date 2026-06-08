@@ -79,14 +79,6 @@ async function fetchModelMetadata(modelId: string): Promise<ModelMetadata | null
 	}
 }
 
-/**
- * Get metadata for a specific model.
- * @param modelId - The OpenRouter model ID (e.g., "google/gemini-2.5-flash-preview")
- */
-export async function getModelMetadata(modelId: string): Promise<ModelMetadata | null> {
-	return fetchModelMetadata(modelId);
-}
-
 export async function getModelMetadataForProvider(
 	modelId: string,
 	provider: LlmProvider
@@ -143,18 +135,6 @@ export function resolveOpenRouterProviderPricing(
 	});
 
 	return provider?.pricing;
-}
-
-export async function calculateOpenRouterCostForProvider(
-	modelId: string,
-	providerTag: string,
-	promptTokens: number,
-	completionTokens: number,
-	cachedInputTokens?: number
-): Promise<number | undefined> {
-	const pricing = await getOpenRouterProviderPricing(modelId, providerTag);
-	if (!pricing) return undefined;
-	return calculateCost(promptTokens, completionTokens, pricing, cachedInputTokens);
 }
 
 /**

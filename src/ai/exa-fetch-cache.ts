@@ -3,9 +3,6 @@
  * Used by fetchUrls tool to avoid redundant API calls.
  */
 
-import { getExaClient } from "./exa-client";
-
-const MAX_CHAR_LIMIT = 50_000;
 const DEFAULT_TTL_MS = 30 * 60 * 1000;
 
 interface CachedPage {
@@ -55,50 +52,6 @@ export function setCachedPage(url: string, text: string, ttlMs: number = DEFAULT
 	});
 }
 
-export async function fetchWithCache(
-	url: string
-): Promise<{ text: string; fromCache: boolean } | { error: string }> {
-	const cached = getCachedPage(url);
-	if (cached) {
-		return { text: cached.text, fromCache: true };
-	}
-
-	const exaClientResult = getExaClient();
-	if ("error" in exaClientResult) {
-		return { error: exaClientResult.error };
-	}
-
-	try {
-		const rawData = (await exaClientResult.client.getContents([url], {
-			text: { maxCharacters: MAX_CHAR_LIMIT },
-		})) as unknown as {
-			results?: Array<{
-				url?: string;
-				text?: string;
-				[key: string]: unknown;
-			}>;
-		};
-
-		const first = rawData.results?.[0];
-		const fullText = first?.text ?? "";
-		const cappedText = fullText.slice(0, MAX_CHAR_LIMIT);
-
-		setCachedPage(url, cappedText);
-
-		return { text: cappedText, fromCache: false };
-	} catch (error) {
-		const err = error instanceof Error ? error : new Error(String(error));
-		return { error: err.message };
-	}
-}
-
 export function clearFetchCache(): void {
 	cache.clear();
-}
-
-export function getCacheStats(): { size: number; urls: string[] } {
-	return {
-		size: cache.size,
-		urls: Array.from(cache.keys()),
-	};
 }

@@ -3,20 +3,9 @@
  */
 
 import type { TodoItem } from "../types";
-import { REASONING_ANIMATION } from "../ui/constants";
 
 const MAX_TOOL_INPUT_LINES = 10;
 const MAX_TOOL_INPUT_LINE_CHARS = 140;
-
-/**
- * Format reasoning content as a single-line preview for ticker/history.
- */
-export function formatReasoningPreview(content: string): string {
-	const normalized = content.replace(/\n/g, " ");
-	if (!normalized) return "";
-	if (normalized.length <= REASONING_ANIMATION.LINE_WIDTH) return normalized;
-	return normalized.slice(-REASONING_ANIMATION.LINE_WIDTH);
-}
 
 /**
  * Check if content has any non-whitespace characters.
