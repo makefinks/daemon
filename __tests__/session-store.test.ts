@@ -42,7 +42,6 @@ describe("session-store", () => {
 			expect(sessions[0]?.createdAt).toBe(created.createdAt);
 			expect(sessions[0]?.updatedAt).toBe(created.updatedAt);
 		} finally {
-			store.closeSessionStore();
 			if (typeof previousDbPath === "string") {
 				process.env[SESSION_DB_PATH_ENV] = previousDbPath;
 			} else {
@@ -72,7 +71,6 @@ describe("session-store", () => {
 			const sessions = await store.listSessions();
 			expect(sessions.map((s: { id: string }) => s.id)).toEqual([b.id, a.id]);
 		} finally {
-			store.closeSessionStore();
 			if (typeof previousDbPath === "string") {
 				process.env[SESSION_DB_PATH_ENV] = previousDbPath;
 			} else {
@@ -133,7 +131,6 @@ describe("session-store", () => {
 			expect(row?.createdAt).toBe(session.createdAt);
 			expect(new Date(row?.updatedAt ?? 0).getTime()).toBeGreaterThan(new Date(session.updatedAt).getTime());
 		} finally {
-			store.closeSessionStore();
 			if (typeof previousDbPath === "string") {
 				process.env[SESSION_DB_PATH_ENV] = previousDbPath;
 			} else {
@@ -165,7 +162,6 @@ describe("session-store", () => {
 			expect(row?.title).toBe("Renamed");
 			expect(new Date(row?.updatedAt ?? 0).getTime()).toBeGreaterThan(new Date(session.updatedAt).getTime());
 		} finally {
-			store.closeSessionStore();
 			if (typeof previousDbPath === "string") {
 				process.env[SESSION_DB_PATH_ENV] = previousDbPath;
 			} else {
@@ -195,7 +191,6 @@ describe("session-store", () => {
 			const row = sessions.find((s: { id: string }) => s.id === session.id);
 			expect(row?.title.startsWith("Session ")).toBe(true);
 		} finally {
-			store.closeSessionStore();
 			if (typeof previousDbPath === "string") {
 				process.env[SESSION_DB_PATH_ENV] = previousDbPath;
 			} else {
@@ -230,7 +225,6 @@ describe("session-store", () => {
 			expect(await store.listSessions()).toEqual([]);
 			expect(await store.listGroundingMaps(session.id)).toEqual([]);
 		} finally {
-			store.closeSessionStore();
 			if (typeof previousDbPath === "string") {
 				process.env[SESSION_DB_PATH_ENV] = previousDbPath;
 			} else {
@@ -261,15 +255,12 @@ describe("session-store", () => {
 				.run("not json", '{"promptTokens":"oops"}', session.id);
 			database.close();
 
-			store.closeSessionStore();
 			const reopened = await loadSessionStore(dbPath, tmpDir);
 			const snapshot = await reopened.loadSessionSnapshot(session.id);
 			expect(snapshot).not.toBeNull();
 			expect(snapshot?.conversationHistory).toEqual([]);
 			expect(snapshot?.sessionUsage.promptTokens).toBe(0);
-			reopened.closeSessionStore();
 		} finally {
-			store.closeSessionStore();
 			if (typeof previousDbPath === "string") {
 				process.env[SESSION_DB_PATH_ENV] = previousDbPath;
 			} else {
@@ -311,7 +302,6 @@ describe("session-store", () => {
 				{ role: "assistant", content: "Two" },
 			]);
 		} finally {
-			store.closeSessionStore();
 			if (typeof previousDbPath === "string") {
 				process.env[SESSION_DB_PATH_ENV] = previousDbPath;
 			} else {
@@ -362,7 +352,6 @@ describe("session-store", () => {
 			expect(saved.items).toEqual(items);
 			expect(saved.createdAt).toBeTruthy();
 		} finally {
-			store.closeSessionStore();
 			if (typeof previousDbPath === "string") {
 				process.env[SESSION_DB_PATH_ENV] = previousDbPath;
 			} else {
@@ -398,7 +387,6 @@ describe("session-store", () => {
 			expect(maps[0]?.id).toBe(map2.id);
 			expect(maps[1]?.id).toBe(map1.id);
 		} finally {
-			store.closeSessionStore();
 			if (typeof previousDbPath === "string") {
 				process.env[SESSION_DB_PATH_ENV] = previousDbPath;
 			} else {
@@ -434,7 +422,6 @@ describe("session-store", () => {
 			expect(latest?.id).toBe(map2.id);
 			expect(latest?.items[0]?.statement).toBe("New");
 		} finally {
-			store.closeSessionStore();
 			if (typeof previousDbPath === "string") {
 				process.env[SESSION_DB_PATH_ENV] = previousDbPath;
 			} else {
@@ -464,7 +451,6 @@ describe("session-store", () => {
 			const maps = await store.listGroundingMaps(session.id);
 			expect(maps).toEqual([]);
 		} finally {
-			store.closeSessionStore();
 			if (typeof previousDbPath === "string") {
 				process.env[SESSION_DB_PATH_ENV] = previousDbPath;
 			} else {
@@ -498,14 +484,11 @@ describe("session-store", () => {
 				.run("not valid json", session.id);
 			database.close();
 
-			store.closeSessionStore();
 			const reopened = await loadSessionStore(dbPath, tmpDir);
 			const latest = await reopened.loadLatestGroundingMap(session.id);
 			expect(latest).not.toBeNull();
 			expect(latest?.items).toEqual([]);
-			reopened.closeSessionStore();
 		} finally {
-			store.closeSessionStore();
 			if (typeof previousDbPath === "string") {
 				process.env[SESSION_DB_PATH_ENV] = previousDbPath;
 			} else {
