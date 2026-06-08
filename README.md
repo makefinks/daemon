@@ -7,7 +7,7 @@ It supports **text and voice interaction**, can be fully controlled through **ho
 DAEMON is focused on **information-gathering workflows** that benefit from **grounded responses**
 but can also interact with and **control** your system through the terminal with scoped permissions.
 
-<video src="img/daemon.mp4" autoplay loop muted playsinline style="max-width: 100%; border-radius: 8px;"></video>
+https://github.com/user-attachments/assets/ee806e99-d522-445c-a617-60cbd29bbabc
 
 ## Installation
 
