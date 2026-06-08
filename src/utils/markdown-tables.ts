@@ -54,7 +54,10 @@ function isSeparatorRow(line: string): boolean {
 	const trimmed = line.trim();
 	if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) return false;
 	const cells = trimmed.split("|").slice(1, -1);
-	return cells.length > 0 && cells.every((cell) => /^\s*:?-+:?\s*$/.test(cell));
+	if (cells.length === 0) return false;
+	// Accept standard `-` separators as well as box-drawing / unicode dashes.
+	// Trailing/leading colons drive alignment; whitespace is tolerated.
+	return cells.every((cell) => /^\s*:?[-─━═\-—–_]+:?\s*$/.test(cell));
 }
 
 function isValidTable(lines: string[]): boolean {
@@ -134,7 +137,7 @@ function formatTable(lines: string[], options: MarkdownTableFormatOptions): stri
 			if (separatorIndices.has(rowIndex)) {
 				cells.push(formatSeparatorCell(colWidths[col] ?? 3));
 			} else {
-				cells.push(padCell(cell, colWidths[col] ?? 3, align));
+				cells.push(padCell(stripMarkdown(cell), colWidths[col] ?? 3, align));
 			}
 		}
 		if (separatorIndices.has(rowIndex)) {
@@ -164,8 +167,8 @@ function calculateDisplayWidth(text: string): number {
 	return width;
 }
 
-function getStringWidth(text: string): number {
-	// Strip markdown symbols for concealment mode.
+function stripMarkdown(text: string): string {
+	// Convert markdown to the visual text that concealment mode will display.
 	// Content inside backticks should preserve its inner markdown symbols.
 
 	const codeBlocks: string[] = [];
@@ -185,14 +188,21 @@ function getStringWidth(text: string): number {
 			.replace(/\*(.+?)\*/g, "$1")
 			.replace(/~~(.+?)~~/g, "$1")
 			.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, "$1")
-			.replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1 ($2)")
+			.replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
 			.replace(/\[([^\]]+)\]\s*\[([^\]]*)\]/g, "$1")
-			.replace(/\[(g\d+|\d+)\]/g, "$1");
+			.replace(/\[(g\d+)\]/gi, "$1")
+			.replace(/\[(\d+)\]/g, "$1");
 	}
 
 	visualText = visualText.replace(/__DAEMON_CODE_BLOCK_(\d+)__/g, (_match, index) => {
 		return codeBlocks[Number(index)] ?? "";
 	});
+
+	return visualText;
+}
+
+function getStringWidth(text: string): number {
+	const visualText = stripMarkdown(text);
 
 	const bun = (globalThis as { Bun?: { stringWidth: (value: string) => number } }).Bun;
 	if (bun?.stringWidth) {

@@ -12,7 +12,7 @@ export function DaemonText({ content, showLabel = false, streaming = false }: Da
 		typeof process !== "undefined" && process.stdout?.columns ? process.stdout.columns : undefined;
 	// Trim trailing whitespace when not streaming to avoid gaps before subsequent blocks
 	const trimmedContent = streaming ? content : content.trimEnd();
-	const renderedContent = streaming ? trimmedContent : formatMarkdownTables(trimmedContent, { maxWidth });
+	const renderedContent = formatMarkdownTables(trimmedContent, { maxWidth });
 
 	return (
 		<box flexDirection="column">
