@@ -362,63 +362,6 @@ function formatMcpLikeResult(result: unknown): string | null {
 }
 
 /**
- * Format a very small, terminal-safe preview of a tool result.
- * Intended for the tool call UI box (not full logs).
- */
-export function formatToolOutputPreview(toolName: string, result: unknown): string[] | null {
-	if (result === undefined) return null;
-
-	let raw: string | null = null;
-	if (toolName === "runBash") raw = formatBashResult(result);
-	if (toolName === "webSearch") raw = formatExaSearchResult(result);
-	if (toolName === "fetchUrls") raw = formatExaFetchResult(result);
-	if (toolName === "readFile") raw = formatReadFileResult(result);
-	if (toolName === "readImage") raw = formatReadImageResult(result);
-	if (toolName === "loadSkill") raw = formatLoadSkillResult(result);
-	if (toolName === "loadSkillResource") raw = formatLoadSkillResourceResult(result);
-
-	if (!raw) {
-		if (isRecord(result) && result.success === false && typeof result.error === "string") {
-			raw = `error: ${result.error}`;
-		} else {
-			return null;
-		}
-	}
-
-	const MAX_LINES = 4;
-	const MAX_CHARS_PER_LINE = 160;
-	const MAX_TOTAL_CHARS = 260;
-
-	const { lines, truncated: lineTruncated } = splitPreviewLines(raw, MAX_LINES);
-
-	let usedChars = 0;
-	const outputLines: string[] = [];
-	let anyTruncated = lineTruncated;
-
-	for (const line of lines) {
-		const remaining = Math.max(0, MAX_TOTAL_CHARS - usedChars);
-		if (remaining <= 0) {
-			anyTruncated = true;
-			break;
-		}
-		const { text: truncatedLine, truncated } = truncateText(line, Math.min(MAX_CHARS_PER_LINE, remaining));
-		anyTruncated = anyTruncated || truncated;
-		outputLines.push(truncatedLine);
-		usedChars += truncatedLine.length;
-	}
-
-	if (anyTruncated && outputLines.length > 0) {
-		const last = outputLines[outputLines.length - 1] ?? "";
-		if (!last.endsWith("…")) {
-			const { text } = truncateText(last, Math.max(1, last.length - 1));
-			outputLines[outputLines.length - 1] = `${text}…`.replace(/……$/, "…");
-		}
-	}
-
-	return outputLines.length > 0 ? outputLines : null;
-}
-
-/**
  * Generic preview formatter for dynamic tools (e.g. MCP).
  */
 export function formatGenericToolOutputPreview(result: unknown): string[] | null {

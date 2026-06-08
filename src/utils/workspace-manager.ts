@@ -96,18 +96,3 @@ export async function deleteWorkspace(sessionId: string): Promise<void> {
 		debug.error("workspace-delete-failed", { sessionId, message: err.message });
 	}
 }
-
-/**
- * Check if a workspace exists for a session.
- * @param sessionId - The session UUID
- * @returns true if the workspace directory exists
- */
-export async function workspaceExists(sessionId: string): Promise<boolean> {
-	const workspacePath = getWorkspacePath(sessionId);
-	try {
-		const stat = await fs.stat(workspacePath);
-		return stat.isDirectory();
-	} catch {
-		return false;
-	}
-}
