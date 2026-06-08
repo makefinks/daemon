@@ -5,7 +5,7 @@
 
 import path from "node:path";
 import { Memory } from "mem0ai/oss";
-import type { MemoryAddResult, MemoryEntry, MemorySearchResult } from "../../types";
+import type { MemoryAddResult, MemoryEntry } from "../../types";
 import { debug, memoryDebug } from "../../utils/debug-logger";
 import { getAppConfigDir } from "../../utils/preferences";
 import { getMemoryModel } from "../model-config";

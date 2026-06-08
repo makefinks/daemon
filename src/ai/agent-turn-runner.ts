@@ -1,14 +1,11 @@
 import { generateResponse } from "./daemon-ai";
 import type {
-	BackgroundJobSnapshot,
 	InteractionMode,
 	ModelMessage,
 	PromptImageAttachment,
 	ReasoningEffort,
 	StreamCallbacks,
 	TokenUsage,
-	ToolApprovalRequest,
-	ToolApprovalResponse,
 } from "../types";
 
 export interface AgentTurnParams {

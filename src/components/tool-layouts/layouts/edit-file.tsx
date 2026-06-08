@@ -1,5 +1,4 @@
 import { pathToFiletype } from "@opentui/core";
-import React from "react";
 import { COLORS } from "../../../ui/constants";
 import { registerToolLayout } from "../registry";
 import type { ToolHeader, ToolLayoutConfig, ToolLayoutRenderProps } from "../types";
