@@ -83,25 +83,3 @@ export async function detectVoiceDependencies(): Promise<VoiceDependencies> {
 
 	return cachedDependencies;
 }
-
-/**
- * Get the cached voice dependencies (returns null if not yet detected).
- */
-export function getCachedVoiceDependencies(): VoiceDependencies | null {
-	return cachedDependencies;
-}
-
-/**
- * Clear the cached voice dependencies (useful for testing).
- */
-export function clearVoiceDependenciesCache(): void {
-	cachedDependencies = null;
-}
-
-/**
- * Synchronously check if sox is available.
- * Uses cached result if available, otherwise returns false.
- */
-export function isSoxAvailable(): boolean {
-	return cachedDependencies?.sox.available ?? false;
-}

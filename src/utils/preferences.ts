@@ -265,48 +265,6 @@ export async function updatePreferences(updates: Partial<AppPreferences>): Promi
 }
 
 /**
- * Check if OpenRouter API key is available (from env or stored preferences).
- */
-export function hasOpenRouterApiKey(): boolean {
-	return Boolean(process.env.OPENROUTER_API_KEY);
-}
-
-/**
- * Check if OpenAI API key is available (from env or stored preferences).
- */
-export function hasOpenAiApiKey(): boolean {
-	return Boolean(process.env.OPENAI_API_KEY);
-}
-
-/**
- * Check if Exa API key is available (from env or stored preferences).
- */
-export function hasExaApiKey(): boolean {
-	return Boolean(process.env.EXA_API_KEY);
-}
-
-/**
- * Get the effective OpenRouter API key (env takes precedence over stored).
- */
-export function getOpenRouterApiKey(storedKey?: string): string | undefined {
-	return process.env.OPENROUTER_API_KEY || storedKey;
-}
-
-/**
- * Get the effective OpenAI API key (env takes precedence over stored).
- */
-export function getOpenAiApiKey(storedKey?: string): string | undefined {
-	return process.env.OPENAI_API_KEY || storedKey;
-}
-
-/**
- * Get the effective Exa API key (env takes precedence over stored).
- */
-export function getExaApiKey(storedKey?: string): string | undefined {
-	return process.env.EXA_API_KEY || storedKey;
-}
-
-/**
  * Set API keys in process.env for the current session.
  * Called after loading preferences to make stored keys available to SDK clients.
  */

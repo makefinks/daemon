@@ -452,18 +452,6 @@ function buildAuthorizationUrl(challenge: string, state: string, redirectUri: st
 	return url.toString();
 }
 
-/** Load any previously stored Codex auth record without forcing a refresh. */
-export async function loadOpenAiCodexAuth(): Promise<OpenAiCodexAuthRecord | null> {
-	return readOpenAiCodexAuth();
-}
-
-/** Remove any locally persisted Codex auth record. */
-export async function clearOpenAiCodexAuth(): Promise<void> {
-	try {
-		await fs.unlink(getOpenAiCodexAuthPath());
-	} catch {}
-}
-
 /** Start the browser OAuth flow, wait for the callback, and persist the resulting tokens. */
 export async function loginOpenAiCodex(): Promise<OpenAiCodexAuthRecord> {
 	const { verifier, challenge } = buildPkcePair();
