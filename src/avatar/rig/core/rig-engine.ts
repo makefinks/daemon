@@ -11,7 +11,6 @@ import { updateGlitchBehavior } from "../update/update-glitch";
 import { updateIdleAmbience } from "../update/update-idle";
 import { updateIntensityAndAudio } from "../update/update-intensity";
 import { updateMainAnchor } from "../update/update-main-anchor";
-import { updateParticles } from "../update/update-particles";
 import { updateRings } from "../update/update-rings";
 import { updateSigils } from "../update/update-sigils";
 import { advanceSpawn, applySpawn, resetSpawnState, skipSpawnAnimation } from "../update/update-spawn";
@@ -73,7 +72,6 @@ export class RigEngine {
 		updateRings(this.elements, this.state, dt, intensity);
 		updateFragments(this.elements, this.state, dt, intensity);
 		updateSigils(this.elements, this.state, dt, intensity);
-		updateParticles(this.elements, this.state, dt, intensity, allowGlitch);
 		updateGlitchBehavior(this.elements, this.state, dt, intensity, allowGlitch);
 		updateIdleAmbience(this.elements, this.state, dt, isIdle);
 		updateThemeColors(this.elements, this.state, dt);

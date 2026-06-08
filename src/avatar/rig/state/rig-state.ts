@@ -68,12 +68,6 @@ export interface EyeDriftState {
 	interval: number;
 }
 
-export interface ParticlePulseState {
-	timer: number;
-	interval: number;
-	brightness: number;
-}
-
 export interface CoreDriftState {
 	x: number;
 	y: number;
@@ -106,7 +100,6 @@ export interface RigState {
 	typing: TypingState;
 	idleMicroGlitch: IdleMicroGlitchState;
 	eyeDrift: EyeDriftState;
-	particlePulse: ParticlePulseState;
 	coreDrift: CoreDriftState;
 	spawn: SpawnState;
 	theme: ThemeState;
@@ -178,11 +171,6 @@ export function createInitialState(): RigState {
 			targetY: 0,
 			timer: 0,
 			interval: 1.5 + Math.random() * 2,
-		},
-		particlePulse: {
-			timer: 0,
-			interval: 1 + Math.random() * 2,
-			brightness: 0,
 		},
 		coreDrift: {
 			x: 0,

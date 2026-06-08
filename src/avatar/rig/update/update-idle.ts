@@ -7,7 +7,7 @@ export function updateIdleAmbience(
 	dt: number,
 	isIdle: boolean
 ): void {
-	const { idleMicroGlitch, eyeDrift, particlePulse, coreDrift, typing } = state;
+	const { idleMicroGlitch, eyeDrift, coreDrift, typing } = state;
 
 	if (isIdle) {
 		idleMicroGlitch.timer += dt;
@@ -66,16 +66,6 @@ export function updateIdleAmbience(
 	elements.eye.position.y = eyeDrift.y;
 	elements.pupil.position.x = eyeDrift.x;
 	elements.pupil.position.y = eyeDrift.y;
-
-	if (isIdle) {
-		particlePulse.timer += dt;
-		if (particlePulse.timer > particlePulse.interval) {
-			particlePulse.timer = 0;
-			particlePulse.interval = 1 + Math.random() * 2;
-			particlePulse.brightness = 1.0;
-		}
-	}
-	particlePulse.brightness = Math.max(0, particlePulse.brightness - dt * 1.5);
 
 	const coreDriftSpeed = 0.4;
 	const coreDriftAmount = 0.08;

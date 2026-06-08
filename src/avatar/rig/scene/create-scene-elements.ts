@@ -19,13 +19,6 @@ export interface FragmentData {
 	bobPhase: number;
 }
 
-export interface ParticleVelocity {
-	x: number;
-	y: number;
-	z: number;
-	phase: number;
-}
-
 export interface SceneElements {
 	mainAnchor: THREE.Group;
 	coreGroup: THREE.Group;
@@ -42,10 +35,6 @@ export interface SceneElements {
 	pupilMat: THREE.MeshBasicMaterial;
 	rings: RingData[];
 	fragments: FragmentData[];
-	particleSystem: THREE.Points;
-	particleMat: THREE.PointsMaterial;
-	particlePos: THREE.BufferAttribute;
-	particleVelocities: ParticleVelocity[];
 	sigilLines: THREE.LineSegments;
 	sigilMat: THREE.LineBasicMaterial;
 	sigilPos: THREE.BufferAttribute;
@@ -219,41 +208,6 @@ export function createSceneElements(
 		fragmentGroup.add(mesh);
 	}
 
-	// Particle system
-	const particleCount = 60;
-	const pGeo = trackGeo(new THREE.BufferGeometry());
-	const pPos = new Float32Array(particleCount * 3);
-	const particleVelocities: ParticleVelocity[] = [];
-	for (let i = 0; i < particleCount; i++) {
-		const r = 1.5 + Math.random() * 2.5;
-		const theta = Math.random() * Math.PI * 2;
-		const phi = Math.acos(Math.random() * 2 - 1);
-		pPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-		pPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-		pPos[i * 3 + 2] = r * Math.cos(phi);
-
-		particleVelocities.push({
-			x: (Math.random() - 0.5) * 0.15,
-			y: (Math.random() - 0.5) * 0.15,
-			z: (Math.random() - 0.5) * 0.15,
-			phase: Math.random() * Math.PI * 2,
-		});
-	}
-
-	pGeo.setAttribute("position", new THREE.BufferAttribute(pPos, 3));
-	const particleMat = trackMat<THREE.PointsMaterial>(
-		new THREE.PointsMaterial({
-			color: 0x888888,
-			size: 0.025,
-			transparent: true,
-			opacity: 0.5,
-			blending: THREE.AdditiveBlending,
-		})
-	);
-	const particleSystem = new THREE.Points(pGeo, particleMat);
-	scene.add(particleSystem);
-	const particlePos = particleSystem.geometry.attributes.position as THREE.BufferAttribute;
-
 	// Sigil lines connecting fragments
 	const sigilGeo = trackGeo(new THREE.BufferGeometry());
 	const sigilPositions = new Float32Array(fragmentCount * 2 * 3);
@@ -292,10 +246,6 @@ export function createSceneElements(
 		pupilMat,
 		rings,
 		fragments,
-		particleSystem,
-		particleMat,
-		particlePos,
-		particleVelocities,
 		sigilLines,
 		sigilMat,
 		sigilPos,

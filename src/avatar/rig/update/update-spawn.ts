@@ -143,11 +143,6 @@ export function applySpawn(elements: SceneElements, state: RigState): void {
 		);
 	});
 
-	const particleReveal = smoothstep(0, 0.58, progress);
-	elements.particleSystem.scale.setScalar(lerp(1.8, 1, fragmentReveal));
-	multiplyOpacity(elements.particleMat, lerp(0.35, 1, particleReveal) * flicker * (1 + shimmer * 0.55));
-	elements.particleMat.size *= lerp(1.9, 1, settle) + shimmer * 0.28;
-
 	elements.sigilLines.scale.setScalar(fragmentScatter);
 	multiplyOpacity(elements.sigilMat, smoothstep(0.34, 0.96, progress) * flicker * (1 + shimmer * 0.5));
 
@@ -163,7 +158,6 @@ function applySpawnSettled(elements: SceneElements): void {
 	elements.coreGroup.rotation.set(0, 0, 0);
 	elements.orbitGroup.rotation.set(0, 0, 0);
 	elements.fragmentGroup.rotation.set(0, 0, 0);
-	elements.particleSystem.scale.setScalar(1);
 	elements.sigilLines.scale.setScalar(1);
 	elements.pointLight.intensity = 0.8;
 	elements.rings.forEach((ring) => {
