@@ -7,7 +7,7 @@ It supports **text and voice interaction**, can be fully controlled through **ho
 DAEMON is focused on **information-gathering workflows** that benefit from **grounded responses**
 but can also interact with and **control** your system through the terminal with scoped permissions.
 
-![DAEMON terminal avatar](img/daemon.gif)
+<video src="img/daemon.mp4" autoplay loop muted playsinline style="max-width: 100%; border-radius: 8px;"></video>
 
 ## Installation
 
@@ -38,8 +38,9 @@ listening to audio input, reasoning about questions, calling tools, and generati
 The avatar was deliberately designed to feel slightly ominous and alien-like playing into sci-fi depictions.
 
 ### 🧠 LLMs
-DAEMON supports two model backends:
+DAEMON supports three model backends:
 - **OpenRouter** (API key based)
+- **OpenAI Codex** (ChatGPT OAuth)
 - **GitHub Copilot** (GitHub-authenticated via Copilot CLI / SDK) (Experimental!)
 
 For OpenRouter, DAEMON can fetch and browse available models and route to a specific OpenRouter inference provider.
@@ -84,15 +85,21 @@ DAEMON can persist user-specific facts across sessions using [mem0](https://gith
 | Terminal TUI | OpenTUI-powered interface with sci-fi styling and hotkey controls. |
 | Text + Voice | Supports text input and voice interaction with transcription and TTS. |
 | Animated Avatar | Sci-fi avatar reacts to listening, tool use, and response generation. |
-| Multi-Model Support | Works with OpenRouter and GitHub Copilot model backends. |
+| Multi-Model Support | Works with OpenRouter, OpenAI Codex, and GitHub Copilot model backends. |
+| Vision | Paste images into the input bar for vision-capable models, or read local image files. |
 | Session Persistence | Preferences and chat sessions stored locally on disk. |
 | Memory  | Automatic persistance of user-specific facts with persistent recall using **mem0** |
 | Workspaces | Session-scoped on-disk workspaces for the agent to work in. |
 | Web Search | Exa-based search and fetch for grounded, up-to-date info. |
+| Code Search | Exa-powered code examples, API usage, and technical references. |
 | Grounding | Text-fragment grounding with a dedicated UI. |
 | Bash Execution | Bash integration with approval scoping for potentially dangerous commands. |
+| Background Jobs | Long-running bash and subagent jobs run in the background. |
+| Subagents | Delegate parallel subtasks to isolated subagents. |
+| Headless Mode | Run `daemon "your prompt"` to execute a single prompt non-interactively. |
 | Browser Tools | Built-in Chrome DevTools MCP for rendered pages, browser inspection, and frontend debugging. |
 | MCP | Model Context Protocol tools. |
+| Agent Skills | Progressive-disclosure skills loaded on demand from user-configured directories. |
 
 ## 📦 Install (npm)
 
@@ -111,6 +118,8 @@ Configuration is done via environment variables (or the onboarding UI):
 - `OPENROUTER_API_KEY` (required only when OpenRouter is selected) - response generation via OpenRouter models
 - `EXA_API_KEY` (optional) - enables web search + fetch grounding via Exa
 - `OPENAI_API_KEY` (optional) - enables voice transcription + TTS
+
+For Codex, sign in once from the **Settings → OpenAI Codex Auth** menu (or during onboarding).
 
 For Copilot, authenticate once with either GitHub CLI or Copilot CLI:
 
@@ -192,3 +201,22 @@ Notes:
 - `id` is optional; if omitted, DAEMON derives one from the host.
 - Defining a server with `id: "chrome-devtools"` overrides the built-in Chrome DevTools config.
 - MCP server status, source, and enablement appear in the **Tools** menu.
+
+## 🧩 Agent Skills
+
+DAEMON supports [Agent Skills](https://agentskills.io) for progressive disclosure of
+specialized instructions and resources. Skill names and descriptions are injected into
+the system prompt; the agent loads full instructions and resources on demand.
+
+Create a skill by adding `SKILL.md` to `~/.config/daemon/skills/<name>/`:
+
+```markdown
+---
+name: my-skill
+description: Helps with example tasks. Use when the user asks for example workflow guidance.
+---
+
+# My Skill
+
+Follow this workflow when the skill is relevant.
+```
