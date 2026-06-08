@@ -68,14 +68,6 @@ export function setModelProvider(provider: LlmProvider): void {
 }
 
 /**
- * Get the current OpenRouter inference provider tag (slug) for routing.
- * When undefined, OpenRouter will choose automatically.
- */
-export function getOpenRouterProviderTag(): string | undefined {
-	return currentOpenRouterProviderTag;
-}
-
-/**
  * Set the OpenRouter inference provider tag (slug) for routing.
  * Use `undefined` to revert to automatic provider selection.
  */

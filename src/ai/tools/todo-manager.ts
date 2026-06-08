@@ -140,10 +140,6 @@ Example write with status:
 	},
 });
 
-export function clearAllTodos(): void {
-	todosBySession.clear();
-}
-
 export function getCurrentTodos(sessionIdOverride?: string | null): TodoItem[] {
 	if (sessionIdOverride !== undefined) {
 		return sessionIdOverride ? [...(todosBySession.get(sessionIdOverride) ?? [])] : [];

@@ -201,7 +201,3 @@ export function prepareOpenRouterMultimodalToolResults(
 
 	return next;
 }
-
-export function moveMultimodalToolResultImagesToUserMessages(messages: ModelMessage[]): ModelMessage[] {
-	return prepareOpenRouterMultimodalToolResults(messages, { supportsVision: true });
-}

@@ -48,16 +48,6 @@ function shimmerPulse(progress: number, elapsed: number): number {
 }
 
 /**
- * Updates the spawn animation state and applies visual effects.
- * Returns the current spawn progress (0-1) for other systems to use.
- */
-export function updateSpawn(elements: SceneElements, state: RigState, dt: number): number {
-	const easedProgress = advanceSpawn(state, dt);
-	applySpawn(elements, state);
-	return easedProgress;
-}
-
-/**
  * Advances spawn timers/state (no rendering side effects).
  * Returns the eased progress (0-1).
  */

@@ -2,7 +2,6 @@ import { CopilotClient, RuntimeConnection, defineTool } from "@github/copilot-sd
 import type {
 	CopilotClientOptions,
 	CopilotSession,
-	GetAuthStatusResponse,
 	ModelInfo,
 	PermissionHandler,
 	SessionConfig,
@@ -32,7 +31,6 @@ let startupPromise: Promise<CopilotClient> | null = null;
 const modelScopedSessionIdByKey = new Map<string, string>();
 
 const DEFAULT_CLIENT_START_TIMEOUT_MS = 15000;
-const DEFAULT_AUTH_STATUS_TIMEOUT_MS = 10000;
 const DEFAULT_SESSION_TIMEOUT_MS = 15000;
 const DEFAULT_MODEL_LIST_TIMEOUT_MS = 15000;
 const GH_AUTH_CACHE_TTL_MS = 30000;
@@ -455,43 +453,6 @@ async function ensureClient(): Promise<CopilotClient> {
 
 export async function resetCopilotClient(): Promise<void> {
 	await stopRuntimeClientIfPresent();
-}
-
-export async function getCopilotAuthStatusSafe(): Promise<GetAuthStatusResponse & { error?: string }> {
-	try {
-		const timeoutMs = parseTimeoutMs(process.env.COPILOT_AUTH_TIMEOUT_MS, DEFAULT_AUTH_STATUS_TIMEOUT_MS);
-		const client = await withTimeout(
-			ensureClient(),
-			timeoutMs,
-			"Timed out while preparing Copilot authentication."
-		);
-		const status = await withTimeout(
-			client.getAuthStatus(),
-			timeoutMs,
-			"Timed out while checking Copilot authentication."
-		);
-		if (!status.isAuthenticated) {
-			const hasGhAuth = await hasGhCliAuth();
-			const statusMessage =
-				typeof status.statusMessage === "string" && status.statusMessage.trim().length > 0
-					? status.statusMessage
-					: hasGhAuth
-						? "GitHub CLI is authenticated, but Copilot SDK is not. Complete Copilot sign-in and retry."
-						: "Copilot SDK is not authenticated.";
-			return {
-				...status,
-				statusMessage,
-			};
-		}
-		return status;
-	} catch (error) {
-		const err = error instanceof Error ? error : new Error(String(error));
-		return {
-			isAuthenticated: false,
-			statusMessage: err.message,
-			error: err.message,
-		};
-	}
 }
 
 export async function listCopilotModelsSafe(): Promise<ModelInfo[]> {

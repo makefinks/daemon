@@ -122,8 +122,3 @@ function parseStringRecord(raw: unknown): Record<string, string> | undefined {
 	}
 	return out;
 }
-
-export function clearConfigCache(): void {
-	cachedConfig = null;
-	configLoadedAt = null;
-}

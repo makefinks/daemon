@@ -89,10 +89,6 @@ Today's date: ${new Date().toISOString().split("T")[0]}
 
 let currentProgressEmitter: SubagentProgressEmitter | null = null;
 
-export function setSubagentProgressEmitter(emitter: SubagentProgressEmitter | null): void {
-	currentProgressEmitter = emitter;
-}
-
 export function runWithSubagentProgressEmitter<T>(emitter: SubagentProgressEmitter | null, fn: () => T): T {
 	const prev = currentProgressEmitter;
 	currentProgressEmitter = emitter;

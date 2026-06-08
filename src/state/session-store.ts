@@ -92,16 +92,6 @@ async function getDb(): Promise<Database> {
 	return db;
 }
 
-export function closeSessionStore(): void {
-	if (!db) return;
-	try {
-		db.close();
-	} catch {
-	} finally {
-		db = null;
-	}
-}
-
 function formatSessionTitle(timestamp: string): string {
 	const base = timestamp.replace("T", " ").slice(0, 16);
 	return `Session ${base}`;
