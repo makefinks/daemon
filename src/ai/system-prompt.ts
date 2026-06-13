@@ -1,5 +1,3 @@
-import { readdirSync, type Dirent } from "node:fs";
-import path from "node:path";
 import type { SkillCatalogEntry } from "./skills/skill-manager";
 import type { ToolToggleId } from "../types";
 
@@ -33,59 +31,6 @@ function formatLocalIsoDate(date: Date): string {
 	const month = String(date.getMonth() + 1).padStart(2, "0");
 	const day = String(date.getDate()).padStart(2, "0");
 	return `${year}-${month}-${day}`;
-}
-
-const SKIP_DIRS = new Set(["node_modules", "dist", "build", "__pycache__", "coverage"]);
-
-const TREE_MAX_DEPTH = 2;
-const TREE_MAX_ENTRIES_PER_DIR = 40;
-
-/**
- * Recursively build a plain-text file tree for inclusion in the system prompt.
- * Skips dotfiles, dotdirs, and common build/dependency directories (see SKIP_DIRS).
- * @param dirPath - Absolute path to the directory to list
- * @param depth - Current recursion depth (0 = root)
- * @param prefix - Indentation prefix inherited from parent (used for nested levels)
- * @returns Newline-separated tree listing, or empty string on error
- */
-function buildFileTree(dirPath: string, depth = 0, prefix = ""): string {
-	if (depth > TREE_MAX_DEPTH) return "";
-
-	let entries: Dirent[];
-	try {
-		entries = readdirSync(dirPath, { withFileTypes: true });
-	} catch {
-		return "";
-	}
-
-	const filtered = entries
-		.filter((e) => !SKIP_DIRS.has(e.name) && !e.name.startsWith("."))
-		.sort((a, b) => {
-			if (a.isDirectory() !== b.isDirectory()) return a.isDirectory() ? -1 : 1;
-			return a.name.localeCompare(b.name);
-		});
-
-	const truncated = filtered.length > TREE_MAX_ENTRIES_PER_DIR;
-	const visible = filtered.slice(0, TREE_MAX_ENTRIES_PER_DIR);
-
-	const lines: string[] = [];
-	for (const entry of visible) {
-		const connector = depth === 0 ? "" : prefix;
-		if (entry.isDirectory()) {
-			lines.push(`${connector}${entry.name}/`);
-			if (depth < TREE_MAX_DEPTH) {
-				const childPrefix = depth === 0 ? "" : `${prefix}  `;
-				lines.push(buildFileTree(path.join(dirPath, entry.name), depth + 1, `${childPrefix}`));
-			}
-		} else {
-			lines.push(`${connector}${entry.name}`);
-		}
-	}
-	if (truncated) {
-		lines.push(`${prefix}... (${filtered.length - TREE_MAX_ENTRIES_PER_DIR} more entries)`);
-	}
-
-	return lines.filter((l) => l.length > 0).join("\n");
 }
 
 /**
@@ -307,41 +252,76 @@ Searches for code examples, documentation snippets, and technical patterns using
 	groundingManager: `
   ### 'groundingManager' (source attribution)
   Sets the list of grounded statements (facts supported by sources) for your current response.
-  Each call replaces the previous list — include ALL items that back your response.
+  Each call replaces the previous list. Use it to attach citations to factual claims that came from web sources.
 
-  **MANDATORY usage rule (ordering is strict):**
-  - If you used webSearch, fetchUrls, or codeSearch to answer the user's question, you MUST call groundingManager BEFORE you emit any of your final answer text to the user.
-  - Concrete order for any turn that uses web tools:
+  **MANDATORY ordering (strict):**
+  - If your final answer contains a factual claim that came from a web source (price, version, statistic, named date, named person, specific quote, etc.), you MUST call groundingManager BEFORE you emit any of your final answer text to the user.
+  - Concrete order for any turn that grounds claims:
     1. webSearch / fetchUrls / codeSearch
-    2. groundingManager (single call, all items)
+    2. groundingManager (a single call with all items)
     3. final answer text
   - Do NOT write your answer first and "attach" groundings afterward. The UI renders text immediately and sources only attach when groundingManager is called *before* that text is emitted. A grounding call that arrives after the answer is effectively orphaned.
   - If a groundingManager call fails validation, fix it and re-call it BEFORE writing any answer text. Do not stream the answer first and patch the call later.
-  - Do not duplicate the answer text after a successful grounding call; the answer is the text you emitted immediately after the groundingManager call.
-  - Include all grounded items in a single call.
+  - The text you emit immediately after a successful grounding call is the answer. Do not repeat the answer.
 
-  **When not to use:**
-  - If searches yielded no relevant info -> do not invent groundings or use irrelevant groundings.
-  - If answering from your training knowledge alone (no web tools used) -> grounding not needed.
+  **Scope rule — what belongs in a grounding call:**
+  - Every item must correspond to a factual claim that (a) the user asked about or that (b) is necessary to answer the question. Do not include claims the user did not ask about, do not include tangential facts you happened to read, and do not include background context that does not appear in your final answer.
+  - If a source is rich but the user asked a narrow question, cite only the narrow slice. "Latest Bun version" gets 1-2 items, not 8.
+  - If you decide mid-draft that a claim no longer belongs in the answer, drop it from the grounding call too. Orphaned groundings (listed but never cited) and uncited claims (cited in text but not in the call) are both errors.
+  - Prefer 3-6 focused items. One item = one distinct factual claim. If two URLs back the same claim, cite the strongest URL and note the corroboration in the \`quote\` rather than emitting a duplicate item.
 
-  **Text fragment rules**
-  - \`source.quote\` is human-readable evidence and may include multiple lines if the source text does.
-  - \`source.textFragment\` is a structured browser highlight anchor only; do not write URL fragment syntax yourself.
+  **Statement quality — \`statement\` must be a faithful condensation of \`quote\`:**
+  - \`statement\` should be a near-verbatim condensation of \`quote\`. Do not add qualifiers, scope, or interpretation that the source does not support.
+  - Bad: source says "Agent: $0.025–$2.00/run", statement says "Agent runs cost $0.025 to $2.00 per run depending on complexity." (The "depending on complexity" is your gloss.)
+  - Good: source says "Agent: $0.025–$2.00/run", statement says "Agent runs cost $0.025 to $2.00 per run."
+  - If you cannot compress the claim without losing fidelity, just lift a short clause from the quote verbatim.
+
+  **Quote / textFragment relationship:**
+  - \`source.quote\` is human-readable evidence: 1-2 sentences, roughly 30-80 words, copied verbatim from the page.
+  - \`source.textFragment.textStart\` is the browser highlight anchor: a contiguous 6-15 word substring of the page, ideally living *inside* \`quote\`. If you cannot find a short anchor inside \`quote\`, shorten \`quote\` until you can. Do not echo the full quote in \`textStart\`.
   - \`source.textFragment.textStart\` is required and must be a contiguous verbatim substring from the page content you were shown.
-  - Use \`source.textFragment.textEnd\` only when the highlight should span a range; it must be a contiguous verbatim substring where the range ends.
+  - Use \`source.textFragment.textEnd\` only when the evidence spans a range; it must be a contiguous verbatim substring where the range ends.
   - Use \`source.textFragment.prefix\` and/or \`source.textFragment.suffix\` when \`textStart\` may appear more than once and nearby context improves matching reliability.
   - \`prefix\` must be exact text immediately before \`textStart\`; \`suffix\` must be exact text immediately after the highlighted text/range.
   - Do not normalize whitespace, rewrite punctuation, URL-encode text, or join unrelated text across line breaks.
-  - Prefer short, unique 6-15 word fragments for \`textStart\`; keep \`prefix\`/\`suffix\` brief.
   - Avoid URLs unless the URL itself appears as a contiguous text segment.
-  - Do not include newlines, bullets, numbering, or markdown/table artifacts in any \`source.textFragment\` field.
+  - **No markdown in textFragment fields.** \`prefix\` / \`suffix\` / \`textStart\` / \`textEnd\` must be plain running prose, 1-5 words. Do not include markdown headers (\`#####\`), bullet markers, table artifacts, line breaks, or section dividers. If the only nearby text is wrapped in markdown, choose a different disambiguator further down the page that is plain prose.
 
-  **Inline attribution rule:**
-  - After calling groundingManager, include inline references in your response text.
-  - At the end of each sentence or paragraph that is backed by a grounded statement, append the grounding ID in bold parentheses: **(G1)**, **(G2)**, etc.
-  - The number corresponds to the 1-based index of the item in your groundingManager call (first item = G1, second = G2, ...).
-  - If a sentence is supported by multiple sources, list them together: **(G1)****(G2)**.
-  - Do NOT add a sources section to your response — the system handles source presentation separately.
+  **Inline attribution in the answer:**
+  - After calling groundingManager, append the grounding ID in bold parentheses at the end of each sentence that makes a grounded claim: **(G1)**, **(G2)**, etc.
+  - Place **exactly one** \`(G#)\` at the end of the sentence it supports. If a sentence is supported by multiple sources, place them adjacent: **(G1)(G2)**.
+  - Do not stack 4+ citations on a single bullet to "cover" multiple sentences; if several sentences share a citation, place the citation at the end of *each* of those sentences.
+  - The number is the 1-based index of the item in your groundingManager call: first item = G1, second = G2, ...
+  - **Do NOT add a sources section, a "Sources:" footer, or a bibliography to your response.** The system renders sources separately. Repeating them in text is duplication and counts as a rule violation.
+
+  **When NOT to call groundingManager:**
+  - If searches yielded no relevant info: do not invent groundings, do not call the tool.
+  - If your answer is pure reasoning, design suggestion, refactor advice, or local-code analysis with no factual claim sourced from the web, you do not need to ground.
+  - If your answer is a general explanation that happens to mention a topic, but does not restate a specific factual claim from a source, you may skip grounding.
+
+  **Worked example (good):**
+  User: "What's the free tier for Exa?"
+
+  1. webSearch returns exa.ai/pricing.
+  2. fetchUrls returns the page (relevant line: "Run up to 20,000 requests per month for free").
+  3. groundingManager call:
+  <tool-input name="groundingManager">
+  {
+    "items": [
+      {
+        "id": "g1",
+        "statement": "Exa's free tier includes up to 20,000 requests per month.",
+        "source": {
+          "url": "https://exa.ai/pricing?tab=api",
+          "quote": "Run up to 20,000 requests per month for free.",
+          "textFragment": { "textStart": "Run up to 20,000 requests per month for free" }
+        }
+      }
+    ]
+  }
+  </tool-input>
+  4. Final answer (one grounded sentence, no sources footer):
+  "Exa's free tier covers up to 20,000 requests per month at no cost. **(G1)**"
 `,
 	runBash: `
   ### 'runBash' (local shell)
@@ -593,28 +573,16 @@ The user's current working directory remains your default for commands. Use runB
 }
 
 /**
- * Build the "Current Working Directory" section of the system prompt.
- * Shows the project path, a file tree, and guidance on when to write here vs. the workspace.
+ * Build the "Current Working Directory" note (path only, no file tree).
+ * Kept as a tiny reminder that the model is anchored to a specific working directory
+ * and should use \`runBash\`/\`readFile\` to inspect it on demand rather than guessing
+ * its contents.
  * @param cwdPath - Absolute path to the user's current working directory
  */
 function buildCwdSection(cwdPath: string): string {
-	const tree = buildFileTree(cwdPath);
-	const treeBlock = tree ? `\n\`\`\`\n${tree}\n\`\`\`` : "(directory listing unavailable)";
-
 	return `
 # Current Working Directory
-DAEMON is running in: \`${cwdPath}\`
-
-This is where the user's project lives. Bash commands run here by default.
-
-<project_tree>
-${treeBlock}
-</project_tree>
-
-**When to write here vs. the workspace:**
-- **Write here** when the user explicitly asks you to modify, create, or work on files within their project (e.g., "add a function to src/utils.ts", "fix this bug", "refactor this module").
-- **Write to the workspace** when you need scratch files, temporary scripts, cloned repos, or any output that isn't directly part of the user's project.
-- If the user's request is ambiguous, **default to the workspace** and tell the user where the output was saved.
+DAEMON is running in: \`${cwdPath}\`. Bash commands run here by default. Use \`readFile\`, \`runBash\`, or \`editFile\` to inspect or modify the project; do not assume specific files or layouts exist without checking first.
 `;
 }
 
@@ -669,8 +637,6 @@ ${skillsSection}
 ${workspaceSection}
 
 Before answering to the user ensure that you have performed the necessary actions and are ready to respond.
-
-If this turn used webSearch, fetchUrls, or codeSearch, your final answer text MUST be preceded by a single groundingManager call in the same turn. Do not stream the answer first and "add citations later" — sources only attach when groundingManager is called before the answer text is emitted. A failed groundingManager call must be fixed and re-issued before any answer text is written.
 
 If you are not able to answer the questions or perform the instructions of the user, say that.
 Follow all of the instructions carefully and begin processing the user request.
@@ -729,7 +695,7 @@ ${workspaceSection}
 Before answering to the user ensure that you have performed the necessary actions and are ready to respond.
 
 Verify that if you have used web searches, that you call the groundingManager for source attribution.
-NEVER respond with information from the web without grounding your findings with the groundingManager.
+NEVER respond with information from the web without grounding your findings with the groundingManager first.
 
 Follow all of the instructions carefully and begin processing the user request. Remember to be concise.
 `;
