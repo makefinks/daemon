@@ -3,7 +3,7 @@ import { toast } from "@opentui-ui/toast/react";
 import type { GroundingMap } from "../types";
 import { writeClipboardText } from "../utils/clipboard";
 import { openUrlInBrowser } from "../utils/preferences";
-import { buildTextFragmentUrl } from "../utils/text-fragment";
+import { buildStructuredTextFragmentUrl, textFragmentDisplayText } from "../utils/text-fragment";
 
 export function useGroundingMenuController(params: {
 	sessionId: string | null;
@@ -27,9 +27,7 @@ export function useGroundingMenuController(params: {
 			const item = latestGroundingMap.items[idx];
 			if (!item) return;
 			const { source } = item;
-			const url = source.textFragment
-				? buildTextFragmentUrl(source.url, { fragmentText: source.textFragment })
-				: source.url;
+			const url = buildStructuredTextFragmentUrl(source.url, source.textFragment);
 			openUrlInBrowser(url);
 		},
 		[latestGroundingMap]
@@ -47,7 +45,7 @@ export function useGroundingMenuController(params: {
 		async (index: number) => {
 			if (!latestGroundingMap) return;
 			const item = latestGroundingMap.items[index];
-			const textFragment = item?.source.textFragment?.trim();
+			const textFragment = item ? textFragmentDisplayText(item.source.textFragment) : "";
 
 			if (!textFragment) {
 				toast.info("No highlight available for this source");

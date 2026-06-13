@@ -12,11 +12,39 @@ const groundingSourceSchema = z.object({
 		.max(300)
 		.describe("A short excerpt (1-2 sentences) from the source that supports the statement."),
 	textFragment: z
-		.string()
-		.min(1)
-		.max(150)
+		.object({
+			textStart: z
+				.string()
+				.min(1)
+				.max(150)
+				.describe(
+					"Required exact text where the browser highlight starts. Use a contiguous verbatim substring from the source text."
+				),
+			textEnd: z
+				.string()
+				.min(1)
+				.max(150)
+				.optional()
+				.describe(
+					"Optional exact text where a range highlight ends. Use only when the evidence spans a range; otherwise omit."
+				),
+			prefix: z
+				.string()
+				.min(1)
+				.max(80)
+				.optional()
+				.describe("Optional exact text immediately before textStart to disambiguate repeated matches."),
+			suffix: z
+				.string()
+				.min(1)
+				.max(80)
+				.optional()
+				.describe(
+					"Optional exact text immediately after the highlighted range to disambiguate repeated matches."
+				),
+		})
 		.describe(
-			"Browser highlight anchor only. Must be one contiguous verbatim substring from the source text. Do not normalize whitespace or join text across line breaks; if evidence spans a line break, choose a shorter phrase from one side. Prefer 6-15 words that are likely unique. Avoid URLs unless the URL itself appears as a contiguous text segment. Max 150 characters."
+			"Structured browser text fragment. All fields must be copied verbatim from the source text and must not be URL-encoded."
 		),
 });
 

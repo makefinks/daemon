@@ -326,13 +326,15 @@ Searches for code examples, documentation snippets, and technical patterns using
 
   **Text fragment rules**
   - \`source.quote\` is human-readable evidence and may include multiple lines if the source text does.
-  - \`source.textFragment\` is a browser highlight anchor only.
-  - \`source.textFragment\` must be one **contiguous verbatim substring** from the page content you were shown.
-  - Do not normalize whitespace, rewrite punctuation, or join text across line breaks.
-  - If the evidence spans a line break, choose a shorter fragment from one side of the line break.
-  - Prefer 6-15 words that are likely unique on the page.
+  - \`source.textFragment\` is a structured browser highlight anchor only; do not write URL fragment syntax yourself.
+  - \`source.textFragment.textStart\` is required and must be a contiguous verbatim substring from the page content you were shown.
+  - Use \`source.textFragment.textEnd\` only when the highlight should span a range; it must be a contiguous verbatim substring where the range ends.
+  - Use \`source.textFragment.prefix\` and/or \`source.textFragment.suffix\` when \`textStart\` may appear more than once and nearby context improves matching reliability.
+  - \`prefix\` must be exact text immediately before \`textStart\`; \`suffix\` must be exact text immediately after the highlighted text/range.
+  - Do not normalize whitespace, rewrite punctuation, URL-encode text, or join unrelated text across line breaks.
+  - Prefer short, unique 6-15 word fragments for \`textStart\`; keep \`prefix\`/\`suffix\` brief.
   - Avoid URLs unless the URL itself appears as a contiguous text segment.
-  - Do not include newlines, bullets, numbering, or markdown/table artifacts in \`source.textFragment\`.
+  - Do not include newlines, bullets, numbering, or markdown/table artifacts in any \`source.textFragment\` field.
 
   **Inline attribution rule:**
   - After calling groundingManager, include inline references in your response text.

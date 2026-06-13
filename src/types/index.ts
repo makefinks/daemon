@@ -534,6 +534,17 @@ export interface BackgroundJobSnapshot {
 	error?: string;
 }
 
+export interface TextFragment {
+	/** First exact text segment to highlight. */
+	textStart: string;
+	/** Optional ending exact text segment for a range highlight. */
+	textEnd?: string;
+	/** Optional exact text immediately before textStart to disambiguate matches. */
+	prefix?: string;
+	/** Optional exact text immediately after the highlight to disambiguate matches. */
+	suffix?: string;
+}
+
 /**
  * Grounding: Source information for a grounded statement.
  */
@@ -542,8 +553,8 @@ export interface GroundingSource {
 	title?: string;
 	/** Short excerpt copied from fetched content (human-readable). */
 	quote: string;
-	/** Text fragment for deep-linking (short verbatim phrase from source). */
-	textFragment: string;
+	/** Structured browser text fragment for deep-linking. */
+	textFragment: TextFragment;
 }
 
 /**

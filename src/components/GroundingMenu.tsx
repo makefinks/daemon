@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMenuKeyboard } from "../hooks/use-menu-keyboard";
 import type { ConversationMessage, GroundedStatement, GroundingMap } from "../types";
 import { COLORS } from "../ui/constants";
+import { textFragmentDisplayText } from "../utils/text-fragment";
 
 const QUOTE_INDENT = 2;
 const QUOTE_MARKER_WIDTH = 2;
@@ -113,7 +114,7 @@ export function GroundingMenu({
 		return Math.max(80, Math.min(300, Math.floor(renderer.terminalWidth * 0.85)));
 	}, [renderer.terminalWidth]);
 
-	const { contentWidth, statementWidth, quoteWidth } = useMemo(() => {
+	const { statementWidth, quoteWidth } = useMemo(() => {
 		const cw = menuWidth - 6;
 		return {
 			contentWidth: cw,
@@ -173,7 +174,7 @@ export function GroundingMenu({
 				quoteLines[3] = truncateText(lastLine, quoteWidth - 3);
 			}
 
-			const textFragment = item.source.textFragment?.trim() ?? "";
+			const textFragment = textFragmentDisplayText(item.source.textFragment);
 
 			let sourceDomain = "";
 			try {

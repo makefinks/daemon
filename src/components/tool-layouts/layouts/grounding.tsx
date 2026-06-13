@@ -11,7 +11,12 @@ function isRecord(value: unknown): value is UnknownRecord {
 interface GroundingSource {
 	url: string;
 	quote: string;
-	textFragment?: string;
+	textFragment?: {
+		textStart: string;
+		textEnd?: string;
+		prefix?: string;
+		suffix?: string;
+	};
 }
 
 interface GroundedStatement {

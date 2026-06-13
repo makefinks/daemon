@@ -1,12 +1,46 @@
-function encodeTextFragment(text: string): string {
+import type { TextFragment } from "../types";
+
+function encodeTextFragmentPart(text: string): string {
 	return encodeURIComponent(text).replace(/-/g, "%2D");
 }
 
-export function buildTextFragmentUrl(url: string, fragment: { fragmentText: string }): string {
-	if (!fragment || !fragment.fragmentText) return url;
+function buildTextDirective(fragment: TextFragment): string | null {
+	const textStart = fragment.textStart?.trim();
+	if (!textStart) return null;
 
-	const encoded = encodeTextFragment(fragment.fragmentText);
-	const textDirective = `text=${encoded}`;
+	const parts: string[] = [];
+	const prefix = fragment.prefix?.trim();
+	const textEnd = fragment.textEnd?.trim();
+	const suffix = fragment.suffix?.trim();
+
+	if (prefix) {
+		parts.push(`${encodeTextFragmentPart(prefix)}-,`);
+	}
+
+	parts.push(encodeTextFragmentPart(textStart));
+
+	if (textEnd) {
+		parts.push(`,${encodeTextFragmentPart(textEnd)}`);
+	}
+
+	if (suffix) {
+		parts.push(`,-${encodeTextFragmentPart(suffix)}`);
+	}
+
+	return `text=${parts.join("")}`;
+}
+
+export function textFragmentDisplayText(fragment: TextFragment): string {
+	const textStart = fragment.textStart?.trim() ?? "";
+	const textEnd = fragment.textEnd?.trim() ?? "";
+
+	if (textStart && textEnd) return `${textStart} ... ${textEnd}`;
+	return textStart;
+}
+
+export function buildStructuredTextFragmentUrl(url: string, fragment: TextFragment): string {
+	const textDirective = buildTextDirective(fragment);
+	if (!textDirective) return url;
 
 	try {
 		const parsed = new URL(url);
