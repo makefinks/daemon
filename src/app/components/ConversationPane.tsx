@@ -161,14 +161,14 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 		const isTool = block.type === "tool";
 		const isNextTool = nextBlock?.type === "tool";
 		const marginBottom = isTool && isNextTool ? 0 : 1;
+		const key = block.type === "tool" ? `tool-${block.call.toolCallId}` : `hist-${idx}`;
 
 		return (
-			<box key={idx} flexDirection="column" marginBottom={marginBottom}>
+			<box key={key} flexDirection="column" marginBottom={marginBottom}>
 				<ContentBlockView
 					block={block}
 					isLastReasoningBlock={isLastReasoningBlockInList(blocks, block)}
 					isLastTextBlock={isLastTextBlockInList(blocks, block)}
-					isLastBlock={idx === blocks.length - 1}
 					isStreaming={false}
 					showFullReasoning={showFullReasoning}
 					showToolOutput={showToolOutput}
@@ -410,20 +410,21 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 									const isTool = block.type === "tool";
 									const isNextTool = nextBlock?.type === "tool";
 									const marginBottom = isTool && isNextTool ? 0 : 1;
+									const key = block.type === "tool" ? `tool-${block.call.toolCallId}` : `live-${idx}`;
 
 									return (
-										<box key={idx} flexDirection="column" marginBottom={marginBottom}>
+										<box key={key} flexDirection="column" marginBottom={marginBottom}>
 											<ContentBlockView
 												block={block}
 												isLastReasoningBlock={isLastReasoning}
 												isLastTextBlock={isLastText}
-												isLastBlock={isLastBlock}
 												isStreaming={isStreaming}
 												showFullReasoning={showFullReasoning}
 												showToolOutput={showToolOutput}
 												reasoningDisplay={reasoningDisplay}
 												lastCharTimestamp={lastCharTimestamp}
 												showReasoningTicker={hasReasoningContent}
+												isLive={true}
 											/>
 										</box>
 									);

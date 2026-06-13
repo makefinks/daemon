@@ -8,32 +8,33 @@ import { renderReasoningBlock } from "../ui/reasoning-block";
 import { renderReasoningTicker } from "../ui/reasoning-ticker";
 import { hasVisibleText, formatElapsedTime } from "../utils/formatters";
 import { DaemonText } from "./DaemonText";
+import { ToolCardFadeIn } from "./ToolCardFadeIn";
 import { ToolCallView } from "./ToolCallView";
 
 interface ContentBlockViewProps {
 	block: ContentBlock;
 	isLastReasoningBlock: boolean;
 	isLastTextBlock: boolean;
-	isLastBlock?: boolean;
 	isStreaming: boolean;
 	showFullReasoning: boolean;
 	showToolOutput?: boolean;
 	reasoningDisplay?: string;
 	lastCharTimestamp?: number;
 	showReasoningTicker?: boolean;
+	isLive?: boolean;
 }
 
 export function ContentBlockView({
 	block,
 	isLastReasoningBlock,
 	isLastTextBlock,
-	isLastBlock = false,
 	isStreaming,
 	showFullReasoning,
 	showToolOutput = true,
 	reasoningDisplay,
 	lastCharTimestamp,
 	showReasoningTicker,
+	isLive = false,
 }: ContentBlockViewProps) {
 	if (block.type === "reasoning") {
 		if (shouldHideContentBlock(block)) {
@@ -70,9 +71,9 @@ export function ContentBlockView({
 
 	if (block.type === "tool") {
 		return (
-			<box flexDirection="column">
+			<ToolCardFadeIn isLive={isLive}>
 				<ToolCallView call={block.call} result={block.result} showOutput={showToolOutput} />
-			</box>
+			</ToolCardFadeIn>
 		);
 	}
 
