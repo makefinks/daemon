@@ -32,6 +32,7 @@ const DEFAULT_SESSION_USAGE: TokenUsage = {
 };
 
 const LIVE_OUTPUT_MAX_CHARS = 50000;
+const REASONING_NOTIFY_INTERVAL_MS = 40;
 
 function truncateLiveOutput(value: string): string {
 	if (value.length <= LIVE_OUTPUT_MAX_CHARS) return value;
@@ -297,6 +298,7 @@ function mergeTokenUsage(prev: TokenUsage, usage: TokenUsage, isSubagent: boolea
 export class SessionRuntimeStore {
 	readonly events = new TypedRuntimeEvents();
 	private runtimes = new Map<string, SessionRuntimeInternal>();
+	private reasoningNotifyTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 	constructor() {
 		backgroundJobManager.events.on("statusChanged", () => {
@@ -366,6 +368,7 @@ export class SessionRuntimeStore {
 	}
 
 	clear(sessionId: string): void {
+		this.clearReasoningNotifyTimer(sessionId);
 		this.runtimes.delete(sessionId);
 		this.events.emit("updated", sessionId);
 		this.events.emit("statusChanged");
@@ -446,9 +449,8 @@ export class SessionRuntimeStore {
 			}
 		}
 		blocks.splice(insertAt, 0, block);
-		runtime.currentContentBlocks = [...blocks];
 		runtime.updatedAt = Date.now();
-		this.notify(sessionId);
+		this.scheduleReasoningNotify(sessionId);
 	}
 
 	beginResponse(sessionId: string): void {
@@ -925,7 +927,27 @@ export class SessionRuntimeStore {
 		);
 	}
 
+	private clearReasoningNotifyTimer(sessionId: string): void {
+		const timer = this.reasoningNotifyTimers.get(sessionId);
+		if (!timer) return;
+		clearTimeout(timer);
+		this.reasoningNotifyTimers.delete(sessionId);
+	}
+
+	private scheduleReasoningNotify(sessionId: string): void {
+		if (this.reasoningNotifyTimers.has(sessionId)) return;
+		const timer = setTimeout(() => {
+			this.reasoningNotifyTimers.delete(sessionId);
+			const runtime = this.runtimes.get(sessionId);
+			if (!runtime) return;
+			runtime.currentContentBlocks = [...runtime.contentBlocks];
+			this.notify(sessionId);
+		}, REASONING_NOTIFY_INTERVAL_MS);
+		this.reasoningNotifyTimers.set(sessionId, timer);
+	}
+
 	private notify(sessionId: string): void {
+		this.clearReasoningNotifyTimer(sessionId);
 		const runtime = this.runtimes.get(sessionId);
 		if (runtime) runtime.updatedAt = Date.now();
 		this.events.emit("updated", sessionId);

@@ -50,7 +50,9 @@ export function ContentBlockView({
 			const fadeTimestamp = isLastReasoningBlock
 				? (lastCharTimestamp ?? block.completedAt)
 				: block.completedAt;
-			return renderReasoningBlock(cleanedContent, block.durationMs, fadeTimestamp);
+			return renderReasoningBlock(cleanedContent, block.durationMs, fadeTimestamp, {
+				highlightTail: isStreaming && isLastReasoningBlock,
+			});
 		}
 
 		// For non-full-reasoning mode, show animated display only for the latest reasoning block

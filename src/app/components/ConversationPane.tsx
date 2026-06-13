@@ -98,6 +98,120 @@ export interface ConversationPaneProps {
 	startupMenuFadeProgress?: number;
 }
 
+interface ConversationHistoryListProps {
+	conversationHistory: ConversationMessage[];
+	showSessionDebug: boolean;
+	showFullReasoning: boolean;
+	showToolOutput: boolean;
+	bashLivePreviewAlways: boolean;
+}
+
+function findNextVisibleBlock(blocks: ContentBlock[], idx: number): ContentBlock | undefined {
+	for (let i = idx + 1; i < blocks.length; i++) {
+		const block = blocks[i];
+		if (block && !shouldHideContentBlock(block)) return block;
+	}
+	return undefined;
+}
+
+function renderMessageDebug(msg: ConversationMessage, showSessionDebug: boolean) {
+	if (!showSessionDebug) return null;
+	const roles = msg.messages?.map((m) => m.role).join(",") ?? "none";
+	const pendingLabel = msg.pending ? " · pending" : "";
+	return (
+		<box marginBottom={1}>
+			<text>
+				<span fg={COLORS.REASONING_DIM}>
+					#id:{msg.id} · type:{msg.type} · roles:{roles} · blocks:
+					{msg.contentBlocks?.length ?? 0}
+					{pendingLabel}
+				</span>
+			</text>
+		</box>
+	);
+}
+
+function renderHistoryBlock(
+	block: ContentBlock,
+	idx: number,
+	blocks: ContentBlock[],
+	showFullReasoning: boolean,
+	showToolOutput: boolean,
+	bashLivePreviewAlways: boolean
+) {
+	if (shouldHideContentBlock(block)) {
+		return null;
+	}
+
+	const nextBlock = findNextVisibleBlock(blocks, idx);
+	const isTool = block.type === "tool";
+	const isNextTool = nextBlock?.type === "tool";
+	const marginBottom = isTool && isNextTool ? 0 : 1;
+	const key = block.type === "tool" ? `tool-${block.call.toolCallId}` : `hist-${idx}`;
+
+	return (
+		<box key={key} flexDirection="column" marginBottom={marginBottom}>
+			<ContentBlockView
+				block={block}
+				isLastReasoningBlock={isLastReasoningBlockInList(blocks, block)}
+				isLastTextBlock={isLastTextBlockInList(blocks, block)}
+				isStreaming={false}
+				showFullReasoning={showFullReasoning}
+				showToolOutput={showToolOutput}
+				bashLivePreviewAlways={bashLivePreviewAlways}
+			/>
+		</box>
+	);
+}
+
+const ConversationHistoryList = memo(function ConversationHistoryList({
+	conversationHistory,
+	showSessionDebug,
+	showFullReasoning,
+	showToolOutput,
+	bashLivePreviewAlways,
+}: ConversationHistoryListProps) {
+	return (
+		<>
+			{conversationHistory.map((msg: ConversationMessage) => (
+				<box key={msg.id} flexDirection="column">
+					{msg.type === "user" && !msg.hidden ? (
+						<box
+							marginBottom={1}
+							paddingLeft={2}
+							paddingRight={2}
+							paddingTop={1}
+							paddingBottom={1}
+							backgroundColor={COLORS.USER_BG}
+							width="100%"
+						>
+							{renderMessageDebug(msg, showSessionDebug)}
+							<text>
+								<span fg={COLORS.USER_LABEL}>YOU: </span>
+								<span fg={COLORS.USER_TEXT}>{msg.content}</span>
+							</text>
+						</box>
+					) : msg.contentBlocks && msg.contentBlocks.length > 0 ? (
+						<>
+							{renderMessageDebug(msg, showSessionDebug)}
+							{msg.contentBlocks.map((block, idx) =>
+								renderHistoryBlock(
+									block,
+									idx,
+									msg.contentBlocks!,
+									showFullReasoning,
+									showToolOutput,
+									bashLivePreviewAlways
+								)
+							)}
+						</>
+					) : null}
+				</box>
+			))}
+		</>
+	);
+});
+
 function ConversationPaneImpl(props: ConversationPaneProps) {
 	const {
 		conversation,
@@ -158,57 +272,6 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 	const imagePasteEnabled = currentModelProvider !== "copilot" && modelMetadata?.supportsVision === true;
 
 	const showSessionDebug = Boolean(process.env.DEBUG_SESSION);
-
-	const renderHistoryBlock = (block: ContentBlock, idx: number, blocks: ContentBlock[]) => {
-		if (shouldHideContentBlock(block)) {
-			return null;
-		}
-
-		let nextBlock: ContentBlock | undefined;
-		for (let i = idx + 1; i < blocks.length; i++) {
-			const b = blocks[i];
-			if (b && !shouldHideContentBlock(b)) {
-				nextBlock = b;
-				break;
-			}
-		}
-
-		const isTool = block.type === "tool";
-		const isNextTool = nextBlock?.type === "tool";
-		const marginBottom = isTool && isNextTool ? 0 : 1;
-		const key = block.type === "tool" ? `tool-${block.call.toolCallId}` : `hist-${idx}`;
-
-		return (
-			<box key={key} flexDirection="column" marginBottom={marginBottom}>
-				<ContentBlockView
-					block={block}
-					isLastReasoningBlock={isLastReasoningBlockInList(blocks, block)}
-					isLastTextBlock={isLastTextBlockInList(blocks, block)}
-					isStreaming={false}
-					showFullReasoning={showFullReasoning}
-					showToolOutput={showToolOutput}
-					bashLivePreviewAlways={bashLivePreviewAlways}
-				/>
-			</box>
-		);
-	};
-
-	const renderMessageDebug = (msg: ConversationMessage) => {
-		if (!showSessionDebug) return null;
-		const roles = msg.messages?.map((m) => m.role).join(",") ?? "none";
-		const pendingLabel = msg.pending ? " · pending" : "";
-		return (
-			<box marginBottom={1}>
-				<text>
-					<span fg={COLORS.REASONING_DIM}>
-						#id:{msg.id} · type:{msg.type} · roles:{roles} · blocks:
-						{msg.contentBlocks?.length ?? 0}
-						{pendingLabel}
-					</span>
-				</text>
-			</box>
-		);
-	};
 
 	const showTypingInput = hasInteracted && daemonState === DaemonState.TYPING;
 	const isReasoning =
@@ -277,9 +340,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 									minWidth={55}
 									minHeight={2}
 								/>
-							) : (
-								<></>
-							)}
+							) : null}
 						</box>
 					</box>
 				</box>
@@ -353,36 +414,13 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 						width="100%"
 						backgroundColor={frostColor}
 					>
-						{conversationHistory.map((msg: ConversationMessage) => (
-							<box key={msg.id} flexDirection="column">
-								{msg.type === "user" && !msg.hidden ? (
-									<box
-										marginBottom={1}
-										paddingLeft={2}
-										paddingRight={2}
-										paddingTop={1}
-										paddingBottom={1}
-										backgroundColor={COLORS.USER_BG}
-										width="100%"
-									>
-										<>
-											{renderMessageDebug(msg)}
-											<text>
-												<span fg={COLORS.USER_LABEL}>YOU: </span>
-												<span fg={COLORS.USER_TEXT}>{msg.content}</span>
-											</text>
-										</>
-									</box>
-								) : msg.contentBlocks && msg.contentBlocks.length > 0 ? (
-									<>
-										{renderMessageDebug(msg)}
-										{msg.contentBlocks.map((block, idx) =>
-											renderHistoryBlock(block, idx, msg.contentBlocks!)
-										)}
-									</>
-								) : null}
-							</box>
-						))}
+						<ConversationHistoryList
+							conversationHistory={conversationHistory}
+							showSessionDebug={showSessionDebug}
+							showFullReasoning={showFullReasoning}
+							showToolOutput={showToolOutput}
+							bashLivePreviewAlways={bashLivePreviewAlways}
+						/>
 
 						{currentTranscription && (
 							<box
@@ -408,14 +446,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 										return null;
 									}
 
-									let nextBlock: ContentBlock | undefined;
-									for (let i = idx + 1; i < currentContentBlocks.length; i++) {
-										const b = currentContentBlocks[i];
-										if (b && !shouldHideContentBlock(b)) {
-											nextBlock = b;
-											break;
-										}
-									}
+									const nextBlock = findNextVisibleBlock(currentContentBlocks, idx);
 
 									const isLastBlock = idx === currentContentBlocks.length - 1;
 									const isLastText = isLastTextBlockInList(currentContentBlocks, block);

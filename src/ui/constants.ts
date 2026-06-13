@@ -28,8 +28,8 @@ export const STATE_COLOR_HEX: Record<DaemonState, string> = {
 // Animation settings for reasoning text ticker
 export const REASONING_ANIMATION = {
 	LINE_WIDTH: 200,
-	CHARS_PER_TICK: 6,
-	TICK_INTERVAL_MS: 12,
+	CHARS_PER_TICK: 20,
+	TICK_INTERVAL_MS: 40,
 	SEGMENT_LENGTH: 3,
 	PREFIX_COLOR: "#7a7a7a",
 	INTENSITY: 0.5,

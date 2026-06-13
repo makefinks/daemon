@@ -95,6 +95,9 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 	const reasoningActiveRef = useRef(false);
 	// Track count of non-reasoning blocks to detect when a new one is added.
 	const lastNonReasoningCountRef = useRef(0);
+	const reasoningTokenBufferRef = useRef("");
+	const reasoningTokenStartsSegmentRef = useRef(false);
+	const reasoningTokenFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const [daemonState, setDaemonState] = useState<DaemonState>(DaemonState.IDLE);
 	const [conversationHistory, setConversationHistoryState] = useState<ConversationMessage[]>([]);
@@ -157,6 +160,25 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 	}, [applyRuntimeSnapshot, sessionId]);
 
 	useEffect(() => {
+		const clearReasoningTokenBuffer = () => {
+			reasoningTokenBufferRef.current = "";
+			reasoningTokenStartsSegmentRef.current = false;
+			if (reasoningTokenFlushTimerRef.current) {
+				clearTimeout(reasoningTokenFlushTimerRef.current);
+				reasoningTokenFlushTimerRef.current = null;
+			}
+		};
+
+		const flushReasoningTokenBuffer = () => {
+			reasoningTokenFlushTimerRef.current = null;
+			const pending = reasoningTokenBufferRef.current;
+			if (!pending) return;
+			const startsSegment = reasoningTokenStartsSegmentRef.current;
+			reasoningTokenBufferRef.current = "";
+			reasoningTokenStartsSegmentRef.current = false;
+			setReasoningQueueRef.current((prev: string) => (startsSegment ? pending : prev + pending));
+		};
+
 		const handleRuntimeUpdate = (updatedSessionId: string) => {
 			if (updatedSessionId === sessionIdRef.current) {
 				applyRuntimeSnapshot(updatedSessionId);
@@ -181,6 +203,7 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 		const handleStateChange = (state: DaemonState) => {
 			const activeSessionId = sessionIdRef.current;
 			if (state !== DaemonState.RESPONDING) {
+				clearReasoningTokenBuffer();
 				clearReasoningStateRef.current();
 				reasoningActiveRef.current = false;
 				lastNonReasoningCountRef.current = 0;
@@ -190,6 +213,7 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 				return;
 			}
 			if (state === DaemonState.RESPONDING) {
+				clearReasoningTokenBuffer();
 				clearReasoningStateRef.current();
 				reasoningActiveRef.current = false;
 				lastNonReasoningCountRef.current = 0;
@@ -231,12 +255,23 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 		const handleReasoningToken = (token: string) => {
 			const isNewReasoningSegment = !reasoningActiveRef.current;
 			reasoningActiveRef.current = true;
-			setReasoningQueueRef.current((prev: string) =>
-				isNewReasoningSegment ? token.replace(/\n/g, " ") : prev + token.replace(/\n/g, " ")
-			);
+			const normalized = token.replace(/\n/g, " ");
+			if (isNewReasoningSegment) {
+				reasoningTokenBufferRef.current = normalized;
+				reasoningTokenStartsSegmentRef.current = true;
+			} else {
+				reasoningTokenBufferRef.current += normalized;
+			}
+			if (!reasoningTokenFlushTimerRef.current) {
+				reasoningTokenFlushTimerRef.current = setTimeout(
+					flushReasoningTokenBuffer,
+					REASONING_ANIMATION.TICK_INTERVAL_MS
+				);
+			}
 		};
 		daemonEvents.on("reasoningToken", handleReasoningToken);
 		return () => {
+			clearReasoningTokenBuffer();
 			sessionRuntimeStore.events.off("updated", handleRuntimeUpdate);
 			daemonEvents.off("stateChange", handleStateChange);
 			daemonEvents.off("toolApprovalResolved", handleApprovalResolved);
