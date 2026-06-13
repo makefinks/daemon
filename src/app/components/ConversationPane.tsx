@@ -17,6 +17,7 @@ import type {
 	ContentBlock,
 	ConversationMessage,
 	LlmProvider,
+	ModelOption,
 	PromptImageAttachment,
 	TokenUsage,
 } from "../../types";
@@ -81,6 +82,7 @@ export interface ConversationPaneProps {
 	typing: TypingInputState;
 	sessionUsage: TokenUsage;
 	modelMetadata: ModelMetadata | null;
+	modelOption: ModelOption | null;
 	currentModelProvider: LlmProvider;
 	hasInteracted: boolean;
 	suppressStatusBar?: boolean;
@@ -105,6 +107,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 		typing,
 		sessionUsage,
 		modelMetadata,
+		modelOption,
 		currentModelProvider,
 		hasInteracted,
 		suppressStatusBar = false,
@@ -289,6 +292,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 					<TokenUsageDisplay
 						usage={sessionUsage}
 						modelMetadata={modelMetadata}
+						modelOption={modelOption}
 						hideCost={currentModelProvider !== "openrouter"}
 					/>
 				)}

@@ -256,6 +256,7 @@ export function useAppController({
 		currentModelId,
 		preferencesLoaded,
 		openAiCodexAuthenticated: bootstrap.openAiCodexAuthenticated,
+		openRouterModelsUpdatedAt,
 		sessionId: session.currentSessionId,
 		sessionIdRef: session.currentSessionIdRef,
 		ensureSessionId: session.ensureSessionId,
@@ -271,6 +272,10 @@ export function useAppController({
 			? (daemon.modelMetadata?.supportsReasoning ?? false)
 			: currentModelSupportsReasoning;
 	const supportsReasoningXHigh = currentModelSupportsReasoningXHigh;
+
+	const currentModelOption = useMemo(() => {
+		return modelsWithPricing.find((model) => model.id === currentModelId) ?? null;
+	}, [currentModelId, modelsWithPricing]);
 
 	// Preferences bootstrap (hook): returns a stable persist callback.
 	const { persistPreferences } = useAppPreferencesBootstrap({
@@ -861,6 +866,7 @@ export function useAppController({
 			},
 			sessionUsage: daemon.sessionUsage,
 			modelMetadata: daemon.modelMetadata,
+			modelOption: currentModelOption,
 			currentModelProvider,
 			hasInteracted: daemon.hasInteracted,
 			frostColor,

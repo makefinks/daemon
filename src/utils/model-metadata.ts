@@ -1,22 +1,34 @@
 /**
- * Fetches and caches model metadata from OpenRouter API.
- * Provides context window size and pricing information.
+ * Resolves model metadata (capabilities) for the active provider.
+ *
+ * OpenRouter metadata is derived from the in-memory `/api/v1/models` cache
+ * populated by `openrouter-models.ts`, so no per-model network call is required.
+ * Per-provider pricing + inference routing still lives behind
+ * `getOpenRouterProviderPricing`, which uses the lazy `/endpoints` API.
  */
 
 import type { LlmProvider, ModelPricing } from "../types";
 import { getOpenAiCodexModelMetadata } from "./openai-codex-models";
 import { debug } from "./debug-logger";
 import { getOpenRouterModelEndpointsMetadata } from "./openrouter-endpoints";
-import { mergePricingAverages, mergePricingMinima } from "./openrouter-pricing";
+import {
+	getOpenRouterModels,
+	getOpenRouterRawModelItem,
+	modelItemContextLength,
+	modelItemDisplayName,
+	modelItemSupportsCaching,
+	modelItemSupportsReasoning,
+	modelItemSupportsVision,
+	subscribeOpenRouterModelsCacheChanged,
+} from "./openrouter-models";
 
 export interface ModelMetadata {
 	id: string;
 	name: string;
 	contextLength: number;
-	pricing?: ModelPricing;
 	/** Whether this model supports the reasoning effort parameter */
 	supportsReasoning: boolean;
-	/** Whether any provider endpoint supports caching (best-effort). */
+	/** Whether the model advertises cache pricing (best-effort). */
 	supportsCaching: boolean;
 	/** Whether this model accepts image input. */
 	supportsVision: boolean;
@@ -27,56 +39,38 @@ type CachedModelMetadataEntry = {
 	metadata: ModelMetadata;
 };
 
-// In-memory cache for model metadata (derived from per-model endpoints)
+// In-memory cache for derived ModelMetadata (per-id) so we don't recompute
+// every time a component asks. Invalidated whenever the underlying OpenRouter
+// models cache is replaced (see subscriber below).
 let cachedByModelId: Map<string, CachedModelMetadataEntry> | null = null;
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-/**
- * Build model-level metadata from OpenRouter per-model endpoint info.
- */
-async function fetchModelMetadata(modelId: string): Promise<ModelMetadata | null> {
-	const now = Date.now();
+subscribeOpenRouterModelsCacheChanged(() => {
+	cachedByModelId = null;
+});
 
+function buildOpenRouterModelMetadata(modelId: string): ModelMetadata | null {
+	const item = getOpenRouterRawModelItem(modelId);
+	if (!item) return null;
+	return {
+		id: modelId,
+		name: modelItemDisplayName(item, modelId),
+		contextLength: modelItemContextLength(item),
+		supportsReasoning: modelItemSupportsReasoning(item),
+		supportsCaching: modelItemSupportsCaching(item),
+		supportsVision: modelItemSupportsVision(item),
+	};
+}
+
+function getCachedOrBuild(modelId: string): ModelMetadata | null {
 	if (!cachedByModelId) cachedByModelId = new Map();
-
+	const now = Date.now();
 	const cached = cachedByModelId.get(modelId);
 	if (cached && now - cached.timestamp < CACHE_TTL_MS) return cached.metadata;
 
-	try {
-		debug.log("Fetching model endpoint metadata from OpenRouter...", { modelId });
-
-		const endpoints = await getOpenRouterModelEndpointsMetadata(modelId);
-		if (!endpoints) return null;
-
-		const contextLength = endpoints.providers.reduce((max, p) => {
-			const value = typeof p.contextLength === "number" ? p.contextLength : 0;
-			return Math.max(max, value);
-		}, 0);
-
-		const pricingCandidates = endpoints.providers
-			.map((p) => p.pricing)
-			.filter((p): p is ModelPricing => Boolean(p));
-
-		const pricing = pricingCandidates.length > 0 ? mergePricingMinima(pricingCandidates) : undefined;
-
-		const supportsCaching = endpoints.providers.some((p) => p.supportsCaching);
-
-		const metadata: ModelMetadata = {
-			id: endpoints.modelId,
-			name: endpoints.modelName ?? endpoints.modelId,
-			contextLength,
-			pricing,
-			supportsReasoning: endpoints.supportsReasoning,
-			supportsCaching,
-			supportsVision: endpoints.supportsVision,
-		};
-
-		cachedByModelId.set(modelId, { timestamp: now, metadata });
-		return metadata;
-	} catch (error) {
-		debug.error("Failed to fetch model metadata:", error);
-		return cached?.metadata ?? null;
-	}
+	const built = buildOpenRouterModelMetadata(modelId);
+	if (built) cachedByModelId.set(modelId, { timestamp: now, metadata: built });
+	return built;
 }
 
 export async function getModelMetadataForProvider(
@@ -89,32 +83,25 @@ export async function getModelMetadataForProvider(
 	if (provider !== "openrouter") {
 		return null;
 	}
-	return fetchModelMetadata(modelId);
+	try {
+		// Ensure the raw OpenRouter catalog is loaded. `getOpenRouterModels` is
+		// idempotent and returns immediately from the in-memory cache on
+		// subsequent calls, so awaiting it is safe and avoids a cold-start race
+		// where the daemon effect fires before the catalog loader resolves.
+		await getOpenRouterModels();
+		return getCachedOrBuild(modelId);
+	} catch (error) {
+		debug.error("Failed to resolve OpenRouter model metadata:", error);
+		return null;
+	}
 }
 
 /**
- * Get metadata for multiple models.
- * @param modelIds - Array of OpenRouter model IDs
- * @returns Map of model ID to metadata (only includes models that were found)
+ * Per-provider pricing for an OpenRouter model. This is the only place we still
+ * hit the per-model `/endpoints` API; callers should use it lazily (e.g. when
+ * the user opens the provider routing menu, or when a specific provider is
+ * already pinned).
  */
-export async function getModelsMetadata(modelIds: string[]): Promise<Map<string, ModelMetadata>> {
-	const result = new Map<string, ModelMetadata>();
-	const concurrency = 4;
-	let index = 0;
-
-	const workers = Array.from({ length: Math.min(concurrency, modelIds.length) }).map(async () => {
-		while (index < modelIds.length) {
-			const current = modelIds[index++];
-			if (!current) continue;
-			const metadata = await fetchModelMetadata(current);
-			if (metadata) result.set(current, metadata);
-		}
-	});
-
-	await Promise.all(workers);
-	return result;
-}
-
 export async function getOpenRouterProviderPricing(
 	modelId: string,
 	providerTag: string

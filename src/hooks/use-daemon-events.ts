@@ -21,6 +21,8 @@ export interface UseDaemonEventsParams {
 	currentModelId: string;
 	preferencesLoaded: boolean;
 	openAiCodexAuthenticated: boolean;
+	/** Timestamp of the most recent OpenRouter models list load, or null while loading. */
+	openRouterModelsUpdatedAt: number | null;
 	setReasoningQueue: (queue: string | ((prev: string) => string)) => void;
 	clearReasoningState: () => void;
 	clearReasoningTicker: () => void;
@@ -67,6 +69,7 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 		currentModelId,
 		preferencesLoaded,
 		openAiCodexAuthenticated,
+		openRouterModelsUpdatedAt,
 		clearReasoningState,
 		sessionId,
 		sessionIdRef,
@@ -264,7 +267,13 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 		return () => {
 			cancelled = true;
 		};
-	}, [currentModelId, currentModelProvider, openAiCodexAuthenticated, preferencesLoaded]);
+	}, [
+		currentModelId,
+		currentModelProvider,
+		openAiCodexAuthenticated,
+		openRouterModelsUpdatedAt,
+		preferencesLoaded,
+	]);
 
 	const applyAvatarForState = useCallback((state: DaemonState) => {
 		const avatar = avatarRef.current;

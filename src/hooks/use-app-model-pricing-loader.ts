@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import type { ModelOption } from "../types";
 import { AVAILABLE_MODELS } from "../ai/model-config";
-import { getModelsMetadata } from "../utils/model-metadata";
+import { getOpenRouterModels } from "../utils/openrouter-models";
 
 export interface UseAppModelPricingLoaderParams {
 	preferencesLoaded: boolean;
@@ -18,22 +18,23 @@ export function useAppModelPricingLoader(params: UseAppModelPricingLoaderParams)
 
 		(async () => {
 			try {
-				const modelIds = AVAILABLE_MODELS.map((m) => m.id);
-				const metadata = await getModelsMetadata(modelIds);
+				const { models } = await getOpenRouterModels();
 				if (cancelled) return;
 
-				const modelsWithPrices: ModelOption[] = AVAILABLE_MODELS.map((model) => {
-					const meta = metadata.get(model.id);
+				const byId = new Map(models.map((model) => [model.id, model]));
+				const curated: ModelOption[] = AVAILABLE_MODELS.map((model) => {
+					const enriched = byId.get(model.id);
+					if (!enriched) return model;
 					return {
 						...model,
-						name: meta?.name ?? model.name,
-						pricing: meta?.pricing,
-						contextLength: meta?.contextLength,
-						supportsCaching: meta?.supportsCaching,
-						supportsVision: meta?.supportsVision,
+						name: enriched.name || model.name,
+						pricing: enriched.pricing,
+						contextLength: enriched.contextLength,
+						supportsCaching: enriched.supportsCaching,
+						supportsVision: enriched.supportsVision,
 					};
 				});
-				setModelsWithPricing(modelsWithPrices);
+				setModelsWithPricing(curated);
 			} catch (_err: unknown) {
 				// Silently fail - models will just not show pricing.
 			}

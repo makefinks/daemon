@@ -35,6 +35,7 @@ interface OpenRouterModelsResponse {
 interface OpenRouterModelsCache {
 	timestamp: number;
 	models: ModelOption[];
+	rawById: Record<string, OpenRouterModelItem>;
 }
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -64,6 +65,11 @@ function parsePricing(pricing?: OpenRouterModelItem["pricing"]): ModelPricing | 
 	return parsed;
 }
 
+export function modelItemSupportsCaching(item: OpenRouterModelItem | undefined): boolean {
+	if (!item?.pricing) return false;
+	return item.pricing.input_cache_read !== undefined || item.pricing.input_cache_write !== undefined;
+}
+
 function supportsToolCalling(model: OpenRouterModelItem): boolean {
 	if (typeof model.supports_tools === "boolean") return model.supports_tools;
 
@@ -87,15 +93,38 @@ function modelSupportsReasoningEffort(model: OpenRouterModelItem): boolean {
 	return params.includes("reasoning") || params.includes("reasoning_effort");
 }
 
-function normalizeModels(items: OpenRouterModelItem[]): ModelOption[] {
+export function modelItemSupportsVision(item: OpenRouterModelItem | undefined): boolean {
+	return item?.architecture?.input_modalities?.includes("image") === true;
+}
+
+export function modelItemSupportsReasoning(item: OpenRouterModelItem | undefined): boolean {
+	if (!item) return false;
+	return modelSupportsReasoningEffort(item);
+}
+
+export function modelItemContextLength(item: OpenRouterModelItem | undefined): number {
+	return typeof item?.context_length === "number" ? item.context_length : 0;
+}
+
+export function modelItemDisplayName(item: OpenRouterModelItem | undefined, id: string): string {
+	if (item && typeof item.name === "string" && item.name.trim().length > 0) return item.name.trim();
+	return id;
+}
+
+function normalizeModels(items: OpenRouterModelItem[]): {
+	models: ModelOption[];
+	rawById: Record<string, OpenRouterModelItem>;
+} {
 	const models: ModelOption[] = [];
+	const rawById: Record<string, OpenRouterModelItem> = {};
 
 	for (const item of items) {
 		const id = typeof item.id === "string" ? item.id.trim() : "";
 		if (!id) continue;
+		rawById[id] = item;
 		if (!supportsToolCalling(item)) continue;
 
-		const name = typeof item.name === "string" && item.name.trim().length > 0 ? item.name.trim() : id;
+		const name = modelItemDisplayName(item, id);
 		const contextLength = typeof item.context_length === "number" ? item.context_length : undefined;
 		const pricing = parsePricing(item.pricing);
 
@@ -104,13 +133,14 @@ function normalizeModels(items: OpenRouterModelItem[]): ModelOption[] {
 			name,
 			contextLength,
 			pricing,
-			supportsVision: item.architecture?.input_modalities?.includes("image") === true,
+			supportsCaching: modelItemSupportsCaching(item),
+			supportsVision: modelItemSupportsVision(item),
 			supportsReasoningEffort: modelSupportsReasoningEffort(item),
 			supportsReasoningEffortXHigh: openRouterModelSupportsXHigh(id),
 		});
 	}
 
-	return models;
+	return { models, rawById };
 }
 
 async function readCache(): Promise<OpenRouterModelsCache | null> {
@@ -118,7 +148,20 @@ async function readCache(): Promise<OpenRouterModelsCache | null> {
 		const payload = await fs.readFile(getCachePath(), "utf8");
 		const data = JSON.parse(payload) as OpenRouterModelsCache;
 		if (!data || typeof data.timestamp !== "number" || !Array.isArray(data.models)) return null;
-		return data;
+		if (!data.rawById || typeof data.rawById !== "object") {
+			data.rawById = {};
+		}
+		// The trimmed `models` list is now derivable from `rawById`; re-normalize
+		// so any newly-added fields (e.g. `supportsCaching`) are populated even
+		// for caches written before they were introduced. Caches without
+		// `rawById` (legacy) are treated as invalid so we refetch.
+		const rawItems = Object.values(data.rawById);
+		if (rawItems.length > 0) {
+			const { models } = normalizeModels(rawItems);
+			data.models = models;
+			return data;
+		}
+		return null;
 	} catch {
 		return null;
 	}
@@ -153,10 +196,11 @@ async function fetchOpenRouterModelsFromApi(): Promise<OpenRouterModelsCache> {
 	const data = (await response.json()) as OpenRouterModelsResponse;
 	const items = Array.isArray(data.data) ? data.data : [];
 
-	const models = normalizeModels(items);
+	const { models, rawById } = normalizeModels(items);
 	const payload: OpenRouterModelsCache = {
 		timestamp: Date.now(),
 		models,
+		rawById,
 	};
 
 	await writeCache(payload);
@@ -171,6 +215,41 @@ export interface OpenRouterModelsResult {
 	models: ModelOption[];
 	timestamp: number | null;
 	fromCache: boolean;
+}
+
+export function getOpenRouterRawModelItem(modelId: string): OpenRouterModelItem | undefined {
+	if (!inMemoryCache) return undefined;
+	return inMemoryCache.rawById[modelId];
+}
+
+const cacheChangeListeners = new Set<() => void>();
+
+/**
+ * Subscribe to changes of the in-memory OpenRouter models cache. The listener
+ * fires whenever the cache is replaced (initial load, disk read, or forced
+ * refresh), letting dependents drop derived state (e.g. cached
+ * `ModelMetadata`) that would otherwise go stale.
+ */
+export function subscribeOpenRouterModelsCacheChanged(listener: () => void): () => void {
+	cacheChangeListeners.add(listener);
+	return () => {
+		cacheChangeListeners.delete(listener);
+	};
+}
+
+function notifyCacheChanged(): void {
+	for (const listener of cacheChangeListeners) {
+		try {
+			listener();
+		} catch (error) {
+			debug.error("OpenRouter models cache change listener threw:", error);
+		}
+	}
+}
+
+function setInMemoryCache(cache: OpenRouterModelsCache | null): void {
+	inMemoryCache = cache;
+	notifyCacheChanged();
 }
 
 export async function getOpenRouterModels(options?: {
@@ -189,7 +268,7 @@ export async function getOpenRouterModels(options?: {
 	if (!forceRefresh) {
 		const diskCache = await readCache();
 		if (diskCache && isCacheFresh(diskCache)) {
-			inMemoryCache = diskCache;
+			setInMemoryCache(diskCache);
 			return {
 				models: diskCache.models,
 				timestamp: diskCache.timestamp,
@@ -201,13 +280,13 @@ export async function getOpenRouterModels(options?: {
 	try {
 		debug.log("Fetching OpenRouter model list...");
 		const cache = await fetchOpenRouterModelsFromApi();
-		inMemoryCache = cache;
+		setInMemoryCache(cache);
 		return { models: cache.models, timestamp: cache.timestamp, fromCache: false };
 	} catch (error) {
 		debug.error("Failed to fetch OpenRouter models:", error);
 		const fallback = inMemoryCache ?? (await readCache());
 		if (fallback) {
-			inMemoryCache = fallback;
+			setInMemoryCache(fallback);
 			return {
 				models: fallback.models,
 				timestamp: fallback.timestamp,
