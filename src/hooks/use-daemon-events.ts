@@ -2,15 +2,10 @@
  * Hook for subscribing to the selected session runtime and exposing UI state.
  */
 
+import { toast } from "@opentui-ui/toast/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { clearFetchCache } from "../ai/exa-fetch-cache";
 import { DaemonAvatarRenderable } from "../avatar/DaemonAvatarRenderable";
-import {
-	createMemoryDeletedHandler,
-	createMemorySavedHandler,
-	createSessionCreatedHandler,
-	createSessionDeletedHandler,
-} from "./daemon-event-handlers";
 import { daemonEvents } from "../state/daemon-events";
 import { getDaemonManager } from "../state/daemon-state";
 import { sessionRuntimeStore } from "../state/session-runtime-store";
@@ -219,19 +214,17 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 				setTimeout(() => setErrorState(""), 5000);
 			}
 		};
-		const handleMemorySaved = createMemorySavedHandler();
-		const handleMemoryDeleted = createMemoryDeletedHandler();
-		const handleSessionCreated = createSessionCreatedHandler();
-		const handleSessionDeleted = createSessionDeletedHandler();
+		const handleMemorySaved = (preview: { operation: string; description?: string }) => {
+			const description = preview.description?.trim();
+			if (!description) return;
+			toast.success(`Memory saved (${preview.operation})`, { description });
+		};
 
 		sessionRuntimeStore.events.on("updated", handleRuntimeUpdate);
 		daemonEvents.on("stateChange", handleStateChange);
 		daemonEvents.on("toolApprovalResolved", handleApprovalResolved);
 		daemonEvents.on("error", handleError);
 		daemonEvents.on("memorySaved", handleMemorySaved);
-		daemonEvents.on("memoryDeleted", handleMemoryDeleted);
-		daemonEvents.on("sessionCreated", handleSessionCreated);
-		daemonEvents.on("sessionDeleted", handleSessionDeleted);
 		const handleReasoningToken = (token: string) => {
 			const isNewReasoningSegment = !reasoningActiveRef.current;
 			reasoningActiveRef.current = true;
@@ -246,9 +239,6 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 			daemonEvents.off("toolApprovalResolved", handleApprovalResolved);
 			daemonEvents.off("error", handleError);
 			daemonEvents.off("memorySaved", handleMemorySaved);
-			daemonEvents.off("memoryDeleted", handleMemoryDeleted);
-			daemonEvents.off("sessionCreated", handleSessionCreated);
-			daemonEvents.off("sessionDeleted", handleSessionDeleted);
 			daemonEvents.off("reasoningToken", handleReasoningToken);
 		};
 	}, [applyRuntimeSnapshot, sessionIdRef]);

@@ -164,6 +164,7 @@ export async function listSessions(): Promise<SessionInfo[]> {
 				createdAt: row.created_at,
 				updatedAt: row.updated_at,
 				totalTokens: usage.totalTokens,
+				subagentTotalTokens: usage.subagentTotalTokens,
 				cost: usage.cost,
 			};
 		});

@@ -81,6 +81,10 @@ export function useAppController({
 	const [startupMenuFadeProgress, setStartupMenuFadeProgress] = useState(0);
 	const [daemonStats, setDaemonStats] = useState<DaemonStats | null>(null);
 
+	const refreshStats = useCallback(() => {
+		void getStats().then(setDaemonStats);
+	}, []);
+
 	// Update terminal size state on resize to trigger re-render
 	useOnResize((width, height) => {
 		setTerminalSize({ width, height });
@@ -117,26 +121,26 @@ export function useAppController({
 	const session = useSessionController({ showSessionMenu });
 
 	useEffect(() => {
-		setDaemonStats(getStats());
-	}, []);
+		refreshStats();
+	}, [refreshStats]);
 
 	// Keep tool count in sync when MCP servers connect/disconnect
 	useEffect(() => {
-		const onUpdate = () => setDaemonStats(getStats());
+		const onUpdate = () => refreshStats();
 		getMcpManager().on("update", onUpdate);
 		return () => {
 			getMcpManager().off("update", onUpdate);
 		};
-	}, []);
+	}, [refreshStats]);
 
 	// Refresh stats when built-in tools are toggled on/off
 	useEffect(() => {
-		const onToggle = () => setDaemonStats(getStats());
+		const onToggle = () => refreshStats();
 		daemonEvents.on("toolTogglesChanged", onToggle);
 		return () => {
 			daemonEvents.off("toolTogglesChanged", onToggle);
 		};
-	}, []);
+	}, [refreshStats]);
 
 	// Eagerly discover skills on boot to seed the HUD count
 	useEffect(() => {
@@ -146,23 +150,47 @@ export function useAppController({
 			const toggles = getDaemonManager().skillToggles ?? {};
 			const enabled = allSkills.filter((s) => isSkillEnabled(s.name, toggles)).length;
 			setEnabledSkillCount(enabled);
-			setDaemonStats(getStats());
+			refreshStats();
 		});
 		return () => {
 			cancelled = true;
 		};
-	}, []);
+	}, [refreshStats]);
 
 	// Refresh skills count when skills are toggled
 	useEffect(() => {
 		const onToggle = () => {
-			setDaemonStats(getStats());
+			refreshStats();
 		};
 		daemonEvents.on("skillTogglesChanged", onToggle);
 		return () => {
 			daemonEvents.off("skillTogglesChanged", onToggle);
 		};
-	}, []);
+	}, [refreshStats]);
+
+	// Refresh stats when sessions are created/deleted (affects sessions, tokens, artifacts).
+	useEffect(() => {
+		const onCreated = () => refreshStats();
+		const onDeleted = () => refreshStats();
+		daemonEvents.on("sessionCreated", onCreated);
+		daemonEvents.on("sessionDeleted", onDeleted);
+		return () => {
+			daemonEvents.off("sessionCreated", onCreated);
+			daemonEvents.off("sessionDeleted", onDeleted);
+		};
+	}, [refreshStats]);
+
+	// Refresh stats when memory changes (affects totalMemories).
+	useEffect(() => {
+		const onSaved = () => refreshStats();
+		const onDeleted = () => refreshStats();
+		daemonEvents.on("memorySaved", onSaved);
+		daemonEvents.on("memoryDeleted", onDeleted);
+		return () => {
+			daemonEvents.off("memorySaved", onSaved);
+			daemonEvents.off("memoryDeleted", onDeleted);
+		};
+	}, [refreshStats]);
 
 	const appSettings = useAppSettings();
 	const {
@@ -565,13 +593,13 @@ export function useAppController({
 	useEffect(() => {
 		if (daemon.daemonState === DaemonState.IDLE) {
 			setEscPendingCancel(false);
-			setDaemonStats(getStats());
+			refreshStats();
 		}
-	}, [daemon.daemonState]);
+	}, [daemon.daemonState, refreshStats]);
 
 	useEffect(() => {
-		setDaemonStats(getStats());
-	}, [daemon.sessionUsage, session.sessionMenuItems.length]);
+		refreshStats();
+	}, [daemon.sessionUsage, session.sessionMenuItems.length, refreshStats]);
 
 	// Turn off initial load state once user interacts (banner animation is one-time only)
 	useEffect(() => {

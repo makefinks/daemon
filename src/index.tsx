@@ -11,7 +11,6 @@ import { runHeadless } from "./headless-runner";
 import { COLORS } from "./ui/constants";
 import { cleanupAppRuntime, registerAppRuntime, shutdownApp } from "./utils/app-shutdown";
 import { debug } from "./utils/debug-logger";
-import { initStatsStore } from "./state/stats-store";
 
 await ensureSkillsDir().catch((error) => {
 	const err = error instanceof Error ? error : new Error(String(error));
@@ -62,6 +61,3 @@ process.on("exit", () => {
 });
 
 root.render(<App />);
-
-// Seed HUD stats from DB and wire MCP tool-change listener.
-initStatsStore();

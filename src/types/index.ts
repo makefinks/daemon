@@ -146,6 +146,7 @@ export interface SessionInfo {
 	createdAt: string;
 	updatedAt: string;
 	totalTokens?: number;
+	subagentTotalTokens?: number;
 	cost?: number;
 }
 

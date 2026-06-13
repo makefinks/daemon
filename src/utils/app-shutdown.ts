@@ -2,7 +2,6 @@ import type { CliRenderer } from "@opentui/core";
 import { destroyMcpManager } from "../ai/mcp/mcp-manager";
 import { backgroundJobManager } from "../state/background-job-manager";
 import { destroyDaemonManager } from "../state/daemon-state";
-import { closeStatsStore } from "../state/stats-store";
 
 interface AppRootHandle {
 	unmount: () => void;
@@ -41,9 +40,6 @@ export function cleanupAppRuntime(): void {
 	} catch {}
 	try {
 		destroyMcpManager();
-	} catch {}
-	try {
-		closeStatsStore();
 	} catch {}
 }
 
