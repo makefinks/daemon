@@ -5,9 +5,24 @@ import { isDangerousCommand, isSensitivePathAccess } from "../../security/bash-s
 import { backgroundJobManager } from "../../state/background-job-manager";
 import { getDaemonManager } from "../../state/daemon-state";
 import { getRuntimeContext } from "../../state/runtime-context";
+import { sessionRuntimeStore } from "../../state/session-runtime-store";
+import type { ToolExecutionDelta, ToolExecutionStream } from "../../types";
 
 const DEFAULT_TIMEOUT_MS = 30000;
 const MAX_OUTPUT_LENGTH = 50000;
+
+function emitBashDelta(
+	toolName: string,
+	toolCallId: string | undefined,
+	stream: ToolExecutionStream,
+	chunk: string
+): void {
+	if (!toolCallId || chunk.length === 0) return;
+	const { sessionId } = getRuntimeContext();
+	if (!sessionId) return;
+	const delta: ToolExecutionDelta = { toolName, toolCallId, stream, chunk };
+	sessionRuntimeStore.toolExecutionDelta(sessionId, delta);
+}
 
 const bashInputSchema = z.object({
 	description: z
@@ -108,11 +123,15 @@ export const runBash = tool({
 			}, timeout || DEFAULT_TIMEOUT_MS);
 
 			proc.stdout.on("data", (data: Buffer) => {
-				stdout += data.toString();
+				const chunk = data.toString();
+				stdout += chunk;
+				emitBashDelta("runBash", toolCallId, "stdout", chunk);
 			});
 
 			proc.stderr.on("data", (data: Buffer) => {
-				stderr += data.toString();
+				const chunk = data.toString();
+				stderr += chunk;
+				emitBashDelta("runBash", toolCallId, "stderr", chunk);
 			});
 
 			proc.on("close", (code) => {
@@ -186,7 +205,7 @@ export const runBashForeground = tool({
 
 		return isDangerousCommand(command) || isSensitivePathAccess(command);
 	},
-	execute: async ({ command, workdir, timeout }) => {
+	execute: async ({ command, workdir, timeout }, { toolCallId }) => {
 		return new Promise((resolve) => {
 			const cwd = workdir || process.cwd();
 			let stdout = "";
@@ -205,11 +224,15 @@ export const runBashForeground = tool({
 			}, timeout || DEFAULT_TIMEOUT_MS);
 
 			proc.stdout.on("data", (data: Buffer) => {
-				stdout += data.toString();
+				const chunk = data.toString();
+				stdout += chunk;
+				emitBashDelta("runBash", toolCallId, "stdout", chunk);
 			});
 
 			proc.stderr.on("data", (data: Buffer) => {
-				stderr += data.toString();
+				const chunk = data.toString();
+				stderr += chunk;
+				emitBashDelta("runBash", toolCallId, "stderr", chunk);
 			});
 
 			proc.on("close", (code) => {

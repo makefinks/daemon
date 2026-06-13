@@ -4,9 +4,10 @@ import type {
 	MemoryToastPreview,
 	ModelMessage,
 	TokenUsage,
-	ToolCallStatus,
 	ToolApprovalRequest,
 	ToolApprovalResponse,
+	ToolCallStatus,
+	ToolExecutionDelta,
 } from "../types";
 import { DaemonState } from "../types";
 
@@ -21,6 +22,7 @@ export type DaemonStateEvents = {
 	toolInputDelta: (toolCallId: string, delta: string) => void;
 	toolInvocation: (toolName: string, input: unknown, toolCallId?: string) => void;
 	toolResult: (toolName: string, result: unknown, toolCallId?: string) => void;
+	toolExecutionDelta: (delta: ToolExecutionDelta) => void;
 	toolComplete: (toolCallId: string, status: ToolCallStatus) => void;
 	toolApprovalRequest: (request: ToolApprovalRequest) => void;
 	toolApprovalResolved: (toolCallId: string, approved: boolean, sessionId?: string) => void;

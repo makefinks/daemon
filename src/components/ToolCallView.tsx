@@ -145,7 +145,7 @@ export function ToolCallView({ call, result, showOutput = true }: ToolCallViewPr
 				? COLORS.STATUS_APPROVAL
 				: COLORS.TOOLS;
 	const toolName = mcpMeta ? "mcp" : (layout.abbreviation ?? getDefaultAbbreviation(call.name));
-	const borderColor = getStatusBorderColor(call.status);
+	const borderColor = layout.getBorderColor?.(call) ?? getStatusBorderColor(call.status);
 
 	const customBody = layout.renderBody ? layout.renderBody({ call, result, showOutput }) : null;
 

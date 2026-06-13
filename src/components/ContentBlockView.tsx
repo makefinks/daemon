@@ -18,6 +18,7 @@ interface ContentBlockViewProps {
 	isStreaming: boolean;
 	showFullReasoning: boolean;
 	showToolOutput?: boolean;
+	bashLivePreviewAlways?: boolean;
 	reasoningDisplay?: string;
 	lastCharTimestamp?: number;
 	showReasoningTicker?: boolean;
@@ -31,6 +32,7 @@ export function ContentBlockView({
 	isStreaming,
 	showFullReasoning,
 	showToolOutput = true,
+	bashLivePreviewAlways = false,
 	reasoningDisplay,
 	lastCharTimestamp,
 	showReasoningTicker,
@@ -70,9 +72,11 @@ export function ContentBlockView({
 	}
 
 	if (block.type === "tool") {
+		// Bash live preview can opt out of the global `O` toggle.
+		const effectiveShowOutput = showToolOutput || (bashLivePreviewAlways && block.call.name === "runBash");
 		return (
 			<ToolCardFadeIn isLive={isLive}>
-				<ToolCallView call={block.call} result={block.result} showOutput={showToolOutput} />
+				<ToolCallView call={block.call} result={block.result} showOutput={effectiveShowOutput} />
 			</ToolCardFadeIn>
 		);
 	}

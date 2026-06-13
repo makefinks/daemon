@@ -68,6 +68,31 @@ export interface SubagentStep {
 }
 
 /**
+ * A live output chunk emitted by a tool while it's still running.
+ * Used to stream bash stdout/stderr to the UI in real time.
+ */
+export type ToolExecutionStream = "stdout" | "stderr";
+
+export interface ToolExecutionDelta {
+	toolName: string;
+	toolCallId: string;
+	stream: ToolExecutionStream;
+	/** Raw text chunk appended to the running output buffer. */
+	chunk: string;
+}
+
+/**
+ * Per-tool live output buffer, populated from `ToolExecutionDelta` events
+ * and read by the UI while a tool is still running.
+ */
+export interface LiveToolOutput {
+	toolName: string;
+	stdout: string;
+	stderr: string;
+	updatedAt: number;
+}
+
+/**
  * Tool call representation for UI rendering
  */
 export interface ToolCall {
@@ -188,6 +213,7 @@ export interface StreamCallbacks {
 	onToolCallInputDelta?: (toolCallId: string, delta: string) => void;
 	onToolCall?: (toolName: string, args: unknown, toolCallId?: string) => void;
 	onToolResult?: (toolName: string, result: unknown, toolCallId?: string) => void;
+	onToolExecutionDelta?: (delta: ToolExecutionDelta) => void;
 	onToolApprovalRequest?: (request: ToolApprovalRequest) => void;
 	onAwaitingApprovals?: (
 		pendingApprovals: ToolApprovalRequest[],
@@ -379,6 +405,8 @@ export interface AppPreferences {
 	showFullReasoning?: boolean;
 	/** Show tool output previews */
 	showToolOutput?: boolean;
+	/** Always show the bash live streaming preview, even when tool output previews are off */
+	bashLivePreviewAlways?: boolean;
 	/** Enable memory injection + auto-write */
 	memoryEnabled?: boolean;
 	/** Bash command approval level */

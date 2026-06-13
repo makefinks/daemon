@@ -1,5 +1,7 @@
+import { useEffect, useMemo, useRef } from "react";
+import type { MouseEvent, ScrollBoxRenderable } from "@opentui/core";
 import { TextAttributes } from "@opentui/core";
-import type { ToolCallStatus } from "../../types";
+import type { LiveToolOutput, ToolCallStatus } from "../../types";
 import { COLORS } from "../../ui/constants";
 import type { ToolBody, ToolBodyLine, ToolHeader } from "./types";
 
@@ -136,5 +138,136 @@ export function getStatusBorderColor(status: ToolCallStatus | undefined): string
 			return COLORS.STATUS_FAILED;
 		default:
 			return COLORS.TOOL_INPUT_BORDER;
+	}
+}
+
+interface BashLiveOutputViewProps {
+	live: LiveToolOutput | null;
+	maxHeight?: number;
+	/** When true, scroll events are captured by the inner pane and don't bubble. */
+	captureScroll?: boolean;
+}
+
+const DEFAULT_BASH_LIVE_HEIGHT = 12;
+
+/**
+ * Live terminal output for a running bash tool call. Auto-scrolls to the
+ * bottom as new chunks arrive; the parent re-renders the entire tool card
+ * on every emitted delta so this just reads the latest snapshot.
+ */
+export function BashLiveOutputView({ live, maxHeight, captureScroll = false }: BashLiveOutputViewProps) {
+	const scrollRef = useRef<ScrollBoxRenderable | null>(null);
+
+	// Intercept wheel/scroll events. When the card is "focused" (clicked), the
+	// inner pane handles scrolling and we stop propagation so the conversation
+	// doesn't also scroll. When NOT focused, we want the wheel to fall through
+	// to the conversation; the ScrollBox's own `onMouseEvent` runs after this
+	// hook regardless, so we restore `scrollTop` on the next frame to undo
+	// the inner scroll it just applied.
+	const handleScrollboxMouse = (event: MouseEvent) => {
+		if (event.type !== "scroll" || !event.scroll) return;
+		const scrollbox = scrollRef.current;
+		if (!scrollbox) return;
+		if (captureScroll) {
+			const { direction, delta } = event.scroll;
+			if (direction === "up") {
+				scrollbox.scrollTop = Math.max(0, scrollbox.scrollTop - delta);
+			} else if (direction === "down") {
+				scrollbox.scrollTop = scrollbox.scrollTop + delta;
+			}
+			event.stopPropagation();
+			event.preventDefault();
+		} else {
+			// Snapshot the position the ScrollBox is about to override, then
+			// restore it on the next frame so the inner pane doesn't scroll.
+			const before = scrollbox.scrollTop;
+			queueMicrotask(() => {
+				const current = scrollRef.current;
+				if (current && current.scrollTop !== before) {
+					current.scrollTop = before;
+				}
+			});
+		}
+	};
+
+	// Build lines on every render so chunks appended to `live.stdout`/`live.stderr`
+	// in place always show up. `useMemo` keyed on `live` would cache the first
+	// snapshot because the runtime store mutates the same LiveToolOutput object
+	// across chunks. We also use `updatedAt` to guarantee a fresh scroll-to-bottom
+	// even if the dep array didn't notice a string mutation.
+	const lines = useMemo(
+		() => buildLiveOutputLines(live),
+		[live, live?.stdout, live?.stderr, live?.updatedAt]
+	);
+
+	const max = maxHeight ?? DEFAULT_BASH_LIVE_HEIGHT;
+	// Grow the pane to fit content up to the cap, then start scrolling.
+	const height = Math.max(1, Math.min(max, lines.length));
+	const overflow = Math.max(0, lines.length - max);
+
+	useEffect(() => {
+		const scrollbox = scrollRef.current;
+		if (!scrollbox) return;
+		const viewportHeight = scrollbox.viewport?.height ?? 0;
+		if (viewportHeight <= 0) return;
+		const maxScrollTop = Math.max(0, scrollbox.scrollHeight - viewportHeight);
+		scrollbox.scrollTop = maxScrollTop;
+	}, [height, lines, live?.updatedAt]);
+
+	return (
+		<box flexDirection="column" paddingLeft={2} marginTop={1} width="100%">
+			<box flexDirection="row" alignItems="center">
+				<text>
+					<span fg={COLORS.REASONING_DIM}>{"--- OUTPUT"}</span>
+					{overflow > 0 && (
+						<span fg={COLORS.REASONING_DIM}>{` (${overflow} more line${overflow === 1 ? "" : "s"} ↑)`}</span>
+					)}
+				</text>
+			</box>
+			<scrollbox
+				ref={scrollRef}
+				height={height}
+				width="100%"
+				overflow="scroll"
+				onMouse={handleScrollboxMouse}
+			>
+				{lines.length === 0 ? (
+					<text>
+						<span fg={COLORS.REASONING_DIM}>{"(no output yet)"}</span>
+					</text>
+				) : (
+					lines.map((line, idx) => (
+						<text key={idx}>
+							<span fg={line.stream === "stderr" ? COLORS.STATUS_FAILED : COLORS.TOOL_INPUT_TEXT}>
+								{line.text}
+							</span>
+						</text>
+					))
+				)}
+			</scrollbox>
+		</box>
+	);
+}
+
+interface LiveOutputLine {
+	stream: "stdout" | "stderr";
+	text: string;
+}
+
+function buildLiveOutputLines(live: LiveToolOutput | null): LiveOutputLine[] {
+	if (!live) return [];
+	const result: LiveOutputLine[] = [];
+	appendStreamLines(result, live.stdout, "stdout");
+	appendStreamLines(result, live.stderr, "stderr");
+	return result;
+}
+
+function appendStreamLines(target: LiveOutputLine[], text: string, stream: "stdout" | "stderr"): void {
+	if (!text) return;
+	const segments = text.split("\n");
+	// Drop the trailing empty entry from a final newline so we don't render a blank row.
+	if (segments.length > 0 && segments[segments.length - 1] === "") segments.pop();
+	for (const segment of segments) {
+		target.push({ stream, text: segment });
 	}
 }

@@ -19,6 +19,7 @@ export interface BackgroundJobNotification {
 interface BackgroundJobEvents {
 	completed: (job: BackgroundJobSnapshot) => void;
 	statusChanged: () => void;
+	outputDelta: (payload: { toolCallId: string; stream: "stdout" | "stderr"; chunk: string }) => void;
 }
 
 class TypedBackgroundJobEvents extends EventEmitter {
@@ -150,11 +151,19 @@ export class BackgroundJobManager {
 		});
 
 		proc.stdout.on("data", (data: Buffer) => {
-			job.stdout = truncateOutput(`${job.stdout ?? ""}${data.toString()}`);
+			const chunk = data.toString();
+			job.stdout = truncateOutput(`${job.stdout ?? ""}${chunk}`);
+			if (job.toolCallId) {
+				this.events.emit("outputDelta", { toolCallId: job.toolCallId, stream: "stdout", chunk });
+			}
 		});
 
 		proc.stderr.on("data", (data: Buffer) => {
-			job.stderr = truncateOutput(`${job.stderr ?? ""}${data.toString()}`);
+			const chunk = data.toString();
+			job.stderr = truncateOutput(`${job.stderr ?? ""}${chunk}`);
+			if (job.toolCallId) {
+				this.events.emit("outputDelta", { toolCallId: job.toolCallId, stream: "stderr", chunk });
+			}
 		});
 
 		proc.on("close", (code) => {
@@ -231,6 +240,13 @@ export class BackgroundJobManager {
 	getJob(sessionId: string | null, id: string): BackgroundJobSnapshot | null {
 		const job = this.jobs.get(compositeKey(sessionId, id));
 		return job ? cloneJob(job) : null;
+	}
+
+	findJobByToolCallId(toolCallId: string): BackgroundJobEntry | null {
+		for (const job of this.jobs.values()) {
+			if (job.toolCallId === toolCallId) return job;
+		}
+		return null;
 	}
 
 	cancelJob(sessionId: string | null, id: string): BackgroundJobSnapshot | null {

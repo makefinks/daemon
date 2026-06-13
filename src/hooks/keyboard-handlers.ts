@@ -351,6 +351,7 @@ interface SettingsMenuContext {
 	canEnableVoiceOutput: boolean;
 	showFullReasoning: boolean;
 	showToolOutput: boolean;
+	bashLivePreviewAlways: boolean;
 	showStats: boolean;
 	memoryEnabled: boolean;
 	memoryToggleDisabled: boolean;
@@ -365,6 +366,7 @@ interface SettingsMenuContext {
 	setBashApprovalLevel: (level: BashApprovalLevel) => void;
 	setShowFullReasoning: (show: boolean) => void;
 	setShowToolOutput: (show: boolean) => void;
+	setBashLivePreviewAlways: (always: boolean) => void;
 	setShowStats: (show: boolean) => void;
 	setMemoryEnabled: (enabled: boolean) => void;
 	persistPreferences: (updates: Partial<AppPreferences>) => void;
@@ -486,6 +488,13 @@ function handleSettingsReturn(ctx: SettingsMenuContext, key: KeyEvent): boolean 
 			const nextVal = !ctx.showToolOutput;
 			ctx.setShowToolOutput(nextVal);
 			ctx.persistPreferences({ showToolOutput: nextVal });
+			key.preventDefault();
+			return true;
+		}
+		case "bash-live-preview-always": {
+			const nextVal = !ctx.bashLivePreviewAlways;
+			ctx.setBashLivePreviewAlways(nextVal);
+			ctx.persistPreferences({ bashLivePreviewAlways: nextVal });
 			key.preventDefault();
 			return true;
 		}

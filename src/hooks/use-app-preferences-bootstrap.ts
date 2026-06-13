@@ -53,6 +53,7 @@ export interface UseAppPreferencesBootstrapParams {
 	setBashApprovalLevel: (level: BashApprovalLevel) => void;
 	setShowFullReasoning: (show: boolean) => void;
 	setShowToolOutput: (show: boolean) => void;
+	setBashLivePreviewAlways: (always: boolean) => void;
 	setShowStats: (show: boolean) => void;
 	setMemoryEnabled: (enabled: boolean) => void;
 	setLoadedPreferences: (prefs: AppPreferences | null) => void;
@@ -84,6 +85,7 @@ export function useAppPreferencesBootstrap(
 		setBashApprovalLevel,
 		setShowFullReasoning,
 		setShowToolOutput,
+		setBashLivePreviewAlways,
 		setShowStats,
 		setMemoryEnabled,
 		setLoadedPreferences,
@@ -199,6 +201,9 @@ export function useAppPreferencesBootstrap(
 			if (prefs?.showToolOutput !== undefined) {
 				setShowToolOutput(prefs.showToolOutput);
 			}
+			if (prefs?.bashLivePreviewAlways !== undefined) {
+				setBashLivePreviewAlways(prefs.bashLivePreviewAlways);
+			}
 			if (prefs?.showStats !== undefined) {
 				setShowStats(prefs.showStats);
 			}
@@ -281,6 +286,7 @@ export function useAppPreferencesBootstrap(
 		setBashApprovalLevel,
 		setShowFullReasoning,
 		setShowToolOutput,
+		setBashLivePreviewAlways,
 		setLoadedPreferences,
 		setOnboardingActive,
 		setOnboardingStep,

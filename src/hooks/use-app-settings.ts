@@ -24,6 +24,9 @@ export interface UseAppSettingsReturn {
 	showToolOutput: boolean;
 	setShowToolOutput: React.Dispatch<React.SetStateAction<boolean>>;
 
+	bashLivePreviewAlways: boolean;
+	setBashLivePreviewAlways: React.Dispatch<React.SetStateAction<boolean>>;
+
 	memoryEnabled: boolean;
 	setMemoryEnabled: React.Dispatch<React.SetStateAction<boolean>>;
 
@@ -45,6 +48,7 @@ export function useAppSettings(): UseAppSettingsReturn {
 	);
 	const [showFullReasoning, setShowFullReasoning] = useState(true);
 	const [showToolOutput, setShowToolOutput] = useState(false);
+	const [bashLivePreviewAlways, setBashLivePreviewAlways] = useState(true);
 	const [memoryEnabled, setMemoryEnabled] = useState(manager.memoryEnabled);
 	const [showStats, setShowStats] = useState(true);
 
@@ -65,6 +69,8 @@ export function useAppSettings(): UseAppSettingsReturn {
 		setShowFullReasoning,
 		showToolOutput,
 		setShowToolOutput,
+		bashLivePreviewAlways,
+		setBashLivePreviewAlways,
 		memoryEnabled,
 		setMemoryEnabled,
 		showStats,

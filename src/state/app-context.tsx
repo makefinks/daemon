@@ -66,6 +66,8 @@ export interface SettingsState {
 	setShowFullReasoning: (show: boolean) => void;
 	showToolOutput: boolean;
 	setShowToolOutput: (show: boolean) => void;
+	bashLivePreviewAlways: boolean;
+	setBashLivePreviewAlways: (always: boolean) => void;
 	memoryEnabled: boolean;
 	setMemoryEnabled: (enabled: boolean) => void;
 	showStats: boolean;

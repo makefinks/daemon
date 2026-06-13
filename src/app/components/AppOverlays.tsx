@@ -69,6 +69,7 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 					canEnableVoiceOutput={settings.canEnableVoiceOutput}
 					showFullReasoning={settings.showFullReasoning}
 					showToolOutput={settings.showToolOutput}
+					bashLivePreviewAlways={settings.bashLivePreviewAlways}
 					showStats={settings.showStats}
 					memoryEnabled={settings.memoryEnabled}
 					onClose={() => menus.setShowSettingsMenu(false)}
@@ -82,6 +83,7 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 					setBashApprovalLevel={settingsCallbacks.onSetBashApprovalLevel}
 					setShowFullReasoning={settings.setShowFullReasoning}
 					setShowToolOutput={settings.setShowToolOutput}
+					setBashLivePreviewAlways={settings.setBashLivePreviewAlways}
 					setShowStats={settings.setShowStats}
 					setMemoryEnabled={settings.setMemoryEnabled}
 					persistPreferences={settings.persistPreferences}

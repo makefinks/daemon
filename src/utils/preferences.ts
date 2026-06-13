@@ -124,6 +124,9 @@ export function parsePreferences(raw: unknown): AppPreferences | null {
 	if (typeof raw.showToolOutput === "boolean") {
 		prefs.showToolOutput = raw.showToolOutput;
 	}
+	if (typeof raw.bashLivePreviewAlways === "boolean") {
+		prefs.bashLivePreviewAlways = raw.bashLivePreviewAlways;
+	}
 	if (typeof raw.memoryEnabled === "boolean") {
 		prefs.memoryEnabled = raw.memoryEnabled;
 	}

@@ -12,6 +12,7 @@ import { InlineStatusIndicator } from "../../components/InlineStatusIndicator";
 import { StatusBar } from "../../components/StatusBar";
 import { TokenUsageDisplay } from "../../components/TokenUsageDisplay";
 import { TypingInputBar } from "../../components/TypingInputBar";
+import { clearBashScrollFocus } from "../../components/tool-layouts/layouts/bash";
 import type {
 	ContentBlock,
 	ConversationMessage,
@@ -44,6 +45,7 @@ export interface StatusDisplayState {
 export interface ReasoningDisplayState {
 	showFullReasoning: boolean;
 	showToolOutput: boolean;
+	bashLivePreviewAlways: boolean;
 	reasoningQueue: string;
 	reasoningDisplay: string;
 	lastCharTimestamp: number;
@@ -126,8 +128,14 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 		resetNotification,
 		escPendingCancel,
 	} = status;
-	const { showFullReasoning, showToolOutput, reasoningQueue, reasoningDisplay, lastCharTimestamp } =
-		reasoning;
+	const {
+		showFullReasoning,
+		showToolOutput,
+		bashLivePreviewAlways,
+		reasoningQueue,
+		reasoningDisplay,
+		lastCharTimestamp,
+	} = reasoning;
 	const { showWorkingSpinner, isToolCalling, responseElapsedMs, currentTodoLabel } = progress;
 	const {
 		typingTextareaRef,
@@ -172,6 +180,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 					isStreaming={false}
 					showFullReasoning={showFullReasoning}
 					showToolOutput={showToolOutput}
+					bashLivePreviewAlways={bashLivePreviewAlways}
 				/>
 			</box>
 		);
@@ -317,6 +326,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 					stickyScroll={true}
 					stickyStart="bottom"
 					ref={conversationScrollRef}
+					onMouseDown={clearBashScrollFocus}
 					style={{
 						rootOptions: { backgroundColor: frostColor },
 						contentOptions: {
@@ -421,6 +431,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 												isStreaming={isStreaming}
 												showFullReasoning={showFullReasoning}
 												showToolOutput={showToolOutput}
+												bashLivePreviewAlways={bashLivePreviewAlways}
 												reasoningDisplay={reasoningDisplay}
 												lastCharTimestamp={lastCharTimestamp}
 												showReasoningTicker={hasReasoningContent}

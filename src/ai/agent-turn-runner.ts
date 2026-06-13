@@ -66,6 +66,10 @@ export class AgentTurnRunner {
 				if (!isActive()) return;
 				callbacks.onToolResult?.(toolName, resultValue, toolCallId);
 			},
+			onToolExecutionDelta: (delta) => {
+				if (!isCurrent()) return;
+				callbacks.onToolExecutionDelta?.(delta);
+			},
 			onToolApprovalRequest: (request) => {
 				if (!isActive()) return;
 				callbacks.onToolApprovalRequest?.(request);

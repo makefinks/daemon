@@ -16,6 +16,7 @@ export {
 	ToolBodyView,
 	ResultPreviewView,
 	ErrorPreviewView,
+	BashLiveOutputView,
 	getStatusBorderColor,
 } from "./components";
 

@@ -89,6 +89,20 @@ class DaemonStateManager {
 			);
 		});
 
+		backgroundJobManager.events.on(
+			"outputDelta",
+			(payload: { toolCallId: string; stream: "stdout" | "stderr"; chunk: string }) => {
+				const live = backgroundJobManager.findJobByToolCallId(payload.toolCallId);
+				if (!live || !live.sessionId) return;
+				sessionRuntimeStore.toolExecutionDelta(live.sessionId, {
+					toolName: "runBash",
+					toolCallId: payload.toolCallId,
+					stream: payload.stream,
+					chunk: payload.chunk,
+				});
+			}
+		);
+
 		this.voiceInput.on("micLevel", (level: number) => {
 			if (this._state !== DaemonState.LISTENING) return;
 			this.emitEvent("micLevel", level);
@@ -445,6 +459,7 @@ class DaemonStateManager {
 							sessionRuntimeStore.toolInvocation(sessionId, toolName, args, toolCallId),
 						onToolResult: (toolName, resultValue, toolCallId) =>
 							sessionRuntimeStore.toolResult(sessionId, toolName, resultValue, toolCallId),
+						onToolExecutionDelta: (delta) => sessionRuntimeStore.toolExecutionDelta(sessionId, delta),
 						onToolApprovalRequest: (request) => {
 							const requestWithSession = { ...request, sessionId };
 							sessionRuntimeStore.toolApprovalRequest(sessionId, requestWithSession);

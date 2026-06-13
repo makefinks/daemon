@@ -8,12 +8,14 @@ import {
 import type {
 	ContentBlock,
 	ConversationMessage,
+	LiveToolOutput,
 	ModelMessage,
 	PromptImageAttachment,
 	SubagentStep,
 	TokenUsage,
 	ToolApprovalRequest,
 	ToolCall,
+	ToolExecutionDelta,
 } from "../types";
 import { DaemonState } from "../types";
 import { hasVisibleText } from "../utils/formatters";
@@ -28,6 +30,13 @@ const DEFAULT_SESSION_USAGE: TokenUsage = {
 	subagentPromptTokens: 0,
 	subagentCompletionTokens: 0,
 };
+
+const LIVE_OUTPUT_MAX_CHARS = 50000;
+
+function truncateLiveOutput(value: string): string {
+	if (value.length <= LIVE_OUTPUT_MAX_CHARS) return value;
+	return `${value.slice(-LIVE_OUTPUT_MAX_CHARS)}\n... [output truncated]`;
+}
 
 interface SessionRuntimeEvents {
 	updated: (sessionId: string) => void;
@@ -93,6 +102,7 @@ interface SessionRuntimeInternal extends SessionRuntimeSnapshot {
 	contentBlocks: ContentBlock[];
 	reasoningStartAt: number | null;
 	currentReasoningBlock: ContentBlock | null;
+	liveOutput: Map<string, LiveToolOutput>;
 }
 
 function createRuntime(sessionId: string): SessionRuntimeInternal {
@@ -116,6 +126,7 @@ function createRuntime(sessionId: string): SessionRuntimeInternal {
 		contentBlocks: [],
 		reasoningStartAt: null,
 		currentReasoningBlock: null,
+		liveOutput: new Map(),
 	};
 }
 
@@ -329,6 +340,13 @@ export class SessionRuntimeStore {
 		return new Map(this.getStatuses().map((status) => [status.sessionId, status]));
 	}
 
+	getLiveOutput(sessionId: string | null, toolCallId: string | undefined): LiveToolOutput | null {
+		if (!sessionId || !toolCallId) return null;
+		const runtime = this.runtimes.get(sessionId);
+		if (!runtime) return null;
+		return runtime.liveOutput.get(toolCallId) ?? null;
+	}
+
 	hydrate(sessionId: string, conversationHistory: ConversationMessage[], sessionUsage: TokenUsage): void {
 		const runtime = this.ensure(sessionId);
 		runtime.conversationHistory = conversationHistory.map((msg) => ({ ...msg, pending: false }));
@@ -341,6 +359,7 @@ export class SessionRuntimeStore {
 		runtime.contentBlocks = [];
 		runtime.toolCalls = [];
 		runtime.toolCallsById.clear();
+		runtime.liveOutput.clear();
 		runtime.currentUserInput = "";
 		runtime.updatedAt = Date.now();
 		this.notify(runtime.sessionId);
@@ -362,6 +381,7 @@ export class SessionRuntimeStore {
 		runtime.contentBlocks = [];
 		runtime.toolCalls = [];
 		runtime.toolCallsById.clear();
+		runtime.liveOutput.clear();
 		runtime.sessionUsage = { ...DEFAULT_SESSION_USAGE };
 		runtime.messageId = 0;
 		runtime.currentUserInput = "";
@@ -440,6 +460,7 @@ export class SessionRuntimeStore {
 		runtime.contentBlocks = [];
 		runtime.toolCalls = [];
 		runtime.toolCallsById.clear();
+		runtime.liveOutput.clear();
 		runtime.pendingApprovalCount = 0;
 		runtime.reasoningStartAt = null;
 		runtime.currentReasoningBlock = null;
@@ -633,6 +654,40 @@ export class SessionRuntimeStore {
 		}
 	}
 
+	toolExecutionDelta(sessionId: string | null, delta: ToolExecutionDelta): void {
+		if (!sessionId) return;
+		const runtime = this.ensure(sessionId);
+		const toolCallId = delta.toolCallId;
+		if (!toolCallId) return;
+		const existing = runtime.liveOutput.get(toolCallId) ?? {
+			toolName: delta.toolName,
+			stdout: "",
+			stderr: "",
+			updatedAt: Date.now(),
+		};
+		existing.toolName = delta.toolName;
+		if (delta.stream === "stdout") {
+			existing.stdout = truncateLiveOutput(`${existing.stdout}${delta.chunk}`);
+		} else {
+			existing.stderr = truncateLiveOutput(`${existing.stderr}${delta.chunk}`);
+		}
+		existing.updatedAt = Date.now();
+		runtime.liveOutput.set(toolCallId, existing);
+		runtime.currentContentBlocks = [...runtime.contentBlocks];
+		runtime.updatedAt = Date.now();
+		this.events.emit("toolExecutionDelta", delta);
+		this.notify(sessionId);
+	}
+
+	clearToolLiveOutput(sessionId: string, toolCallId: string): void {
+		const runtime = this.runtimes.get(sessionId);
+		if (!runtime) return;
+		if (!runtime.liveOutput.delete(toolCallId)) return;
+		runtime.currentContentBlocks = [...runtime.contentBlocks];
+		runtime.updatedAt = Date.now();
+		this.notify(sessionId);
+	}
+
 	subagentToolCall(sessionId: string, toolCallId: string, toolName: string, input?: unknown): void {
 		const runtime = this.ensure(sessionId);
 		const toolCall = findSubagentToolCall(runtime, toolCallId);
@@ -782,6 +837,8 @@ export class SessionRuntimeStore {
 		runtime.contentBlocks = [];
 		runtime.toolCalls = [];
 		runtime.toolCallsById.clear();
+		// Note: liveOutput is intentionally retained so the bash tool card can
+		// continue to show its final streamed output after the assistant turn ends.
 		runtime.currentUserInput = "";
 		runtime.pendingApprovalCount = 0;
 		runtime.state = DaemonState.IDLE;
@@ -829,6 +886,7 @@ export class SessionRuntimeStore {
 		runtime.contentBlocks = [];
 		runtime.toolCalls = [];
 		runtime.toolCallsById.clear();
+		// Keep liveOutput so any in-flight tool's last streamed output is preserved.
 		runtime.currentUserInput = "";
 		runtime.pendingApprovalCount = 0;
 		runtime.state = DaemonState.IDLE;
@@ -872,6 +930,20 @@ export class SessionRuntimeStore {
 		if (runtime) runtime.updatedAt = Date.now();
 		this.events.emit("updated", sessionId);
 		this.events.emit("statusChanged");
+	}
+
+	/**
+	 * Emit a synthetic `updated` event for the session so any subscribers (e.g.
+	 * the conversation pane) re-render. Used by views that hold local UI state
+	 * (such as the bash scroll-focus) that the conversation needs to reflect.
+	 */
+	requestRenderTick(sessionId: string): void {
+		const runtime = this.runtimes.get(sessionId);
+		if (!runtime) return;
+		// Bump contentBlocks reference so React sees a change.
+		runtime.currentContentBlocks = [...runtime.contentBlocks];
+		runtime.updatedAt = Date.now();
+		this.events.emit("updated", sessionId);
 	}
 }
 

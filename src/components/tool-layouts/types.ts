@@ -81,6 +81,12 @@ export interface ToolLayoutConfig {
 	formatResult?: (result: unknown) => string[] | null;
 
 	/**
+	 * Optional override for the card's border color (e.g. to indicate focus).
+	 * Receives the current `ToolCall` for context.
+	 */
+	getBorderColor?: (call: ToolCall) => string | undefined;
+
+	/**
 	 * Custom render function for complete control over the tool body.
 	 * When provided, getBody is ignored and this renders instead.
 	 * The header is still rendered by the shared component.
