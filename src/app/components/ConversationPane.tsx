@@ -69,6 +69,8 @@ export interface TypingInputState {
 	onImageAttach: (attachment: PromptImageAttachment) => { id: string; label: string };
 	onImageAttachmentsChange: (attachmentIds: string[]) => void;
 	imageAttachmentCount: number;
+	onPasteSummaryAttach: (text: string) => { id: string; label: string };
+	onPasteSummaryChange: (pasteIds: string[]) => void;
 }
 
 export interface ConversationPaneProps {
@@ -147,6 +149,8 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 		onImageAttach,
 		onImageAttachmentsChange,
 		imageAttachmentCount,
+		onPasteSummaryAttach,
+		onPasteSummaryChange,
 	} = typing;
 	const imagePasteEnabled = currentModelProvider !== "copilot" && modelMetadata?.supportsVision === true;
 
@@ -262,11 +266,13 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 									onImageAttach={onImageAttach}
 									onImageAttachmentsChange={onImageAttachmentsChange}
 									imageAttachmentCount={imageAttachmentCount}
+									onPasteSummaryAttach={onPasteSummaryAttach}
+									onPasteSummaryChange={onPasteSummaryChange}
 									placeholder="Enter instructions..."
 									width="75%"
 									maxWidth={140}
 									minWidth={55}
-									height={5}
+									minHeight={2}
 								/>
 							) : (
 								<></>
@@ -491,8 +497,10 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 						onImageAttach={onImageAttach}
 						onImageAttachmentsChange={onImageAttachmentsChange}
 						imageAttachmentCount={imageAttachmentCount}
+						onPasteSummaryAttach={onPasteSummaryAttach}
+						onPasteSummaryChange={onPasteSummaryChange}
 						placeholder="Enter instructions..."
-						height={4}
+						minHeight={2}
 						width="92%"
 						maxWidth={170}
 						minWidth={80}

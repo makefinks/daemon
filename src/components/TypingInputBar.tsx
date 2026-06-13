@@ -11,13 +11,15 @@ import {
 	SyntaxStyle,
 	decodePasteBytes,
 } from "@opentui/core";
-import { type RefObject, useRef } from "react";
+import { useRenderer } from "@opentui/react";
+import { type RefObject, useMemo, useRef } from "react";
 import type { PromptImageAttachment } from "../types";
 import { COLORS } from "../ui/constants";
 import { toast } from "@opentui-ui/toast/react";
 import { readClipboardImage } from "../utils/clipboard";
 import { debug } from "../utils/debug-logger";
 import { pasteClipboardIntoTextarea } from "../utils/paste";
+import { PASTE_SUMMARY_STYLE_NAME, PASTE_SUMMARY_TYPE_NAME, isLargePaste } from "../utils/paste-summary";
 
 export interface TypingInputBarProps {
 	onSubmit: () => void;
@@ -28,18 +30,22 @@ export interface TypingInputBarProps {
 	width?: number | "auto" | `${number}%`;
 	maxWidth?: number | "auto" | `${number}%`;
 	minWidth?: number | "auto" | `${number}%`;
-	height?: number;
+	minHeight?: number;
+	maxHeight?: number;
 	textareaRef?: RefObject<TextareaRenderable | null>;
 	keyBindings?: KeyBinding[];
 	imagePasteEnabled?: boolean;
 	onImageAttach?: (attachment: PromptImageAttachment) => { id: string; label: string };
 	onImageAttachmentsChange?: (attachmentIds: string[]) => void;
 	imageAttachmentCount?: number;
+	pasteSummaryEnabled?: boolean;
+	onPasteSummaryAttach?: (text: string) => { id: string; label: string };
+	onPasteSummaryChange?: (pasteIds: string[]) => void;
 }
 
 const IMAGE_ATTACHMENT_STYLE_NAME = "daemon.imageAttachment";
 const IMAGE_ATTACHMENT_TYPE_NAME = "daemon-image-attachment";
-const IMAGE_ATTACHMENT_SYNTAX_STYLE = SyntaxStyle.fromTheme([
+const PROMPT_SYNTAX_STYLE = SyntaxStyle.fromTheme([
 	{
 		scope: [IMAGE_ATTACHMENT_STYLE_NAME],
 		style: {
@@ -48,9 +54,16 @@ const IMAGE_ATTACHMENT_SYNTAX_STYLE = SyntaxStyle.fromTheme([
 			bold: true,
 		},
 	},
+	{
+		scope: [PASTE_SUMMARY_STYLE_NAME],
+		style: {
+			foreground: "#a5b4fc",
+			italic: true,
+		},
+	},
 ]);
-const IMAGE_ATTACHMENT_STYLE_ID =
-	IMAGE_ATTACHMENT_SYNTAX_STYLE.getStyleId(IMAGE_ATTACHMENT_STYLE_NAME) ?? undefined;
+const IMAGE_ATTACHMENT_STYLE_ID = PROMPT_SYNTAX_STYLE.getStyleId(IMAGE_ATTACHMENT_STYLE_NAME) ?? undefined;
+const PASTE_SUMMARY_STYLE_ID = PROMPT_SYNTAX_STYLE.getStyleId(PASTE_SUMMARY_STYLE_NAME) ?? undefined;
 
 export function TypingInputBar({
 	onSubmit,
@@ -61,20 +74,31 @@ export function TypingInputBar({
 	width = "100%",
 	maxWidth = "100%",
 	minWidth = 20,
-	height = 4,
+	minHeight = 1,
+	maxHeight,
 	textareaRef,
 	keyBindings = [
 		{ name: "return", action: "submit" },
 		{ name: "linefeed", action: "newline" },
+		{ name: "j", ctrl: true, action: "newline" },
+		{ name: "return", shift: true, action: "newline" },
 	],
 	imagePasteEnabled = false,
 	onImageAttach,
 	onImageAttachmentsChange,
 	imageAttachmentCount = 0,
+	pasteSummaryEnabled = true,
+	onPasteSummaryAttach,
+	onPasteSummaryChange,
 }: TypingInputBarProps) {
 	const localRef = useRef<TextareaRenderable | null>(null);
 	const activeRef = textareaRef ?? localRef;
 	const creatingImageAttachmentRef = useRef(false);
+	const renderer = useRenderer();
+	const effectiveMaxHeight = useMemo(
+		() => maxHeight ?? Math.max(4, Math.floor(renderer.height / 3)),
+		[maxHeight, renderer.height]
+	);
 
 	const syncImageAttachments = () => {
 		if (!onImageAttachmentsChange || !activeRef.current) return;
@@ -90,10 +114,56 @@ export function TypingInputBar({
 		onImageAttachmentsChange(ids);
 	};
 
+	const syncPasteSummaries = () => {
+		if (!onPasteSummaryChange || !activeRef.current) return;
+		const typeId = activeRef.current.extmarks.getTypeId(PASTE_SUMMARY_TYPE_NAME);
+		if (typeId === null) {
+			onPasteSummaryChange([]);
+			return;
+		}
+		const ids = activeRef.current.extmarks
+			.getAllForTypeId(typeId)
+			.map((mark) => (typeof mark.data?.pasteId === "string" ? mark.data.pasteId : ""))
+			.filter((id) => id.length > 0);
+		onPasteSummaryChange(ids);
+	};
+
 	const handleContentChange = () => {
 		const text = activeRef.current?.plainText ?? "";
-		if (!creatingImageAttachmentRef.current) syncImageAttachments();
+		if (!creatingImageAttachmentRef.current) {
+			syncImageAttachments();
+			syncPasteSummaries();
+		}
 		onContentChange?.(text);
+	};
+
+	const insertPasteSummary = (text: string) => {
+		if (!onPasteSummaryAttach) {
+			activeRef.current?.insertText(text);
+			return;
+		}
+		const textarea = activeRef.current;
+		if (!textarea) return;
+		const summary = onPasteSummaryAttach(text);
+		creatingImageAttachmentRef.current = true;
+		const start = textarea.cursorOffset ?? 0;
+		textarea.insertText(summary.label);
+		const typeId = textarea.extmarks.registerType(PASTE_SUMMARY_TYPE_NAME);
+		textarea.extmarks.create({
+			start,
+			end: start + summary.label.length,
+			virtual: true,
+			styleId: PASTE_SUMMARY_STYLE_ID,
+			typeId,
+			data: { pasteId: summary.id },
+		});
+		creatingImageAttachmentRef.current = false;
+		syncPasteSummaries();
+		debug.log("[TypingInputBar] inserted paste summary", {
+			id: summary.id,
+			label: summary.label,
+			originalLength: text.length,
+		});
 	};
 
 	const pasteClipboardImage = async (source: string): Promise<boolean> => {
@@ -148,8 +218,13 @@ export function TypingInputBar({
 				if (await pasteClipboardImage("typing-onPaste")) return;
 				await pasteClipboardIntoTextarea(activeRef.current, { source: "typing-onPaste" });
 			})();
+			return;
 		}
-		// Otherwise, let the textarea handle it
+		if (pasteSummaryEnabled && isLargePaste(pasteText)) {
+			event.preventDefault();
+			insertPasteSummary(pasteText);
+		}
+		// Otherwise, let the textarea handle it natively
 	};
 
 	const handleKeyDown = (key: KeyEvent) => {
@@ -185,7 +260,6 @@ export function TypingInputBar({
 				flexDirection="row"
 				alignItems="stretch"
 				width="100%"
-				height={height}
 				paddingLeft={1}
 				paddingRight={1}
 			>
@@ -205,7 +279,8 @@ export function TypingInputBar({
 					onKeyDown={handleKeyDown}
 					onSubmit={() => onSubmit()}
 					width="100%"
-					height="100%"
+					minHeight={minHeight}
+					maxHeight={effectiveMaxHeight}
 					style={{
 						backgroundColor: "transparent",
 						focusedBackgroundColor: "transparent",
@@ -213,7 +288,7 @@ export function TypingInputBar({
 						focusedTextColor: "#e5e7eb",
 						cursorColor: COLORS.TYPING_PROMPT,
 						cursorStyle: { style: "block", blinking: true },
-						syntaxStyle: IMAGE_ATTACHMENT_SYNTAX_STYLE,
+						syntaxStyle: PROMPT_SYNTAX_STYLE,
 					}}
 				/>
 			</box>

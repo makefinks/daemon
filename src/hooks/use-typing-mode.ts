@@ -6,6 +6,11 @@ import type { TextareaRenderable } from "@opentui/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getDaemonManager } from "../state/daemon-state";
 import { DaemonState, type PromptImageAttachment } from "../types";
+import {
+	PASTE_SUMMARY_TYPE_NAME,
+	expandPastePlaceholders,
+	formatPastePlaceholder,
+} from "../utils/paste-summary";
 
 export interface UseTypingModeParams {
 	daemonState: DaemonState;
@@ -30,6 +35,8 @@ export interface UseTypingModeReturn {
 	handleImageAttach: (attachment: PromptImageAttachment) => { id: string; label: string };
 	handleImageAttachmentsChange: (attachmentIds: string[]) => void;
 	imageAttachmentCount: number;
+	handlePasteSummaryAttach: (text: string) => { id: string; label: string };
+	handlePasteSummaryChange: (pasteIds: string[]) => void;
 }
 
 export function useTypingMode(params: UseTypingModeParams): UseTypingModeReturn {
@@ -49,6 +56,8 @@ export function useTypingMode(params: UseTypingModeParams): UseTypingModeReturn 
 	const typingTextareaRef = useRef<TextareaRenderable | null>(null);
 	const imageAttachmentsRef = useRef<Array<PromptImageAttachment & { id: string; label: string }>>([]);
 	const nextImageAttachmentIdRef = useRef(0);
+	const pasteSummariesRef = useRef<Map<string, string>>(new Map());
+	const nextPasteSummaryIdRef = useRef(0);
 	const pendingPrefillRef = useRef<string | null>(null);
 
 	useEffect(() => {
@@ -75,6 +84,7 @@ export function useTypingMode(params: UseTypingModeParams): UseTypingModeReturn 
 			setTypingInput("");
 			setImageAttachmentCount(0);
 			imageAttachmentsRef.current = [];
+			pasteSummariesRef.current.clear();
 			pendingPrefillRef.current = null;
 			resetNavigation();
 		}
@@ -88,8 +98,27 @@ export function useTypingMode(params: UseTypingModeParams): UseTypingModeReturn 
 		[onTypingActivity]
 	);
 
+	const expandInputText = useCallback((textarea: TextareaRenderable | null, text: string): string => {
+		if (!textarea) return text;
+		const typeId = textarea.extmarks.getTypeId(PASTE_SUMMARY_TYPE_NAME);
+		if (typeId === null) return text;
+		const ranges = textarea.extmarks
+			.getAllForTypeId(typeId)
+			.map((mark) => {
+				const pasteId = typeof mark.data?.pasteId === "string" ? mark.data.pasteId : null;
+				if (pasteId === null) return null;
+				return { start: mark.start, end: mark.end, pasteId };
+			})
+			.filter((range): range is { start: number; end: number; pasteId: string } => range !== null);
+		if (ranges.length === 0) return text;
+		return expandPastePlaceholders(text, ranges, {
+			getFullText: (pasteId) => pasteSummariesRef.current.get(pasteId),
+		});
+	}, []);
+
 	const handleTypingSubmit = useCallback(() => {
-		const rawInput = typingTextareaRef.current?.plainText ?? typingInput;
+		const textarea = typingTextareaRef.current;
+		const rawInput = expandInputText(textarea, textarea?.plainText ?? typingInput);
 		const input = rawInput.trim();
 		const imageAttachments = imageAttachmentsRef.current;
 		if (input || imageAttachments.length > 0) {
@@ -103,7 +132,8 @@ export function useTypingMode(params: UseTypingModeParams): UseTypingModeReturn 
 		setTypingInput("");
 		setImageAttachmentCount(0);
 		imageAttachmentsRef.current = [];
-	}, [typingInput, setCurrentTranscription, currentUserInputRef, addToHistory]);
+		pasteSummariesRef.current.clear();
+	}, [typingInput, setCurrentTranscription, currentUserInputRef, addToHistory, expandInputText]);
 
 	const handleImageAttach = useCallback(
 		(attachment: PromptImageAttachment): { id: string; label: string } => {
@@ -126,10 +156,30 @@ export function useTypingMode(params: UseTypingModeParams): UseTypingModeReturn 
 		setImageAttachmentCount(nextAttachments.length);
 	}, []);
 
+	const handlePasteSummaryAttach = useCallback((text: string): { id: string; label: string } => {
+		const id = `paste-${++nextPasteSummaryIdRef.current}`;
+		const label = formatPastePlaceholder(text);
+		pasteSummariesRef.current.set(id, text);
+		return { id, label };
+	}, []);
+
+	const handlePasteSummaryChange = useCallback((pasteIds: string[]) => {
+		const liveIds = new Set(pasteIds);
+		let mutated = false;
+		for (const id of Array.from(pasteSummariesRef.current.keys())) {
+			if (!liveIds.has(id)) {
+				pasteSummariesRef.current.delete(id);
+				mutated = true;
+			}
+		}
+		if (!mutated) return;
+	}, []);
+
 	const prefillTypingInput = useCallback((text: string) => {
 		setTypingInput(text);
 		setImageAttachmentCount(0);
 		imageAttachmentsRef.current = [];
+		pasteSummariesRef.current.clear();
 		pendingPrefillRef.current = text;
 		if (typingTextareaRef.current) {
 			typingTextareaRef.current.setText(text);
@@ -142,6 +192,7 @@ export function useTypingMode(params: UseTypingModeParams): UseTypingModeReturn 
 		setTypingInput(value);
 		setImageAttachmentCount(0);
 		imageAttachmentsRef.current = [];
+		pasteSummariesRef.current.clear();
 		if (typingTextareaRef.current) {
 			typingTextareaRef.current.setText(value);
 			typingTextareaRef.current.gotoBufferEnd();
@@ -175,6 +226,8 @@ export function useTypingMode(params: UseTypingModeParams): UseTypingModeReturn 
 		handleImageAttach,
 		handleImageAttachmentsChange,
 		imageAttachmentCount,
+		handlePasteSummaryAttach,
+		handlePasteSummaryChange,
 	};
 }
 

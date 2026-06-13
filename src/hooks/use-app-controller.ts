@@ -856,6 +856,8 @@ export function useAppController({
 				onImageAttach: daemon.typing.handleImageAttach,
 				onImageAttachmentsChange: daemon.typing.handleImageAttachmentsChange,
 				imageAttachmentCount: daemon.typing.imageAttachmentCount,
+				onPasteSummaryAttach: daemon.typing.handlePasteSummaryAttach,
+				onPasteSummaryChange: daemon.typing.handlePasteSummaryChange,
 			},
 			sessionUsage: daemon.sessionUsage,
 			modelMetadata: daemon.modelMetadata,
