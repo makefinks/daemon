@@ -184,25 +184,13 @@ export function useAppModel(params: UseAppModelParams): UseAppModelReturn {
 				? openAiCodexModelsUpdatedAt
 				: copilotModelsUpdatedAt;
 	const currentModelSupportsReasoning = useMemo(() => {
-		if (currentModelProvider === "openrouter") {
-			return false;
-		}
-		const selected =
-			currentModelProvider === "openai-codex"
-				? openAiCodexModels.find((model) => model.id === openAiCodexModelId)
-				: copilotModels.find((model) => model.id === copilotModelId);
+		const selected = modelsForMenu.find((model) => model.id === currentModelId);
 		return selected?.supportsReasoningEffort === true;
-	}, [copilotModelId, copilotModels, currentModelProvider, openAiCodexModelId, openAiCodexModels]);
+	}, [currentModelId, modelsForMenu]);
 	const currentModelSupportsReasoningXHigh = useMemo(() => {
-		if (currentModelProvider === "openrouter") {
-			return false;
-		}
-		const selected =
-			currentModelProvider === "openai-codex"
-				? openAiCodexModels.find((model) => model.id === openAiCodexModelId)
-				: copilotModels.find((model) => model.id === copilotModelId);
+		const selected = modelsForMenu.find((model) => model.id === currentModelId);
 		return selected?.supportsReasoningEffortXHigh === true;
-	}, [copilotModelId, copilotModels, currentModelProvider, openAiCodexModelId, openAiCodexModels]);
+	}, [currentModelId, modelsForMenu]);
 
 	const setCurrentModelId = useCallback(
 		(modelId: string) => {

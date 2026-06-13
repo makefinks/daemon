@@ -61,9 +61,8 @@ async function createDaemonAgent(
 	memoryInjection?: string,
 	getNotificationInjector?: () => BackgroundNotificationInjector | null
 ) {
-	const openRouterReasoningEffort = reasoningEffort === "xhigh" ? "high" : reasoningEffort;
 	const modelConfig = buildOpenRouterChatSettings(
-		openRouterReasoningEffort ? { reasoning: { effort: openRouterReasoningEffort } } : undefined
+		reasoningEffort ? { reasoning: { effort: reasoningEffort } } : undefined
 	);
 
 	const { sessionId } = getRuntimeContext();

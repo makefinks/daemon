@@ -9,6 +9,7 @@ import type { ModelOption, ModelPricing } from "../types";
 import { debug } from "./debug-logger";
 import { getAppConfigDir } from "./preferences";
 import { parseOpenRouterPricePerTokenToPerMillion } from "./openrouter-pricing";
+import { openRouterModelSupportsXHigh } from "./openrouter-reasoning-tiers";
 
 interface OpenRouterModelItem {
 	id?: string;
@@ -79,6 +80,13 @@ function supportsToolCalling(model: OpenRouterModelItem): boolean {
 	return false;
 }
 
+function modelSupportsReasoningEffort(model: OpenRouterModelItem): boolean {
+	const params = Array.isArray(model.supported_parameters)
+		? model.supported_parameters.map((p) => p.toLowerCase())
+		: [];
+	return params.includes("reasoning") || params.includes("reasoning_effort");
+}
+
 function normalizeModels(items: OpenRouterModelItem[]): ModelOption[] {
 	const models: ModelOption[] = [];
 
@@ -97,6 +105,8 @@ function normalizeModels(items: OpenRouterModelItem[]): ModelOption[] {
 			contextLength,
 			pricing,
 			supportsVision: item.architecture?.input_modalities?.includes("image") === true,
+			supportsReasoningEffort: modelSupportsReasoningEffort(item),
+			supportsReasoningEffortXHigh: openRouterModelSupportsXHigh(id),
 		});
 	}
 

@@ -27,6 +27,7 @@ import { sessionRuntimeStore } from "../state/session-runtime-store";
 import { getStats, setEnabledSkillCount } from "../state/stats-store";
 import { DaemonState, getReasoningEffortLevels } from "../types";
 import type { DaemonStats } from "../types";
+import { clampOpenRouterReasoningEffort } from "../utils/openrouter-reasoning-tiers";
 import { discoverAllSkills, isSkillEnabled } from "../ai/skills/skill-manager";
 import { STARTUP_MENU_FADE_DELAY_MS, STARTUP_MENU_FADE_DURATION_MS } from "../ui/startup";
 
@@ -269,8 +270,7 @@ export function useAppController({
 		currentModelProvider === "openrouter"
 			? (daemon.modelMetadata?.supportsReasoning ?? false)
 			: currentModelSupportsReasoning;
-	const supportsReasoningXHigh =
-		currentModelProvider === "openrouter" ? false : currentModelSupportsReasoningXHigh;
+	const supportsReasoningXHigh = currentModelSupportsReasoningXHigh;
 
 	// Preferences bootstrap (hook): returns a stable persist callback.
 	const { persistPreferences } = useAppPreferencesBootstrap({
@@ -351,6 +351,18 @@ export function useAppController({
 			}
 		};
 	}, []);
+
+	// When the active model changes, clamp the reasoning effort to the highest
+	// tier that model supports. Today this only matters for OpenRouter's xhigh
+	// tier, but the helper is provider-agnostic.
+	useEffect(() => {
+		if (currentModelProvider !== "openrouter") return;
+		const clamped = clampOpenRouterReasoningEffort(currentModelId, manager.reasoningEffort);
+		if (clamped === manager.reasoningEffort) return;
+		manager.reasoningEffort = clamped;
+		setReasoningEffort(clamped);
+		persistPreferences({ reasoningEffort: clamped });
+	}, [currentModelId, currentModelProvider, manager, persistPreferences, setReasoningEffort]);
 
 	const startNewSessionAndReset = useCallback(() => {
 		startNewSession();
