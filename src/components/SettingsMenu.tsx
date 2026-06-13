@@ -40,6 +40,7 @@ interface SettingsMenuProps {
 	canEnableVoiceOutput: boolean;
 	showFullReasoning: boolean;
 	showToolOutput: boolean;
+	bashLivePreviewAlways: boolean;
 	showStats: boolean;
 	memoryEnabled: boolean;
 	onClose: () => void;
@@ -53,6 +54,7 @@ interface SettingsMenuProps {
 	setBashApprovalLevel: (level: BashApprovalLevel) => void;
 	setShowFullReasoning: (show: boolean) => void;
 	setShowToolOutput: (show: boolean) => void;
+	setBashLivePreviewAlways: (always: boolean) => void;
 	setShowStats: (show: boolean) => void;
 	setMemoryEnabled: (enabled: boolean) => void;
 	persistPreferences: (updates: Partial<AppPreferences>) => void;
@@ -72,6 +74,7 @@ export function SettingsMenu({
 	canEnableVoiceOutput,
 	showFullReasoning,
 	showToolOutput,
+	bashLivePreviewAlways,
 	showStats,
 	memoryEnabled,
 	onClose,
@@ -85,6 +88,7 @@ export function SettingsMenu({
 	setBashApprovalLevel,
 	setShowFullReasoning,
 	setShowToolOutput,
+	setBashLivePreviewAlways,
 	setShowStats,
 	setMemoryEnabled,
 	persistPreferences,
@@ -279,7 +283,7 @@ export function SettingsMenu({
 					id: "show-full-reasoning",
 					label: "Full Reasoning",
 					value: showFullReasoning ? "ON" : "OFF",
-					description: "Show full reasoning blocks (hotkey: T)",
+					description: "Show full reasoning blocks (hotkey: R)",
 					isToggle: true,
 				},
 				{
@@ -287,6 +291,13 @@ export function SettingsMenu({
 					label: "Tool Output",
 					value: showToolOutput ? "ON" : "OFF",
 					description: "Show tool output previews (hotkey: O)",
+					isToggle: true,
+				},
+				{
+					id: "bash-live-preview-always",
+					label: "Bash Live Preview",
+					value: bashLivePreviewAlways ? "ON" : "OFF",
+					description: "Always show the bash live streaming preview, even when Tool Output is off",
 					isToggle: true,
 				},
 				{
@@ -334,6 +345,7 @@ export function SettingsMenu({
 			canEnableVoiceOutput,
 			showFullReasoning,
 			showToolOutput,
+			bashLivePreviewAlways,
 			showStats,
 			memoryEnabled,
 			memoryToggleDisabled,
@@ -348,6 +360,7 @@ export function SettingsMenu({
 			setBashApprovalLevel,
 			setShowFullReasoning,
 			setShowToolOutput,
+			setBashLivePreviewAlways,
 			setShowStats,
 			setMemoryEnabled,
 			persistPreferences,

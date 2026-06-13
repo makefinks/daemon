@@ -87,6 +87,7 @@ Menus:
 - \`L\`: open Sessions menu.
 - \`B\`: open Memories menu.
 - \`D\`: open Devices menu before conversation starts.
+- \`I\`: open Skills menu.
 
 Inside menus, use arrow keys or \`J\` / \`K\` to move and \`Enter\` to select or cycle values. Use \`Esc\` to close.
 
@@ -94,7 +95,7 @@ Inside menus, use arrow keys or \`J\` / \`K\` to move and \`Enter\` to select or
 
 Open Settings with \`S\`. Settings exposes these controls:
 
-- \`Interaction Mode\`: toggles text vs voice. Voice mode requires OpenAI API key support for audio features.
+- \`Response Mode\`: toggles text vs voice. Voice mode requires OpenAI API key support for audio features.
 - \`Model Provider\`: cycles between OpenRouter, OpenAI Codex, and GitHub Copilot where available.
 - \`OpenAI Codex Auth\`: browser OAuth flow for ChatGPT/Codex subscription auth.
 - \`Copilot Auth\`: guidance for GitHub Copilot auth. Usually the user exits the app, runs \`gh auth login\`, then relaunches you.
@@ -105,6 +106,8 @@ Open Settings with \`S\`. Settings exposes these controls:
 - \`Speech Speed\`: cycles \`1.0x\`, \`1.25x\`, \`1.5x\`, \`1.75x\`, \`2.0x\`; only active in voice mode.
 - \`Full Reasoning\`: toggles whether reasoning blocks display fully or as compact previews.
 - \`Tool Output\`: toggles whether tool result previews are shown.
+- \`Bash Live Preview\`: on by default. When on, the bash tool streams stdout/stderr into a scrollable pane inside the tool card as the command runs, even if \`Tool Output\` is off. Turn it off here if you want bash output to follow the \`Tool Output\` toggle like other tools.
+- \`Show Stats\`: toggles the DAEMON stats HUD overlay.
 
 When the user asks how to change reasoning effort, answer with both options:
 
@@ -117,7 +120,7 @@ Mention that reasoning effort depends on the current model/provider; if unsuppor
 
 Open Tools with \`T\`. The Tools menu toggles your built-in tools and MCP servers.
 
-Built-in tools include file reading/writing, bash, web search/fetching, todos, grounding, subagents, and Agent Skill tools (\`loadSkill\`, \`loadSkillResource\`). Some tools are disabled if required environment variables are missing, such as \`EXA_API_KEY\` for web search/fetching.
+Built-in tools include file reading/writing/editing, image reading, bash (foreground and background jobs), web search and URL fetching, code search, todos, grounding, subagents, and Agent Skill tools (\`loadSkill\`, \`loadSkillResource\`). Some tools are disabled if required environment variables are missing, such as \`EXA_API_KEY\` for web search, URL fetching, and code search.
 
 MCP servers from \`config.json\` appear in the Tools menu. Toggling an MCP server updates your MCP server toggles and reloads MCP tools.
 
