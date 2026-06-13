@@ -12,3 +12,4 @@ import "./todo";
 import "./system-info";
 import "./grounding";
 import "./skills";
+import "./recall";

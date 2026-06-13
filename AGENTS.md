@@ -71,3 +71,8 @@ Audio tuning (optional):
 - State: EventEmitter pattern for cross-component state (`src/state/daemon-state.ts`). Hook-based UI state management (`src/hooks/`). Session persistence in `src/state/session-store.ts`.
 - Async: Use AbortController for cancellable async operations (e.g. response generation, transcription, TTS).
 - Documentation: Use detailed JSDoc (`@param`) on functions with multiple or non-obvious params. Skip `@returns` when obvious from the return type (e.g. string builders, void side-effects). Summary-only style is fine for simple helpers with self-explanatory signatures.
+
+## Commit Style
+Keep commit messages short and high-level. Subject line + brief body describing the user-visible change. No per-file breakdowns, no "deleted this function" / "renamed that file" inventories, no references to the conversation or prior prompts.
+
+RULE: NEVER PUSH TO REMOTE 

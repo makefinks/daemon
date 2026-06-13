@@ -14,6 +14,7 @@ import { todoManager } from "./todo-manager";
 import { webSearch } from "./web-search";
 import { editFile } from "./edit-file";
 import { writeFile } from "./write-file";
+import { recall } from "./recall";
 
 import { getModelProvider, getResponseModel } from "../model-config";
 import { getProviderCapabilities } from "../providers/capabilities";
@@ -61,6 +62,7 @@ export const TOOL_REGISTRY: ToolEntry[] = [
 	{ id: "todoManager", toggleKey: "todoManager", tool: todoManager },
 	{ id: "groundingManager", toggleKey: "groundingManager", tool: groundingManager },
 	{ id: "subagent", toggleKey: "subagent", tool: subagent, gate: gateSubagent },
+	{ id: "recall", toggleKey: "recall", tool: recall },
 ];
 
 function gateExa(): Promise<ToolGateResult> {
@@ -126,6 +128,7 @@ function normalizeToggles(toggles?: ToolToggles): ToolToggles {
 		todoManager: toggles?.todoManager ?? true,
 		groundingManager: toggles?.groundingManager ?? true,
 		subagent: toggles?.subagent ?? true,
+		recall: toggles?.recall ?? true,
 	};
 }
 
@@ -230,6 +233,7 @@ export function getToolLabels(): Record<ToolId, string> {
 		todoManager: "todoManager",
 		groundingManager: "groundingManager",
 		subagent: "subagent",
+		recall: "recall",
 	};
 }
 
@@ -249,6 +253,7 @@ export function getDefaultToolOrder(): ToolId[] {
 		"todoManager",
 		"groundingManager",
 		"subagent",
+		"recall",
 	];
 }
 
@@ -268,5 +273,6 @@ export function createToolAvailabilitySnapshot(availability: ToolAvailabilityMap
 		todoManager: availability.todoManager?.enabled ?? false,
 		groundingManager: availability.groundingManager?.enabled ?? false,
 		subagent: availability.subagent?.enabled ?? false,
+		recall: availability.recall?.enabled ?? false,
 	};
 }

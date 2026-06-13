@@ -350,7 +350,8 @@ export type ToolToggleId =
 	| "codeSearch"
 	| "todoManager"
 	| "groundingManager"
-	| "subagent";
+	| "subagent"
+	| "recall";
 
 export type ToolToggles = Record<ToolToggleId, boolean>;
 
@@ -372,6 +373,7 @@ export const DEFAULT_TOOL_TOGGLES: ToolToggles = {
 	todoManager: true,
 	groundingManager: true,
 	subagent: true,
+	recall: true,
 };
 
 /**

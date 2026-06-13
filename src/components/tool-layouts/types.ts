@@ -35,6 +35,16 @@ export interface ToolBodyLine {
 }
 
 /**
+ * A segment of a result preview line. Allows per-segment coloring so layouts
+ * can highlight portions (e.g. matched query keywords) within a dimmed line.
+ */
+export interface ToolPreviewSegment {
+	text: string;
+	/** Optional color override (hex). Defaults to dim. */
+	color?: string;
+}
+
+/**
  * Body content for boxed/custom tool layouts.
  */
 export interface ToolBody {
@@ -76,9 +86,10 @@ export interface ToolLayoutConfig {
 
 	/**
 	 * Format result preview lines.
-	 * Returns an array of strings to show as output preview.
+	 * Returns an array of strings (dimmed) or rich segments with optional
+	 * color overrides to highlight portions of the line.
 	 */
-	formatResult?: (result: unknown) => string[] | null;
+	formatResult?: (result: unknown, input?: unknown) => Array<string | ToolPreviewSegment[]> | null;
 
 	/**
 	 * Optional override for the card's border color (e.g. to indicate focus).

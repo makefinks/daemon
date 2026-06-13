@@ -152,6 +152,7 @@ function normalizeToolAvailability(toolAvailability?: Partial<ToolAvailability>)
 		todoManager: toolAvailability?.todoManager ?? true,
 		groundingManager: toolAvailability?.groundingManager ?? true,
 		subagent: toolAvailability?.subagent ?? true,
+		recall: toolAvailability?.recall ?? true,
 	};
 }
 
@@ -411,6 +412,21 @@ Searches for code examples, documentation snippets, and technical patterns using
   For longer independent work, set \`background: true\` so the subagent can run asynchronously while you continue.
   After starting a background subagent, do not wait by repeatedly checking it. If there is nothing else useful to do, tell the user it is running and end the turn.
 `,
+	recall: `
+  ### 'recall' (conversation search)
+  Search past conversations when the user references previous discussions — "remember when...", "that project we talked about", "what did we decide about...".
+
+  **Workflow:**
+  1. Search with \`query\` to find relevant sessions and message IDs.
+  2. Use the returned \`sessionId\` + \`messageIds\` to load specific messages if you need more context.
+
+  **Scoping:**
+  - Use \`sessionId\` to narrow a search to one session.
+  - Use \`messageIds\` (with \`sessionId\`) to load specific messages instead of searching.
+  - You can combine \`query\` + \`sessionId\` + \`messageIds\` to search within specific messages.
+
+  Always search before loading — don't guess session IDs.
+`,
 } as const;
 
 /**
@@ -449,6 +465,7 @@ function buildToolDefinitions(availability: ToolAvailability, mcpToolGuidance?: 
 	if (availability.writeFile) blocks.push(TOOL_SECTIONS.writeFile);
 	if (availability.editFile) blocks.push(TOOL_SECTIONS.editFile);
 	if (availability.subagent) blocks.push(TOOL_SECTIONS.subagent);
+	if (availability.recall) blocks.push(TOOL_SECTIONS.recall);
 	const mcpGuidanceSection = buildMcpToolGuidanceSection(mcpToolGuidance);
 
 	const webNote =

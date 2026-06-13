@@ -130,11 +130,11 @@ export function ToolCallView({ call, result, showOutput = true }: ToolCallViewPr
 
 	const resultPreviewLines = useMemo(() => {
 		if (!showOutput) return null;
-		const formatted = layout.formatResult?.(result) ?? null;
+		const formatted = layout.formatResult?.(result, call.input) ?? null;
 		if (formatted) return formatted;
 		if (mcpMeta) return formatGenericToolOutputPreview(result);
 		return null;
-	}, [result, showOutput, layout, mcpMeta]);
+	}, [result, call.input, showOutput, layout, mcpMeta]);
 
 	const hasResultPreview = Boolean(showOutput && resultPreviewLines && resultPreviewLines.length > 0);
 

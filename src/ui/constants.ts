@@ -49,6 +49,7 @@ export const COLORS = {
 	TOOL_INPUT_BG: "#0a0a0f60",
 	TOOL_INPUT_BORDER: "#3f465180",
 	TOOL_INPUT_TEXT: "#9ca3af",
+	TOOL_HIGHLIGHT: "#7a6f3a",
 	USER_LABEL: "#bfdbfe",
 	USER_TEXT: "#ffffff",
 	USER_BG: "#1e293b",

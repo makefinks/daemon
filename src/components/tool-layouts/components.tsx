@@ -3,7 +3,7 @@ import type { MouseEvent, ScrollBoxRenderable } from "@opentui/core";
 import { TextAttributes } from "@opentui/core";
 import type { LiveToolOutput, ToolCallStatus } from "../../types";
 import { COLORS } from "../../ui/constants";
-import type { ToolBody, ToolBodyLine, ToolHeader } from "./types";
+import type { ToolBody, ToolBodyLine, ToolHeader, ToolPreviewSegment } from "./types";
 
 interface ToolHeaderViewProps {
 	toolName: string;
@@ -98,17 +98,31 @@ export function ToolBodyView({ body }: ToolBodyViewProps) {
 }
 
 interface ResultPreviewViewProps {
-	lines: string[];
+	lines: Array<string | ToolPreviewSegment[]>;
+}
+
+function toSegments(line: string | ToolPreviewSegment[]): ToolPreviewSegment[] {
+	if (typeof line === "string") {
+		return [{ text: `› ${line}` }];
+	}
+	return line.map((seg, segIdx) => (segIdx === 0 ? { ...seg, text: `› ${seg.text}` } : seg));
 }
 
 export function ResultPreviewView({ lines }: ResultPreviewViewProps) {
 	return (
 		<box flexDirection="column" paddingLeft={2}>
-			{lines.map((line, idx) => (
-				<text key={idx}>
-					<span fg={COLORS.REASONING_DIM}>{`› ${line}`}</span>
-				</text>
-			))}
+			{lines.map((line, idx) => {
+				const segments = toSegments(line);
+				return (
+					<text key={idx}>
+						{segments.map((segment, segIdx) => (
+							<span key={segIdx} fg={segment.color ?? COLORS.REASONING_DIM}>
+								{segment.text}
+							</span>
+						))}
+					</text>
+				);
+			})}
 		</box>
 	);
 }

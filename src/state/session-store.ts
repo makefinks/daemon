@@ -33,7 +33,7 @@ const DEFAULT_SESSION_USAGE: TokenUsage = {
 	subagentCompletionTokens: 0,
 };
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 let db: Database | null = null;
 
@@ -79,17 +79,47 @@ function runMigrations(database: Database): void {
 	run();
 }
 
+function openDb(): Database {
+	const dbPath = getSessionDbPath();
+	const database = new Database(dbPath);
+	database.exec("PRAGMA journal_mode=WAL;");
+	database.exec("PRAGMA foreign_keys=ON;");
+	runMigrations(database);
+	return database;
+}
+
 async function getDb(): Promise<Database> {
 	if (db) return db;
 	const dbPath = getSessionDbPath();
 	if (dbPath !== ":memory:") {
 		await fs.mkdir(path.dirname(dbPath), { recursive: true });
 	}
-	db = new Database(dbPath);
-	db.exec("PRAGMA journal_mode=WAL;");
-	db.exec("PRAGMA foreign_keys=ON;");
-	runMigrations(db);
+	db = openDb();
 	return db;
+}
+
+/**
+ * Synchronous session title lookup. Opens the DB on first call so it can be
+ * used from sync UI render paths (e.g. tool card headers) before any async
+ * session-store call has warmed the connection. Returns undefined if the
+ * session is not found.
+ */
+export function getSessionTitleSync(sessionId: string): string | undefined {
+	if (!db) {
+		try {
+			db = openDb();
+		} catch (error: unknown) {
+			debug.error("session-title-sync-open-failed", {
+				message: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
+	}
+	const row = db.prepare("SELECT title, created_at FROM sessions WHERE id = ?").get(sessionId) as
+		| { title: string | null; created_at: string }
+		| undefined;
+	if (!row) return undefined;
+	return row.title?.trim() || formatSessionTitle(row.created_at);
 }
 
 function formatSessionTitle(timestamp: string): string {
@@ -215,6 +245,21 @@ export async function loadSessionSnapshot(sessionId: string): Promise<SessionSna
 	}
 }
 
+function reindexSessionFts(database: Database, sessionId: string, history: ConversationMessage[]): void {
+	const insert = database.prepare(
+		"INSERT INTO messages_fts (session_id, message_id, role, content) VALUES (?, ?, ?, ?)"
+	);
+	const run = database.transaction(() => {
+		database.prepare("DELETE FROM messages_fts WHERE session_id = ?").run(sessionId);
+		for (const message of history) {
+			const content = typeof message.content === "string" ? message.content.trim() : "";
+			if (!content) continue;
+			insert.run(sessionId, message.id, message.type, content);
+		}
+	});
+	run();
+}
+
 export async function saveSessionSnapshot(snapshot: SessionSnapshot, sessionId: string): Promise<void> {
 	try {
 		const database = await getDb();
@@ -232,6 +277,7 @@ export async function saveSessionSnapshot(snapshot: SessionSnapshot, sessionId: 
 				"INSERT INTO sessions (id, title, created_at, updated_at, history_json, usage_json) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET title = excluded.title, updated_at = excluded.updated_at, history_json = excluded.history_json, usage_json = excluded.usage_json"
 			)
 			.run(sessionId, title, createdAt, now, historyJson, usageJson);
+		reindexSessionFts(database, sessionId, snapshot.conversationHistory);
 	} catch (error) {
 		const err = error instanceof Error ? error : new Error(String(error));
 		debug.error("session-save-failed", { message: err.message });
@@ -242,6 +288,7 @@ export async function clearSessionSnapshot(sessionId: string): Promise<void> {
 	try {
 		const database = await getDb();
 		const fileCount = countWorkspaceFiles(sessionId);
+		database.prepare("DELETE FROM messages_fts WHERE session_id = ?").run(sessionId);
 		database.prepare("DELETE FROM grounding_maps WHERE session_id = ?").run(sessionId);
 		database.prepare("DELETE FROM sessions WHERE id = ?").run(sessionId);
 		await deleteWorkspace(sessionId);
@@ -402,6 +449,178 @@ export async function saveTodoList(sessionId: string, items: TodoItem[]): Promis
 		debug.error("todo-save-failed", { message: err.message });
 	}
 }
+
+// ── Recall: conversation search ──────────────────────────────────────────────
+
+export interface SessionSearchHit {
+	sessionId: string;
+	sessionTitle: string;
+	messageId: number;
+	messageRole: "user" | "daemon";
+	snippet: string;
+	matchIndex: number;
+	messageDate: string;
+}
+
+export interface SessionSearchOptions {
+	sessionId?: string;
+	messageIds?: number[];
+	maxResults?: number;
+}
+
+const SNIPPET_CONTEXT = 150;
+
+function buildSnippet(content: string, matchStart: number): string {
+	const start = Math.max(0, matchStart - SNIPPET_CONTEXT);
+	const end = Math.min(content.length, matchStart + SNIPPET_CONTEXT);
+
+	let snippet = content.slice(start, end);
+	if (start > 0) snippet = `...${snippet}`;
+	if (end < content.length) snippet = `${snippet}...`;
+
+	return snippet;
+}
+
+function buildFtsMatchExpression(query: string): string | null {
+	const tokens = query
+		.toLowerCase()
+		.split(/[^\p{L}\p{N}_]+/u)
+		.filter((token) => token.length > 0)
+		.map((token) => `${token.replace(/"/g, '""')}*`);
+	if (tokens.length === 0) return null;
+	return tokens.join(" ");
+}
+
+export async function searchSessions(
+	query: string,
+	options: SessionSearchOptions = {}
+): Promise<SessionSearchHit[]> {
+	const maxResults = options.maxResults ?? 15;
+	const matchExpr = buildFtsMatchExpression(query);
+	if (!matchExpr) return [];
+
+	const hits: SessionSearchHit[] = [];
+	try {
+		const database = await getDb();
+
+		const rows = options.sessionId
+			? (database
+					.prepare(
+						"SELECT session_id, message_id, role, content FROM messages_fts WHERE messages_fts MATCH ? AND session_id = ? ORDER BY rank LIMIT ?"
+					)
+					.all(matchExpr, options.sessionId, maxResults) as Array<{
+					session_id: string;
+					message_id: number;
+					role: "user" | "daemon";
+					content: string;
+				}>)
+			: (database
+					.prepare(
+						"SELECT session_id, message_id, role, content FROM messages_fts WHERE messages_fts MATCH ? ORDER BY rank LIMIT ?"
+					)
+					.all(matchExpr, maxResults) as Array<{
+					session_id: string;
+					message_id: number;
+					role: "user" | "daemon";
+					content: string;
+				}>);
+
+		if (rows.length === 0) return hits;
+
+		const uniqueSessionIds = Array.from(new Set(rows.map((r) => r.session_id)));
+		const placeholders = uniqueSessionIds.map(() => "?").join(",");
+		const sessionRows = database
+			.prepare(`SELECT id, title, created_at FROM sessions WHERE id IN (${placeholders})`)
+			.all(...uniqueSessionIds) as Array<{ id: string; title: string | null; created_at: string }>;
+		const sessionById = new Map(
+			sessionRows.map((row) => [
+				row.id,
+				{
+					title: row.title?.trim() || formatSessionTitle(row.created_at),
+					created_at: row.created_at,
+				},
+			])
+		);
+
+		const lowerQuery = query.toLowerCase().trim();
+		const messageIdSet = options.messageIds ? new Set(options.messageIds) : null;
+
+		for (const row of rows) {
+			if (hits.length >= maxResults) break;
+			if (messageIdSet && !messageIdSet.has(row.message_id)) continue;
+			const session = sessionById.get(row.session_id);
+			if (!session) continue;
+
+			const matchIdx = lowerQuery ? row.content.toLowerCase().indexOf(lowerQuery) : 0;
+			const snippet =
+				matchIdx >= 0
+					? buildSnippet(row.content, matchIdx)
+					: row.content.length > SNIPPET_CONTEXT * 2
+						? `${row.content.slice(0, SNIPPET_CONTEXT * 2)}…`
+						: row.content;
+
+			hits.push({
+				sessionId: row.session_id,
+				sessionTitle: session.title,
+				messageId: row.message_id,
+				messageRole: row.role,
+				snippet,
+				matchIndex: matchIdx >= 0 ? matchIdx : 0,
+				messageDate: session.created_at,
+			});
+		}
+	} catch (error) {
+		const err = error instanceof Error ? error : new Error(String(error));
+		debug.error("session-search-failed", { message: err.message });
+	}
+
+	return hits;
+}
+
+export interface LoadedMessage {
+	sessionId: string;
+	sessionTitle: string;
+	messageId: number;
+	messageRole: "user" | "daemon";
+	content: string;
+	messageDate: string;
+}
+
+export async function loadSessionMessages(sessionId: string, messageIds: number[]): Promise<LoadedMessage[]> {
+	try {
+		const database = await getDb();
+		const row = database
+			.prepare("SELECT title, created_at, history_json FROM sessions WHERE id = ?")
+			.get(sessionId) as { title: string | null; created_at: string; history_json: string } | undefined;
+
+		if (!row) return [];
+
+		const title = row.title?.trim() || formatSessionTitle(row.created_at);
+		const history = parseConversationHistory(row.history_json);
+		const idSet = new Set(messageIds);
+		const results: LoadedMessage[] = [];
+
+		for (const message of history) {
+			if (!idSet.has(message.id)) continue;
+			results.push({
+				sessionId,
+				sessionTitle: title,
+				messageId: message.id,
+				messageRole: message.type,
+				content: message.content ?? "",
+				messageDate: row.created_at,
+			});
+		}
+
+		return results;
+	} catch (error) {
+		const err = error instanceof Error ? error : new Error(String(error));
+		debug.error("session-messages-load-failed", { message: err.message });
+		return [];
+	}
+}
+
+// ── Todo list persistence ────────────────────────────────────────────────────
 
 export async function loadLatestTodoList(sessionId: string): Promise<TodoItem[]> {
 	try {
