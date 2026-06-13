@@ -167,8 +167,8 @@ export class RigEngine {
 		this.state.reasoning.active = active;
 	}
 
-	public triggerReasoningEffortPulse(): void {
-		this.state.reasoning.powerPulse = 1;
+	public triggerReasoningEffortPulse(intensity: number = 1): void {
+		this.state.reasoning.powerPulse = intensity;
 		this.state.reasoning.powerPulseAge = 0;
 		this.state.reasoning.powerPulseSeed = (this.state.reasoning.powerPulseSeed + 1) % 17;
 	}

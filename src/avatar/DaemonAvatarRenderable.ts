@@ -328,9 +328,9 @@ export class DaemonAvatarRenderable extends FrameBufferRenderable {
 		}
 	}
 
-	public triggerReasoningEffortPulse(): void {
+	public triggerReasoningEffortPulse(intensity?: number): void {
 		if (this.rig) {
-			this.rig.triggerReasoningEffortPulse();
+			this.rig.triggerReasoningEffortPulse(intensity);
 		}
 	}
 

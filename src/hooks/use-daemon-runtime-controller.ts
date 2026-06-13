@@ -109,6 +109,9 @@ export function useDaemonRuntimeController({
 		onTypingActivity: useCallback(() => {
 			avatarRef.current?.triggerTypingPulse();
 		}, [avatarRef]),
+		onSpaceOrNewline: useCallback(() => {
+			avatarRef.current?.triggerReasoningEffortPulse(0.6);
+		}, [avatarRef]),
 		navigateUp,
 		navigateDown,
 		resetNavigation,

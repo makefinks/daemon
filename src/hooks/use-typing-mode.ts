@@ -17,6 +17,7 @@ export interface UseTypingModeParams {
 	currentUserInputRef: React.MutableRefObject<string>;
 	setCurrentTranscription: (text: string) => void;
 	onTypingActivity?: () => void;
+	onSpaceOrNewline?: () => void;
 	navigateUp: (currentInput: string) => string | null;
 	navigateDown: () => string | null;
 	resetNavigation: () => void;
@@ -45,6 +46,7 @@ export function useTypingMode(params: UseTypingModeParams): UseTypingModeReturn 
 		currentUserInputRef,
 		setCurrentTranscription,
 		onTypingActivity,
+		onSpaceOrNewline,
 		navigateUp,
 		navigateDown,
 		resetNavigation,
@@ -59,6 +61,7 @@ export function useTypingMode(params: UseTypingModeParams): UseTypingModeReturn 
 	const pasteSummariesRef = useRef<Map<string, string>>(new Map());
 	const nextPasteSummaryIdRef = useRef(0);
 	const pendingPrefillRef = useRef<string | null>(null);
+	const lastInputValueRef = useRef("");
 
 	useEffect(() => {
 		if (daemonState === DaemonState.TYPING && pendingPrefillRef.current !== null) {
@@ -86,6 +89,7 @@ export function useTypingMode(params: UseTypingModeParams): UseTypingModeReturn 
 			imageAttachmentsRef.current = [];
 			pasteSummariesRef.current.clear();
 			pendingPrefillRef.current = null;
+			lastInputValueRef.current = "";
 			resetNavigation();
 		}
 	}, [daemonState, resetNavigation]);
@@ -93,9 +97,18 @@ export function useTypingMode(params: UseTypingModeParams): UseTypingModeReturn 
 	const handleTypingContentChange = useCallback(
 		(value: string) => {
 			setTypingInput(value);
+			const prev = lastInputValueRef.current;
+			lastInputValueRef.current = value;
+			if (onSpaceOrNewline && value.length > prev.length) {
+				const inserted = value.slice(prev.length);
+				if (/[\s\n\r]/.test(inserted)) {
+					onSpaceOrNewline();
+					return;
+				}
+			}
 			onTypingActivity?.();
 		},
-		[onTypingActivity]
+		[onTypingActivity, onSpaceOrNewline]
 	);
 
 	const expandInputText = useCallback((textarea: TextareaRenderable | null, text: string): string => {
