@@ -1,5 +1,5 @@
 import { registerToolLayout } from "../registry";
-import type { ToolHeader, ToolLayoutConfig } from "../types";
+import type { ToolHeader, ToolLayoutConfig, ToolResultFormatOptions } from "../types";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -60,7 +60,11 @@ function formatLoadSkillResult(result: unknown): string[] | null {
 	return lines;
 }
 
-function formatLoadSkillResourceResult(result: unknown): string[] | null {
+function formatLoadSkillResourceResult(
+	result: unknown,
+	_input?: unknown,
+	options?: ToolResultFormatOptions
+): string[] | null {
 	if (!isRecord(result)) return null;
 	if (result.success === false && typeof result.error === "string") {
 		return [`error: ${result.error}`];
@@ -70,6 +74,7 @@ function formatLoadSkillResourceResult(result: unknown): string[] | null {
 	const path = readString(result, "path") ?? readString(result, "resolvedPath") ?? "resource";
 	const content = readString(result, "content");
 	if (!content) return [path];
+	if (options?.expanded) return [`${path}:`, ...content.split("\n")];
 
 	const MAX_LINES = 3;
 	const MAX_CHARS = 140;

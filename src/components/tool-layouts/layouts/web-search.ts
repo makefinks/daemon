@@ -1,4 +1,4 @@
-import type { ToolLayoutConfig, ToolHeader } from "../types";
+import type { ToolLayoutConfig, ToolHeader, ToolResultFormatOptions } from "../types";
 import { registerToolLayout } from "../registry";
 
 type UnknownRecord = Record<string, unknown>;
@@ -52,7 +52,11 @@ function formatExaItemLabel(item: ExaLikeItem): string {
 	return title || url || "(untitled)";
 }
 
-function formatWebSearchResult(result: unknown): string[] | null {
+function formatWebSearchResult(
+	result: unknown,
+	_input?: unknown,
+	options?: ToolResultFormatOptions
+): string[] | null {
 	if (!isRecord(result)) return null;
 	if (result.success === false && typeof result.error === "string") {
 		return [`error: ${result.error}`];
@@ -62,12 +66,15 @@ function formatWebSearchResult(result: unknown): string[] | null {
 	const items = extractExaItems(data);
 	if (!items) return null;
 
-	const top = items.slice(0, 4).map((item, idx) => {
+	const visibleItems = options?.expanded ? items : items.slice(0, 4);
+	const top = visibleItems.flatMap((item, idx) => {
 		const url = typeof item.url === "string" ? item.url : "";
 		const title = typeof item.title === "string" ? item.title : "";
 		const label = formatExaItemLabel(item);
 		const urlSuffix = url && title ? ` — ${url}` : "";
-		return `${idx + 1}) ${label}${urlSuffix}`;
+		const line = `${idx + 1}) ${label}${urlSuffix}`;
+		if (!options?.expanded || typeof item.text !== "string" || !item.text.trim()) return [line];
+		return [line, ...item.text.trim().split("\n")];
 	});
 
 	return top.length > 0 ? top : null;

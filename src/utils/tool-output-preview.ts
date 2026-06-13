@@ -89,11 +89,15 @@ function formatMcpLikeResult(result: unknown): string | null {
 /**
  * Generic preview formatter for dynamic tools (e.g. MCP).
  */
-export function formatGenericToolOutputPreview(result: unknown): string[] | null {
+export function formatGenericToolOutputPreview(
+	result: unknown,
+	options: { expanded?: boolean } = {}
+): string[] | null {
 	if (result === undefined) return null;
 
 	const raw = formatMcpLikeResult(result) ?? tryStringify(result);
 	if (!raw.trim()) return ["(no output)"];
+	if (options.expanded) return normalizeWhitespace(raw).split("\n");
 
 	const MAX_LINES = 4;
 	const MAX_CHARS_PER_LINE = 160;

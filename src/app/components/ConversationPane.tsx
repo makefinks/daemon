@@ -12,7 +12,7 @@ import { InlineStatusIndicator } from "../../components/InlineStatusIndicator";
 import { StatusBar } from "../../components/StatusBar";
 import { TokenUsageDisplay } from "../../components/TokenUsageDisplay";
 import { TypingInputBar } from "../../components/TypingInputBar";
-import { clearBashScrollFocus } from "../../components/tool-layouts/layouts/bash";
+import { clearToolScrollFocus } from "../../components/tool-layouts/scroll-focus";
 import type {
 	ContentBlock,
 	ConversationMessage,
@@ -336,7 +336,7 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 					stickyScroll={true}
 					stickyStart="bottom"
 					ref={conversationScrollRef}
-					onMouseDown={clearBashScrollFocus}
+					onMouseDown={clearToolScrollFocus}
 					style={{
 						rootOptions: { backgroundColor: frostColor },
 						contentOptions: {

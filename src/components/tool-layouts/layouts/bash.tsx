@@ -1,10 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { sessionRuntimeStore } from "../../../state/session-runtime-store";
 import { COLORS } from "../../../ui/constants";
 import type { ToolCall } from "../../../types";
 import { BashLiveOutputView } from "../components";
 import type { ToolLayoutConfig, ToolHeader, ToolBody } from "../types";
 import { registerToolLayout } from "../registry";
+import { isToolScrollFocused, setToolScrollFocus, useToolScrollFocus } from "../scroll-focus";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -40,64 +41,6 @@ function extractResultOutput(result: unknown): { stdout: string; stderr: string;
 	};
 }
 
-// Module-level map of toolCallId -> sessionId for tool cards whose inner
-// scrollbox should capture scroll events instead of letting them bubble to
-// the conversation scrollbox. Clicking a card toggles its membership;
-// clicking outside clears all.
-const focusedScrollboxes = new Map<string, string>();
-const focusListeners = new Set<() => void>();
-
-function notifyFocusListeners(): void {
-	for (const listener of focusListeners) listener();
-}
-
-function setFocused(toolCallId: string, focused: boolean, sessionId: string | null): void {
-	const had = focusedScrollboxes.has(toolCallId);
-	if (focused && !had) {
-		// Single-focus: clear any other focused card so only one is active.
-		if (focusedScrollboxes.size > 0) {
-			for (const prevSession of focusedScrollboxes.values()) {
-				if (prevSession) sessionRuntimeStore.requestRenderTick(prevSession);
-			}
-			focusedScrollboxes.clear();
-		}
-		focusedScrollboxes.set(toolCallId, sessionId ?? "");
-		notifyFocusListeners();
-	} else if (!focused && had) {
-		focusedScrollboxes.delete(toolCallId);
-		notifyFocusListeners();
-	}
-	// Trigger a re-render of the conversation so the bash card's border color
-	// (computed by ToolCallView) reflects the new focus state.
-	if (sessionId) sessionRuntimeStore.requestRenderTick(sessionId);
-}
-
-function clearAllFocused(): void {
-	if (focusedScrollboxes.size === 0) return;
-	const sessions = new Set(focusedScrollboxes.values());
-	focusedScrollboxes.clear();
-	notifyFocusListeners();
-	for (const sessionId of sessions) {
-		if (sessionId) sessionRuntimeStore.requestRenderTick(sessionId);
-	}
-}
-
-export function clearBashScrollFocus(): void {
-	clearAllFocused();
-}
-
-function useFocusedScrollbox(toolCallId: string | undefined): boolean {
-	const [, setTick] = useState(0);
-	useEffect(() => {
-		const listener = () => setTick((tick) => tick + 1);
-		focusListeners.add(listener);
-		return () => {
-			focusListeners.delete(listener);
-		};
-	}, []);
-	return toolCallId ? focusedScrollboxes.has(toolCallId) : false;
-}
-
 function BashCardBody({
 	call,
 	result,
@@ -107,7 +50,7 @@ function BashCardBody({
 	result: unknown;
 	showOutput?: boolean;
 }): ReactNode {
-	const focused = useFocusedScrollbox(call.toolCallId);
+	const focused = useToolScrollFocus(call.toolCallId);
 
 	const body = bashLayout.getBody?.(call.input, result, call);
 	const live = call.toolCallId
@@ -121,7 +64,7 @@ function BashCardBody({
 			: { stdout: "", stderr: "", error: "" };
 
 	const toggleFocus = (event: { stopPropagation: () => void }) => {
-		if (call.toolCallId) setFocused(call.toolCallId, !focused, call.sessionId ?? null);
+		if (call.toolCallId) setToolScrollFocus(call.toolCallId, !focused, call.sessionId ?? null);
 		// Claim the click so an outer "clear on outside click" handler doesn't
 		// immediately undo the focus we just set.
 		event.stopPropagation();
@@ -202,7 +145,7 @@ export const bashLayout: ToolLayoutConfig = {
 	formatResult: () => null,
 
 	getBorderColor: (call): string | undefined => {
-		if (call.toolCallId && focusedScrollboxes.has(call.toolCallId)) {
+		if (call.toolCallId && isToolScrollFocused(call.toolCallId)) {
 			return "#3b82f6";
 		}
 		return undefined;

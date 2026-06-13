@@ -4,6 +4,7 @@ import { TextAttributes } from "@opentui/core";
 import type { LiveToolOutput, ToolCallStatus } from "../../types";
 import { COLORS } from "../../ui/constants";
 import type { ToolBody, ToolBodyLine, ToolHeader, ToolPreviewSegment } from "./types";
+import { setToolScrollFocus, useToolScrollFocus } from "./scroll-focus";
 
 interface ToolHeaderViewProps {
 	toolName: string;
@@ -99,7 +100,13 @@ export function ToolBodyView({ body }: ToolBodyViewProps) {
 
 interface ResultPreviewViewProps {
 	lines: Array<string | ToolPreviewSegment[]>;
+	expandedLines?: Array<string | ToolPreviewSegment[]> | null;
+	toolCallId?: string;
+	sessionId?: string | null;
+	maxHeight?: number;
 }
+
+const FOCUSED_PREVIEW_WRAP_CHARS = 180;
 
 function toSegments(line: string | ToolPreviewSegment[]): ToolPreviewSegment[] {
 	if (typeof line === "string") {
@@ -108,21 +115,94 @@ function toSegments(line: string | ToolPreviewSegment[]): ToolPreviewSegment[] {
 	return line.map((seg, segIdx) => (segIdx === 0 ? { ...seg, text: `› ${seg.text}` } : seg));
 }
 
-export function ResultPreviewView({ lines }: ResultPreviewViewProps) {
+function renderPreviewLine(line: string | ToolPreviewSegment[], idx: number) {
+	const segments = toSegments(line);
 	return (
-		<box flexDirection="column" paddingLeft={2}>
-			{lines.map((line, idx) => {
-				const segments = toSegments(line);
-				return (
-					<text key={idx}>
-						{segments.map((segment, segIdx) => (
-							<span key={segIdx} fg={segment.color ?? COLORS.REASONING_DIM}>
-								{segment.text}
-							</span>
-						))}
-					</text>
-				);
-			})}
+		<text key={idx}>
+			{segments.map((segment, segIdx) => (
+				<span key={segIdx} fg={segment.color ?? COLORS.REASONING_DIM}>
+					{segment.text}
+				</span>
+			))}
+		</text>
+	);
+}
+
+function wrapPreviewLines(lines: Array<string | ToolPreviewSegment[]>): Array<string | ToolPreviewSegment[]> {
+	const wrapped: Array<string | ToolPreviewSegment[]> = [];
+	for (const line of lines) {
+		if (typeof line !== "string" || line.length <= FOCUSED_PREVIEW_WRAP_CHARS) {
+			wrapped.push(line);
+			continue;
+		}
+		for (let idx = 0; idx < line.length; idx += FOCUSED_PREVIEW_WRAP_CHARS) {
+			wrapped.push(line.slice(idx, idx + FOCUSED_PREVIEW_WRAP_CHARS));
+		}
+	}
+	return wrapped;
+}
+
+function handleNestedScrollboxMouse(
+	event: MouseEvent,
+	scrollbox: ScrollBoxRenderable | null,
+	captureScroll: boolean
+): void {
+	if (event.type !== "scroll" || !event.scroll || !scrollbox) return;
+	if (captureScroll) {
+		const { direction, delta } = event.scroll;
+		if (direction === "up") {
+			scrollbox.scrollTop = Math.max(0, scrollbox.scrollTop - delta);
+		} else if (direction === "down") {
+			scrollbox.scrollTop = scrollbox.scrollTop + delta;
+		}
+		event.stopPropagation();
+		event.preventDefault();
+	} else {
+		const before = scrollbox.scrollTop;
+		queueMicrotask(() => {
+			if (scrollbox.scrollTop !== before) {
+				scrollbox.scrollTop = before;
+			}
+		});
+	}
+}
+
+export function ResultPreviewView({
+	lines,
+	expandedLines,
+	toolCallId,
+	sessionId,
+	maxHeight = 12,
+}: ResultPreviewViewProps) {
+	const scrollRef = useRef<ScrollBoxRenderable | null>(null);
+	const focused = useToolScrollFocus(toolCallId);
+	const displayLines = focused ? wrapPreviewLines(expandedLines ?? lines) : lines;
+	const height = Math.max(1, Math.min(maxHeight, displayLines.length));
+
+	const toggleFocus = (event: { stopPropagation: () => void }) => {
+		if (toolCallId) setToolScrollFocus(toolCallId, !focused, sessionId ?? null);
+		event.stopPropagation();
+	};
+
+	if (focused) {
+		return (
+			<box flexDirection="column" paddingLeft={2} onMouseDown={toggleFocus}>
+				<scrollbox
+					ref={scrollRef}
+					height={height}
+					width="100%"
+					overflow="scroll"
+					onMouse={(event) => handleNestedScrollboxMouse(event, scrollRef.current, true)}
+				>
+					{displayLines.map(renderPreviewLine)}
+				</scrollbox>
+			</box>
+		);
+	}
+
+	return (
+		<box flexDirection="column" paddingLeft={2} onMouseDown={toggleFocus}>
+			{lines.map(renderPreviewLine)}
 		</box>
 	);
 }
@@ -178,31 +258,8 @@ export function BashLiveOutputView({ live, maxHeight, captureScroll = false }: B
 	// to the conversation; the ScrollBox's own `onMouseEvent` runs after this
 	// hook regardless, so we restore `scrollTop` on the next frame to undo
 	// the inner scroll it just applied.
-	const handleScrollboxMouse = (event: MouseEvent) => {
-		if (event.type !== "scroll" || !event.scroll) return;
-		const scrollbox = scrollRef.current;
-		if (!scrollbox) return;
-		if (captureScroll) {
-			const { direction, delta } = event.scroll;
-			if (direction === "up") {
-				scrollbox.scrollTop = Math.max(0, scrollbox.scrollTop - delta);
-			} else if (direction === "down") {
-				scrollbox.scrollTop = scrollbox.scrollTop + delta;
-			}
-			event.stopPropagation();
-			event.preventDefault();
-		} else {
-			// Snapshot the position the ScrollBox is about to override, then
-			// restore it on the next frame so the inner pane doesn't scroll.
-			const before = scrollbox.scrollTop;
-			queueMicrotask(() => {
-				const current = scrollRef.current;
-				if (current && current.scrollTop !== before) {
-					current.scrollTop = before;
-				}
-			});
-		}
-	};
+	const handleScrollboxMouse = (event: MouseEvent) =>
+		handleNestedScrollboxMouse(event, scrollRef.current, captureScroll);
 
 	// Build lines on every render so chunks appended to `live.stdout`/`live.stderr`
 	// in place always show up. `useMemo` keyed on `live` would cache the first

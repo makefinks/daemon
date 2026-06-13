@@ -1,4 +1,4 @@
-import type { ToolLayoutConfig, ToolHeader } from "../types";
+import type { ToolLayoutConfig, ToolHeader, ToolResultFormatOptions } from "../types";
 import { registerToolLayout } from "../registry";
 
 type UnknownRecord = Record<string, unknown>;
@@ -15,7 +15,11 @@ function extractPath(input: unknown): string | null {
 	return null;
 }
 
-function formatReadFileResult(result: unknown): string[] | null {
+function formatReadFileResult(
+	result: unknown,
+	_input?: unknown,
+	options?: ToolResultFormatOptions
+): string[] | null {
 	if (!isRecord(result)) return null;
 	if (result.success === false && typeof result.error === "string") {
 		return [`error: ${result.error}`];
@@ -33,6 +37,8 @@ function formatReadFileResult(result: unknown): string[] | null {
 			: "";
 
 	if (!content.trim()) return path ? [`${path}${range}`] : null;
+
+	if (options?.expanded) return [`${path}${range}:`, ...content.split("\n")];
 
 	const MAX_LINES = 4;
 	const MAX_CHARS = 160;

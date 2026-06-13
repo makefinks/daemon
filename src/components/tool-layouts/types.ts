@@ -44,6 +44,11 @@ export interface ToolPreviewSegment {
 	color?: string;
 }
 
+export interface ToolResultFormatOptions {
+	/** When true, return the complete tool result for the focused scrollbox. */
+	expanded?: boolean;
+}
+
 /**
  * Body content for boxed/custom tool layouts.
  */
@@ -89,7 +94,11 @@ export interface ToolLayoutConfig {
 	 * Returns an array of strings (dimmed) or rich segments with optional
 	 * color overrides to highlight portions of the line.
 	 */
-	formatResult?: (result: unknown, input?: unknown) => Array<string | ToolPreviewSegment[]> | null;
+	formatResult?: (
+		result: unknown,
+		input?: unknown,
+		options?: ToolResultFormatOptions
+	) => Array<string | ToolPreviewSegment[]> | null;
 
 	/**
 	 * Optional override for the card's border color (e.g. to indicate focus).

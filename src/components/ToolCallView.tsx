@@ -15,6 +15,9 @@ import {
 	getDefaultAbbreviation,
 	getStatusBorderColor,
 	getToolLayout,
+	isToolScrollFocused,
+	setToolScrollFocus,
+	useToolScrollFocus,
 } from "./tool-layouts";
 
 interface ToolCallViewProps {
@@ -86,6 +89,8 @@ export function ToolCallView({ call, result, showOutput = true }: ToolCallViewPr
 	const isRunning = call.status === "running" || call.status === "streaming";
 	const runningLabel = isBackgroundToolRunning(call, result) ? "running in background" : null;
 	const isFailed = call.status === "failed";
+	const previewFocused = useToolScrollFocus(call.toolCallId);
+	const supportsFocusedPreview = Boolean(!layout.renderBody && (layout.formatResult || mcpMeta));
 
 	const { needsApproval, isActive, approve, deny, approveAll, denyAll } = useToolApprovalForCall(
 		call.toolCallId,
@@ -130,13 +135,24 @@ export function ToolCallView({ call, result, showOutput = true }: ToolCallViewPr
 
 	const resultPreviewLines = useMemo(() => {
 		if (!showOutput) return null;
-		const formatted = layout.formatResult?.(result, call.input) ?? null;
+		const formatted = layout.formatResult?.(result, call.input, { expanded: false }) ?? null;
 		if (formatted) return formatted;
 		if (mcpMeta) return formatGenericToolOutputPreview(result);
 		return null;
 	}, [result, call.input, showOutput, layout, mcpMeta]);
 
-	const hasResultPreview = Boolean(showOutput && resultPreviewLines && resultPreviewLines.length > 0);
+	const expandedResultPreviewLines = useMemo(() => {
+		if (!previewFocused) return null;
+		const formatted = layout.formatResult?.(result, call.input, { expanded: true }) ?? null;
+		if (formatted) return formatted;
+		if (mcpMeta) return formatGenericToolOutputPreview(result, { expanded: true });
+		return null;
+	}, [result, call.input, previewFocused, layout, mcpMeta]);
+
+	const hasResultPreview = Boolean(
+		(showOutput && resultPreviewLines && resultPreviewLines.length > 0) ||
+			(previewFocused && expandedResultPreviewLines && expandedResultPreviewLines.length > 0)
+	);
 
 	const toolColor =
 		call.status === "completed"
@@ -145,9 +161,18 @@ export function ToolCallView({ call, result, showOutput = true }: ToolCallViewPr
 				? COLORS.STATUS_APPROVAL
 				: COLORS.TOOLS;
 	const toolName = mcpMeta ? "mcp" : (layout.abbreviation ?? getDefaultAbbreviation(call.name));
-	const borderColor = layout.getBorderColor?.(call) ?? getStatusBorderColor(call.status);
+	const borderColor = isToolScrollFocused(call.toolCallId)
+		? "#3b82f6"
+		: (layout.getBorderColor?.(call) ?? getStatusBorderColor(call.status));
 
 	const customBody = layout.renderBody ? layout.renderBody({ call, result, showOutput }) : null;
+
+	const toggleFocusedPreview = (event: { stopPropagation: () => void }) => {
+		if (supportsFocusedPreview && call.toolCallId) {
+			setToolScrollFocus(call.toolCallId, !previewFocused, call.sessionId ?? null);
+			event.stopPropagation();
+		}
+	};
 
 	return (
 		<box
@@ -160,6 +185,7 @@ export function ToolCallView({ call, result, showOutput = true }: ToolCallViewPr
 			paddingTop={0}
 			paddingBottom={0}
 			width="100%"
+			onMouseDown={toggleFocusedPreview}
 		>
 			<ToolHeaderView
 				toolName={toolName}
@@ -185,7 +211,14 @@ export function ToolCallView({ call, result, showOutput = true }: ToolCallViewPr
 			)}
 
 			{hasResultPreview && <ToolSectionDivider label="OUTPUT" />}
-			{hasResultPreview && <ResultPreviewView lines={resultPreviewLines ?? []} />}
+			{hasResultPreview && (
+				<ResultPreviewView
+					lines={resultPreviewLines ?? expandedResultPreviewLines ?? []}
+					expandedLines={expandedResultPreviewLines}
+					toolCallId={call.toolCallId}
+					sessionId={call.sessionId}
+				/>
+			)}
 
 			{isFailed && call.error && <ToolSectionDivider label="ERROR" />}
 			{isFailed && call.error && <ErrorPreviewView error={call.error} />}

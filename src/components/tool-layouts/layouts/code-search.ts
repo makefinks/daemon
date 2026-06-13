@@ -1,4 +1,4 @@
-import type { ToolHeader, ToolLayoutConfig } from "../types";
+import type { ToolHeader, ToolLayoutConfig, ToolResultFormatOptions } from "../types";
 import { registerToolLayout } from "../registry";
 
 type UnknownRecord = Record<string, unknown>;
@@ -25,7 +25,11 @@ const MAX_INLINE_CHARS = 60;
 const MAX_RESULT_LINES = 6;
 const MAX_LINE_CHARS = 120;
 
-function formatCodeSearchResult(result: unknown): string[] | null {
+function formatCodeSearchResult(
+	result: unknown,
+	_input?: unknown,
+	options?: ToolResultFormatOptions
+): string[] | null {
 	if (!isRecord(result)) return null;
 	if (result.success === false && typeof result.error === "string") {
 		return [`error: ${result.error}`];
@@ -34,6 +38,11 @@ function formatCodeSearchResult(result: unknown): string[] | null {
 
 	const response = extractResponse(result);
 	if (!response) return null;
+	if (options?.expanded)
+		return response
+			.replace(/\n{3,}/g, "\n\n")
+			.trim()
+			.split("\n");
 
 	const lines = response
 		.replace(/\n{3,}/g, "\n\n")

@@ -1,4 +1,4 @@
-import type { ToolLayoutConfig, ToolHeader, ToolPreviewSegment } from "../types";
+import type { ToolLayoutConfig, ToolHeader, ToolPreviewSegment, ToolResultFormatOptions } from "../types";
 import { registerToolLayout } from "../registry";
 import { getSessionTitleSync } from "../../../state/session-store";
 import { COLORS } from "../../../ui/constants";
@@ -63,7 +63,8 @@ function highlightLine(text: string, queryTokens: string[]): ToolPreviewSegment[
 
 function formatRecallResult(
 	result: unknown,
-	query: string | undefined
+	query: string | undefined,
+	options?: ToolResultFormatOptions
 ): (string | ToolPreviewSegment[])[] | null {
 	if (!isRecord(result)) return null;
 	if (result.success === false && typeof result.error === "string") {
@@ -80,8 +81,8 @@ function formatRecallResult(
 		return [segments] as Array<string | ToolPreviewSegment[]>;
 	}
 
-	const MAX_LINES = 6;
-	const MAX_HITS_PER_SESSION = 2;
+	const MAX_LINES = options?.expanded ? Number.POSITIVE_INFINITY : 6;
+	const MAX_HITS_PER_SESSION = options?.expanded ? Number.POSITIVE_INFINITY : 2;
 	const tokens = query ? tokenizeQuery(query) : [];
 	const lines: Array<string | ToolPreviewSegment[]> = [];
 	let remaining = MAX_LINES;
@@ -101,7 +102,7 @@ function formatRecallResult(
 			if (remaining <= 0 || hitsShown >= MAX_HITS_PER_SESSION) break;
 			const snippet = (hit[1] ?? "").trim();
 			if (snippet) {
-				const truncated = snippet.length > 120 ? `${snippet.slice(0, 119)}…` : snippet;
+				const truncated = !options?.expanded && snippet.length > 120 ? `${snippet.slice(0, 119)}…` : snippet;
 				lines.push(highlightLine(`  ${truncated}`, tokens));
 				remaining -= 1;
 				hitsShown += 1;
@@ -116,7 +117,7 @@ function formatRecallResult(
 			const id = match[1] ?? "?";
 			const role = match[2] ?? "?";
 			const content = (match[3] ?? "").trim();
-			const truncated = content.length > 120 ? `${content.slice(0, 119)}…` : content;
+			const truncated = !options?.expanded && content.length > 120 ? `${content.slice(0, 119)}…` : content;
 			lines.push(highlightLine(`[${id}] ${role}: ${truncated}`, tokens));
 			remaining -= 1;
 		}
@@ -126,7 +127,7 @@ function formatRecallResult(
 		const segments: ToolPreviewSegment[] = [{ text: `${count} result${count !== 1 ? "s" : ""}` }];
 		return [segments] as Array<string | ToolPreviewSegment[]>;
 	}
-	if (count > lines.length) lines.push(`... (${count - lines.length} more)`);
+	if (!options?.expanded && count > lines.length) lines.push(`... (${count - lines.length} more)`);
 	return lines;
 }
 
@@ -159,8 +160,8 @@ export const recallLayout: ToolLayoutConfig = {
 		return null;
 	},
 
-	formatResult: (result: unknown, input?: unknown) =>
-		formatRecallResult(result, extractRecallInput(input)?.query),
+	formatResult: (result: unknown, input?: unknown, options?: ToolResultFormatOptions) =>
+		formatRecallResult(result, extractRecallInput(input)?.query, options),
 };
 
 registerToolLayout("recall", recallLayout);

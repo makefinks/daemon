@@ -1,7 +1,7 @@
 import { COLORS } from "../../../ui/constants";
 import { registerToolLayout } from "../registry";
 import type { ToolBody } from "../types";
-import type { ToolHeader, ToolLayoutConfig } from "../types";
+import type { ToolHeader, ToolLayoutConfig, ToolResultFormatOptions } from "../types";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -99,20 +99,19 @@ type ExaLikeItem = {
 	success?: unknown;
 };
 
-function formatExaItemLabel(item: ExaLikeItem): string {
-	const title = typeof item.title === "string" ? item.title : "";
-	const url = typeof item.url === "string" ? item.url : "";
-	return title || url || "(untitled)";
-}
-
 function extractToolDataContainer(result: UnknownRecord): unknown {
 	if ("data" in result) return result.data;
 	return result;
 }
 
-function formatFetchUrlsResult(result: unknown): string[] | null {
+function formatFetchUrlsResult(
+	result: unknown,
+	_input?: unknown,
+	options?: ToolResultFormatOptions
+): string[] | null {
 	if (typeof result === "string") {
 		const lines = result.split("\n");
+		if (options?.expanded) return lines;
 		const MAX_LINES = 8;
 		if (lines.length <= MAX_LINES) return lines;
 		return [...lines.slice(0, MAX_LINES - 1), "  ..."];
@@ -127,9 +126,9 @@ function formatFetchUrlsResult(result: unknown): string[] | null {
 	if (!items) return null;
 
 	const lines: string[] = ["<fetchUrls>"];
-	const MAX_LINES = 2;
+	const MAX_LINES = options?.expanded ? Number.POSITIVE_INFINITY : 2;
 	const MAX_CHARS = 160;
-	const maxItems = 3;
+	const maxItems = options?.expanded ? items.length : 3;
 
 	for (const item of items.slice(0, maxItems)) {
 		const candidate = item as ExaLikeItem;
@@ -163,7 +162,7 @@ function formatFetchUrlsResult(result: unknown): string[] | null {
 			.trim()
 			.split("\n")
 			.slice(0, MAX_LINES)
-			.map((l) => (l.length > MAX_CHARS ? `${l.slice(0, MAX_CHARS - 1)}…` : l));
+			.map((l) => (options?.expanded || l.length <= MAX_CHARS ? l : `${l.slice(0, MAX_CHARS - 1)}…`));
 
 		lines.push(`  <url ${attributes.join(" ")}>`);
 		for (const line of snippetLines) {
