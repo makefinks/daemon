@@ -33,6 +33,12 @@ export interface UseAppSettingsReturn {
 	showStats: boolean;
 	setShowStats: React.Dispatch<React.SetStateAction<boolean>>;
 
+	completionNotificationEnabled: boolean;
+	setCompletionNotificationEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+
+	completionSoundEnabled: boolean;
+	setCompletionSoundEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+
 	canEnableVoiceOutput: boolean;
 }
 
@@ -51,6 +57,8 @@ export function useAppSettings(): UseAppSettingsReturn {
 	const [bashLivePreviewAlways, setBashLivePreviewAlways] = useState(true);
 	const [memoryEnabled, setMemoryEnabled] = useState(manager.memoryEnabled);
 	const [showStats, setShowStats] = useState(true);
+	const [completionNotificationEnabled, setCompletionNotificationEnabled] = useState(false);
+	const [completionSoundEnabled, setCompletionSoundEnabled] = useState(false);
 
 	const canEnableVoiceOutput = Boolean(process.env.OPENAI_API_KEY);
 
@@ -75,6 +83,10 @@ export function useAppSettings(): UseAppSettingsReturn {
 		setMemoryEnabled,
 		showStats,
 		setShowStats,
+		completionNotificationEnabled,
+		setCompletionNotificationEnabled,
+		completionSoundEnabled,
+		setCompletionSoundEnabled,
 		canEnableVoiceOutput,
 	};
 }

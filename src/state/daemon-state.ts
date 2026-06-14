@@ -506,13 +506,21 @@ class DaemonStateManager {
 				usage: result.usage,
 			});
 			const generatedTitle = await titlePromise;
+			const sessionTitle = generatedTitle ?? this.getSessionTitle(sessionId);
 			sessionRuntimeStore.completeResponse(
 				sessionId,
 				result.fullText,
 				result.responseMessages,
 				this.getCurrentSessionId(),
 				this.isSessionViewVisible(),
-				generatedTitle ?? this.getSessionTitle(sessionId)
+				sessionTitle
+			);
+			this.emitEvent(
+				"responseComplete",
+				result.fullText,
+				result.responseMessages,
+				result.usage,
+				sessionTitle ?? undefined
 			);
 
 			// Trigger TTS if enabled - use finalText (last assistant message only) for speech

@@ -55,6 +55,8 @@ export interface UseAppPreferencesBootstrapParams {
 	setShowToolOutput: (show: boolean) => void;
 	setBashLivePreviewAlways: (always: boolean) => void;
 	setShowStats: (show: boolean) => void;
+	setCompletionNotificationEnabled: (enabled: boolean) => void;
+	setCompletionSoundEnabled: (enabled: boolean) => void;
 	setMemoryEnabled: (enabled: boolean) => void;
 	setLoadedPreferences: (prefs: AppPreferences | null) => void;
 	setOnboardingActive: (active: boolean) => void;
@@ -87,6 +89,8 @@ export function useAppPreferencesBootstrap(
 		setShowToolOutput,
 		setBashLivePreviewAlways,
 		setShowStats,
+		setCompletionNotificationEnabled,
+		setCompletionSoundEnabled,
 		setMemoryEnabled,
 		setLoadedPreferences,
 		setOnboardingActive,
@@ -206,6 +210,12 @@ export function useAppPreferencesBootstrap(
 			}
 			if (prefs?.showStats !== undefined) {
 				setShowStats(prefs.showStats);
+			}
+			if (prefs?.completionNotificationEnabled !== undefined) {
+				setCompletionNotificationEnabled(prefs.completionNotificationEnabled);
+			}
+			if (prefs?.completionSoundEnabled !== undefined) {
+				setCompletionSoundEnabled(prefs.completionSoundEnabled);
 			}
 			if (prefs?.memoryEnabled !== undefined) {
 				manager.memoryEnabled = prefs.memoryEnabled;

@@ -42,6 +42,8 @@ interface SettingsMenuProps {
 	showToolOutput: boolean;
 	bashLivePreviewAlways: boolean;
 	showStats: boolean;
+	completionNotificationEnabled: boolean;
+	completionSoundEnabled: boolean;
 	memoryEnabled: boolean;
 	onClose: () => void;
 	toggleInteractionMode: () => void;
@@ -56,6 +58,8 @@ interface SettingsMenuProps {
 	setShowToolOutput: (show: boolean) => void;
 	setBashLivePreviewAlways: (always: boolean) => void;
 	setShowStats: (show: boolean) => void;
+	setCompletionNotificationEnabled: (enabled: boolean) => void;
+	setCompletionSoundEnabled: (enabled: boolean) => void;
 	setMemoryEnabled: (enabled: boolean) => void;
 	persistPreferences: (updates: Partial<AppPreferences>) => void;
 }
@@ -76,6 +80,8 @@ export function SettingsMenu({
 	showToolOutput,
 	bashLivePreviewAlways,
 	showStats,
+	completionNotificationEnabled,
+	completionSoundEnabled,
 	memoryEnabled,
 	onClose,
 	toggleInteractionMode,
@@ -90,6 +96,8 @@ export function SettingsMenu({
 	setShowToolOutput,
 	setBashLivePreviewAlways,
 	setShowStats,
+	setCompletionNotificationEnabled,
+	setCompletionSoundEnabled,
 	setMemoryEnabled,
 	persistPreferences,
 }: SettingsMenuProps) {
@@ -280,6 +288,20 @@ export function SettingsMenu({
 			label: "DISPLAY",
 			items: [
 				{
+					id: "completion-notification",
+					label: "Notify on Complete",
+					value: completionNotificationEnabled ? "ON" : "OFF",
+					description: "Show a notification when a response finishes",
+					isToggle: true,
+				},
+				{
+					id: "completion-sound",
+					label: "Sound on Complete",
+					value: completionSoundEnabled ? "ON" : "OFF",
+					description: "Play a sound when a response finishes",
+					isToggle: true,
+				},
+				{
 					id: "show-full-reasoning",
 					label: "Full Reasoning",
 					value: showFullReasoning ? "ON" : "OFF",
@@ -347,6 +369,8 @@ export function SettingsMenu({
 			showToolOutput,
 			bashLivePreviewAlways,
 			showStats,
+			completionNotificationEnabled,
+			completionSoundEnabled,
 			memoryEnabled,
 			memoryToggleDisabled,
 			setSelectedIdx,
@@ -362,6 +386,8 @@ export function SettingsMenu({
 			setShowToolOutput,
 			setBashLivePreviewAlways,
 			setShowStats,
+			setCompletionNotificationEnabled,
+			setCompletionSoundEnabled,
 			setMemoryEnabled,
 			persistPreferences,
 			onClose,

@@ -415,6 +415,10 @@ export interface AppPreferences {
 	bashApprovalLevel?: BashApprovalLevel;
 	/** Show DAEMON stats HUD overlay */
 	showStats?: boolean;
+	/** Send terminal desktop notification when a response completes */
+	completionNotificationEnabled?: boolean;
+	/** Ring the terminal bell when a response completes */
+	completionSoundEnabled?: boolean;
 	/** Tool toggles (on/off) */
 	toolToggles?: ToolToggles;
 	/** MCP server toggles by server id (missing means enabled) */

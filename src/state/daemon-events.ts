@@ -40,7 +40,12 @@ export type DaemonStateEvents = {
 	memoryDeleted: () => void;
 	sessionCreated: () => void;
 	sessionDeleted: (workspaceFileCount: number) => void;
-	responseComplete: (fullText: string, responseMessages: ModelMessage[], usage?: TokenUsage) => void;
+	responseComplete: (
+		fullText: string,
+		responseMessages: ModelMessage[],
+		usage?: TokenUsage,
+		title?: string
+	) => void;
 	userMessage: (text: string) => void;
 	speakingStart: () => void;
 	speakingComplete: () => void;

@@ -130,6 +130,15 @@ export function parsePreferences(raw: unknown): AppPreferences | null {
 	if (typeof raw.memoryEnabled === "boolean") {
 		prefs.memoryEnabled = raw.memoryEnabled;
 	}
+	if (typeof raw.showStats === "boolean") {
+		prefs.showStats = raw.showStats;
+	}
+	if (typeof raw.completionNotificationEnabled === "boolean") {
+		prefs.completionNotificationEnabled = raw.completionNotificationEnabled;
+	}
+	if (typeof raw.completionSoundEnabled === "boolean") {
+		prefs.completionSoundEnabled = raw.completionSoundEnabled;
+	}
 	if (isRecord(raw.toolToggles)) {
 		const record = raw.toolToggles;
 		const next: Record<string, boolean> = {};

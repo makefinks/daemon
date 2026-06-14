@@ -30,6 +30,7 @@ import type { DaemonStats } from "../types";
 import { clampOpenRouterReasoningEffort } from "../utils/openrouter-reasoning-tiers";
 import { discoverAllSkills, isSkillEnabled } from "../ai/skills/skill-manager";
 import { STARTUP_MENU_FADE_DELAY_MS, STARTUP_MENU_FADE_DURATION_MS } from "../ui/startup";
+import { sendCompletionAlert } from "../utils/completion-alerts";
 
 export interface AppControllerResult {
 	handleCopyOnSelectMouseUp: () => void;
@@ -215,8 +216,32 @@ export function useAppController({
 		setMemoryEnabled,
 		showStats,
 		setShowStats,
+		completionNotificationEnabled,
+		setCompletionNotificationEnabled,
+		completionSoundEnabled,
+		setCompletionSoundEnabled,
 		canEnableVoiceOutput,
 	} = appSettings;
+
+	useEffect(() => {
+		const handleResponseComplete = (
+			_fullText: string,
+			_responseMessages: unknown,
+			_usage: unknown,
+			title?: string
+		) => {
+			sendCompletionAlert({
+				notificationEnabled: completionNotificationEnabled,
+				soundEnabled: completionSoundEnabled,
+				message: title ? `DAEMON: ${title}` : undefined,
+			});
+		};
+
+		daemonEvents.on("responseComplete", handleResponseComplete);
+		return () => {
+			daemonEvents.off("responseComplete", handleResponseComplete);
+		};
+	}, [completionNotificationEnabled, completionSoundEnabled]);
 
 	const bootstrap = useBootstrapController({
 		preferencesLoaded,
@@ -294,6 +319,8 @@ export function useAppController({
 		setShowToolOutput,
 		setBashLivePreviewAlways,
 		setShowStats,
+		setCompletionNotificationEnabled,
+		setCompletionSoundEnabled,
 		setMemoryEnabled,
 		setLoadedPreferences: bootstrap.setLoadedPreferences,
 		setOnboardingActive: bootstrap.setOnboardingActive,
@@ -728,6 +755,10 @@ export function useAppController({
 			setMemoryEnabled,
 			showStats,
 			setShowStats,
+			completionNotificationEnabled,
+			setCompletionNotificationEnabled,
+			completionSoundEnabled,
+			setCompletionSoundEnabled,
 			setBashApprovalLevel,
 			persistPreferences,
 		},

@@ -71,6 +71,8 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 					showToolOutput={settings.showToolOutput}
 					bashLivePreviewAlways={settings.bashLivePreviewAlways}
 					showStats={settings.showStats}
+					completionNotificationEnabled={settings.completionNotificationEnabled}
+					completionSoundEnabled={settings.completionSoundEnabled}
 					memoryEnabled={settings.memoryEnabled}
 					onClose={() => menus.setShowSettingsMenu(false)}
 					toggleInteractionMode={settingsCallbacks.onToggleInteractionMode}
@@ -85,6 +87,8 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 					setShowToolOutput={settings.setShowToolOutput}
 					setBashLivePreviewAlways={settings.setBashLivePreviewAlways}
 					setShowStats={settings.setShowStats}
+					setCompletionNotificationEnabled={settings.setCompletionNotificationEnabled}
+					setCompletionSoundEnabled={settings.setCompletionSoundEnabled}
 					setMemoryEnabled={settings.setMemoryEnabled}
 					persistPreferences={settings.persistPreferences}
 				/>

@@ -72,6 +72,10 @@ export interface SettingsState {
 	setMemoryEnabled: (enabled: boolean) => void;
 	showStats: boolean;
 	setShowStats: (show: boolean) => void;
+	completionNotificationEnabled: boolean;
+	setCompletionNotificationEnabled: (enabled: boolean) => void;
+	completionSoundEnabled: boolean;
+	setCompletionSoundEnabled: (enabled: boolean) => void;
 	setBashApprovalLevel: (level: BashApprovalLevel) => void;
 	persistPreferences: (updates: Partial<AppPreferences>) => void;
 }

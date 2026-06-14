@@ -353,6 +353,8 @@ interface SettingsMenuContext {
 	showToolOutput: boolean;
 	bashLivePreviewAlways: boolean;
 	showStats: boolean;
+	completionNotificationEnabled: boolean;
+	completionSoundEnabled: boolean;
 	memoryEnabled: boolean;
 	memoryToggleDisabled: boolean;
 	setSelectedIdx: (fn: (prev: number) => number) => void;
@@ -368,6 +370,8 @@ interface SettingsMenuContext {
 	setShowToolOutput: (show: boolean) => void;
 	setBashLivePreviewAlways: (always: boolean) => void;
 	setShowStats: (show: boolean) => void;
+	setCompletionNotificationEnabled: (enabled: boolean) => void;
+	setCompletionSoundEnabled: (enabled: boolean) => void;
 	setMemoryEnabled: (enabled: boolean) => void;
 	persistPreferences: (updates: Partial<AppPreferences>) => void;
 	onClose: () => void;
@@ -502,6 +506,20 @@ function handleSettingsReturn(ctx: SettingsMenuContext, key: KeyEvent): boolean 
 			const nextVal = !ctx.showStats;
 			ctx.setShowStats(nextVal);
 			ctx.persistPreferences({ showStats: nextVal });
+			key.preventDefault();
+			return true;
+		}
+		case "completion-notification": {
+			const nextVal = !ctx.completionNotificationEnabled;
+			ctx.setCompletionNotificationEnabled(nextVal);
+			ctx.persistPreferences({ completionNotificationEnabled: nextVal });
+			key.preventDefault();
+			return true;
+		}
+		case "completion-sound": {
+			const nextVal = !ctx.completionSoundEnabled;
+			ctx.setCompletionSoundEnabled(nextVal);
+			ctx.persistPreferences({ completionSoundEnabled: nextVal });
 			key.preventDefault();
 			return true;
 		}
