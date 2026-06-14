@@ -18,13 +18,15 @@ npm i -g @makefinks/daemon --loglevel=error
 brew install sox
 ```
 
+> Note: DAEMON requires [Bun](https://bun.sh) to be installed and available on your `PATH`.
+
 Then run with:
 ```bash
 daemon
 ```
 
 #### ⚠️ Important Notes
-> 1. **Development** requires [Bun](https://bun.sh) (`curl -fsSL https://bun.com/install | bash`).
+> 1. Development also uses [Bun](https://bun.sh) (`curl -fsSL https://bun.sh/install | bash`).
 > 2. Windows is currently **not** supported (Only by using WSL - with minor issues)
 
 See full installation details below for configuration and system dependencies.
@@ -113,11 +115,13 @@ npm i -g @makefinks/daemon --loglevel=error
 daemon
 ```
 
+> Note: Install [Bun](https://bun.sh) first if it is not already available on your `PATH`.
+
 Configuration is done via environment variables (or the onboarding UI):
 
-- `OPENROUTER_API_KEY` (required only when OpenRouter is selected) - response generation via OpenRouter models
+- `OPENROUTER_API_KEY` (required when OpenRouter is selected; required for Memory writes when Memory is enabled) - response generation via OpenRouter models
 - `EXA_API_KEY` (optional) - enables web search + fetch grounding via Exa
-- `OPENAI_API_KEY` (optional) - enables voice transcription + TTS
+- `OPENAI_API_KEY` (optional) - enables voice transcription + TTS; required for Memory embeddings/search
 
 For Codex, sign in once from the **Settings → OpenAI Codex Auth** menu (or during onboarding).
 
