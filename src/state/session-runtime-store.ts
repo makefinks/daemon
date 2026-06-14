@@ -33,6 +33,7 @@ const DEFAULT_SESSION_USAGE: TokenUsage = {
 
 const LIVE_OUTPUT_MAX_CHARS = 50000;
 const REASONING_NOTIFY_INTERVAL_MS = 40;
+const STREAM_NOTIFY_INTERVAL_MS = 16;
 
 function truncateLiveOutput(value: string): string {
 	if (value.length <= LIVE_OUTPUT_MAX_CHARS) return value;
@@ -299,6 +300,7 @@ export class SessionRuntimeStore {
 	readonly events = new TypedRuntimeEvents();
 	private runtimes = new Map<string, SessionRuntimeInternal>();
 	private reasoningNotifyTimers = new Map<string, ReturnType<typeof setTimeout>>();
+	private streamNotifyTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 	constructor() {
 		backgroundJobManager.events.on("statusChanged", () => {
@@ -369,6 +371,7 @@ export class SessionRuntimeStore {
 
 	clear(sessionId: string): void {
 		this.clearReasoningNotifyTimer(sessionId);
+		this.clearStreamNotifyTimer(sessionId);
 		this.runtimes.delete(sessionId);
 		this.events.emit("updated", sessionId);
 		this.events.emit("statusChanged");
@@ -454,6 +457,7 @@ export class SessionRuntimeStore {
 	}
 
 	beginResponse(sessionId: string): void {
+		this.flushStreamNotify(sessionId);
 		const runtime = this.ensure(sessionId);
 		runtime.state = DaemonState.RESPONDING;
 		runtime.startedAt = Date.now();
@@ -495,6 +499,7 @@ export class SessionRuntimeStore {
 	}
 
 	setError(sessionId: string, error: string): void {
+		this.flushStreamNotify(sessionId);
 		const runtime = this.ensure(sessionId);
 		runtime.error = error;
 		runtime.updatedAt = Date.now();
@@ -524,7 +529,7 @@ export class SessionRuntimeStore {
 		}
 		runtime.currentContentBlocks = [...blocks];
 		runtime.updatedAt = Date.now();
-		this.notify(sessionId);
+		this.scheduleStreamNotify(sessionId);
 	}
 
 	appendToken(sessionId: string, token: string): void {
@@ -548,10 +553,11 @@ export class SessionRuntimeStore {
 		}
 		runtime.currentContentBlocks = [...blocks];
 		runtime.updatedAt = Date.now();
-		this.notify(sessionId);
+		this.scheduleStreamNotify(sessionId);
 	}
 
 	toolInputStart(sessionId: string, toolName: string, toolCallId: string): void {
+		this.flushStreamNotify(sessionId);
 		const runtime = this.ensure(sessionId);
 		this.finalizeReasoningDuration(runtime);
 		const blocks = runtime.contentBlocks;
@@ -597,6 +603,7 @@ export class SessionRuntimeStore {
 	}
 
 	toolInvocation(sessionId: string, toolName: string, input: unknown, toolCallId?: string): void {
+		this.flushStreamNotify(sessionId);
 		const runtime = this.ensure(sessionId);
 		this.finalizeReasoningDuration(runtime);
 		const blocks = runtime.contentBlocks;
@@ -735,6 +742,7 @@ export class SessionRuntimeStore {
 	}
 
 	toolResult(sessionId: string, toolName: string, result: unknown, toolCallId?: string): void {
+		this.flushStreamNotify(sessionId);
 		const runtime = this.ensure(sessionId);
 		const isBackgroundStartResult =
 			typeof result === "object" &&
@@ -813,6 +821,7 @@ export class SessionRuntimeStore {
 		isSessionViewVisible: boolean,
 		sessionTitle: string | null
 	): void {
+		this.flushStreamNotify(sessionId);
 		const runtime = this.ensure(sessionId);
 		this.finalizeReasoningDuration(runtime);
 		const userText = runtime.currentUserInput;
@@ -858,6 +867,7 @@ export class SessionRuntimeStore {
 	}
 
 	cancelResponse(sessionId: string): void {
+		this.flushStreamNotify(sessionId);
 		const runtime = this.ensure(sessionId);
 		this.finalizeReasoningDuration(runtime);
 		const userText = runtime.currentUserInput;
@@ -944,6 +954,33 @@ export class SessionRuntimeStore {
 			this.notify(sessionId);
 		}, REASONING_NOTIFY_INTERVAL_MS);
 		this.reasoningNotifyTimers.set(sessionId, timer);
+	}
+
+	private clearStreamNotifyTimer(sessionId: string): void {
+		const timer = this.streamNotifyTimers.get(sessionId);
+		if (!timer) return;
+		clearTimeout(timer);
+		this.streamNotifyTimers.delete(sessionId);
+	}
+
+	private scheduleStreamNotify(sessionId: string): void {
+		if (this.streamNotifyTimers.has(sessionId)) return;
+		const timer = setTimeout(() => {
+			this.streamNotifyTimers.delete(sessionId);
+			const runtime = this.runtimes.get(sessionId);
+			if (!runtime) return;
+			runtime.currentContentBlocks = [...runtime.contentBlocks];
+			this.notify(sessionId);
+		}, STREAM_NOTIFY_INTERVAL_MS);
+		this.streamNotifyTimers.set(sessionId, timer);
+	}
+
+	flushStreamNotify(sessionId: string): void {
+		this.clearStreamNotifyTimer(sessionId);
+		const runtime = this.runtimes.get(sessionId);
+		if (!runtime) return;
+		runtime.currentContentBlocks = [...runtime.contentBlocks];
+		this.notify(sessionId);
 	}
 
 	private notify(sessionId: string): void {
