@@ -1,6 +1,7 @@
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { EventEmitter } from "node:events";
 import type { BackgroundJobSnapshot, BackgroundJobState } from "../types";
+import { createProcessTreeTerminator, spawnBashProcessTree } from "../utils/process-tree";
 
 const MAX_OUTPUT_LENGTH = 50000;
 const MAX_NOTIFICATION_PREVIEW_LENGTH = 1200;
@@ -131,23 +132,20 @@ export class BackgroundJobManager {
 		this.jobs.set(key, job);
 		this.events.emit("statusChanged");
 
-		const proc = spawn("bash", ["-c", params.command], {
-			cwd,
-			env: process.env,
-			shell: false,
-		});
+		const proc = spawnBashProcessTree(params.command, { cwd, env: process.env });
 		job.process = proc;
+		const terminator = createProcessTreeTerminator(proc);
 
 		let killedByTimeout = false;
 		const timeoutId = params.timeout
 			? setTimeout(() => {
 					killedByTimeout = true;
-					proc.kill("SIGKILL");
+					terminator.terminate("SIGKILL");
 				}, params.timeout)
 			: null;
 
 		abortController.signal.addEventListener("abort", () => {
-			proc.kill("SIGTERM");
+			terminator.terminate("SIGTERM");
 		});
 
 		proc.stdout.on("data", (data: Buffer) => {
@@ -168,6 +166,7 @@ export class BackgroundJobManager {
 
 		proc.on("close", (code) => {
 			if (timeoutId) clearTimeout(timeoutId);
+			terminator.dispose();
 			const state: BackgroundJobState = abortController.signal.aborted
 				? "cancelled"
 				: killedByTimeout || code !== 0
@@ -181,6 +180,7 @@ export class BackgroundJobManager {
 
 		proc.on("error", (error) => {
 			if (timeoutId) clearTimeout(timeoutId);
+			terminator.dispose();
 			this.completeJob(key, "failed", {
 				exitCode: null,
 				error: error instanceof Error ? error.message : String(error),

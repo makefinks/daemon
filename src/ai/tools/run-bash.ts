@@ -1,4 +1,3 @@
-import { spawn } from "node:child_process";
 import { tool } from "ai";
 import { z } from "zod";
 import { isDangerousCommand, isSensitivePathAccess } from "../../security/bash-security-policy";
@@ -7,6 +6,7 @@ import { getDaemonManager } from "../../state/daemon-state";
 import { getRuntimeContext } from "../../state/runtime-context";
 import { sessionRuntimeStore } from "../../state/session-runtime-store";
 import type { ToolExecutionDelta, ToolExecutionStream } from "../../types";
+import { createProcessTreeTerminator, spawnBashProcessTree } from "../../utils/process-tree";
 
 const DEFAULT_TIMEOUT_MS = 30000;
 const MAX_OUTPUT_LENGTH = 50000;
@@ -111,15 +111,12 @@ export const runBash = tool({
 			let stderr = "";
 			let killed = false;
 
-			const proc = spawn("bash", ["-c", command], {
-				cwd,
-				env: process.env,
-				shell: false,
-			});
+			const proc = spawnBashProcessTree(command, { cwd, env: process.env });
+			const terminator = createProcessTreeTerminator(proc);
 
 			const timeoutId = setTimeout(() => {
 				killed = true;
-				proc.kill("SIGKILL");
+				terminator.terminate("SIGKILL");
 			}, timeout || DEFAULT_TIMEOUT_MS);
 
 			proc.stdout.on("data", (data: Buffer) => {
@@ -136,6 +133,7 @@ export const runBash = tool({
 
 			proc.on("close", (code) => {
 				clearTimeout(timeoutId);
+				terminator.dispose();
 
 				// Truncate output if too long
 				if (stdout.length > MAX_OUTPUT_LENGTH) {
@@ -165,6 +163,7 @@ export const runBash = tool({
 
 			proc.on("error", (error) => {
 				clearTimeout(timeoutId);
+				terminator.dispose();
 				resolve({
 					success: false,
 					exitCode: null,
@@ -212,15 +211,12 @@ export const runBashForeground = tool({
 			let stderr = "";
 			let killed = false;
 
-			const proc = spawn("bash", ["-c", command], {
-				cwd,
-				env: process.env,
-				shell: false,
-			});
+			const proc = spawnBashProcessTree(command, { cwd, env: process.env });
+			const terminator = createProcessTreeTerminator(proc);
 
 			const timeoutId = setTimeout(() => {
 				killed = true;
-				proc.kill("SIGKILL");
+				terminator.terminate("SIGKILL");
 			}, timeout || DEFAULT_TIMEOUT_MS);
 
 			proc.stdout.on("data", (data: Buffer) => {
@@ -237,6 +233,7 @@ export const runBashForeground = tool({
 
 			proc.on("close", (code) => {
 				clearTimeout(timeoutId);
+				terminator.dispose();
 
 				if (stdout.length > MAX_OUTPUT_LENGTH) {
 					stdout = stdout.slice(0, MAX_OUTPUT_LENGTH) + "\n... [output truncated]";
@@ -265,6 +262,7 @@ export const runBashForeground = tool({
 
 			proc.on("error", (error) => {
 				clearTimeout(timeoutId);
+				terminator.dispose();
 				resolve({
 					success: false,
 					exitCode: null,
