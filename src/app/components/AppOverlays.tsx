@@ -137,6 +137,7 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 					initialIndex={grounding.groundingInitialIndex}
 					onClose={() => menus.setShowGroundingMenu(false)}
 					onSelect={groundingCallbacks.onGroundingSelect}
+					onAgentHighlight={groundingCallbacks.onGroundingAgentHighlight}
 					onCopyHighlight={groundingCallbacks.onGroundingCopyHighlight}
 					onSelectedIndexChange={groundingCallbacks.onGroundingIndexChange}
 				/>

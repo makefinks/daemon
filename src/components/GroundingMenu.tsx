@@ -74,7 +74,8 @@ interface GroundingMenuProps {
 	conversationHistory: ConversationMessage[];
 	initialIndex?: number;
 	onClose: () => void;
-	onSelect: (index: number) => void;
+	onSelect: (index: number, groundingMap?: GroundingMap) => void;
+	onAgentHighlight: (index: number, groundingMap?: GroundingMap) => boolean;
 	onCopyHighlight: (index: number) => void;
 	onSelectedIndexChange?: (index: number) => void;
 }
@@ -85,6 +86,7 @@ export function GroundingMenu({
 	initialIndex = 0,
 	onClose,
 	onSelect,
+	onAgentHighlight,
 	onCopyHighlight,
 	onSelectedIndexChange,
 }: GroundingMenuProps) {
@@ -127,7 +129,7 @@ export function GroundingMenu({
 		itemCount: items.length,
 		initialIndex,
 		onClose,
-		onSelect,
+		onSelect: (index) => onSelect(index, activeMap ?? undefined),
 	});
 
 	const handleCycleKey = useCallback(
@@ -135,10 +137,10 @@ export function GroundingMenu({
 			if (key.eventType !== "press") return;
 			if (totalMaps <= 1) return;
 
-			if (key.name === "left" || key.sequence === "h") {
+			if (key.name === "left") {
 				setMapIndex((prev) => (prev <= 0 ? totalMaps - 1 : prev - 1));
 				key.preventDefault();
-			} else if (key.name === "right" || key.sequence === "l") {
+			} else if (key.name === "right") {
 				setMapIndex((prev) => (prev >= totalMaps - 1 ? 0 : prev + 1));
 				key.preventDefault();
 			}
@@ -161,6 +163,23 @@ export function GroundingMenu({
 	);
 
 	useKeyboard(handleCopyKey);
+
+	const handleAgentHighlightKey = useCallback(
+		(key: KeyEvent) => {
+			if (key.eventType !== "press") return;
+			if (items.length === 0) return;
+
+			if (key.sequence === "h" || key.sequence === "H") {
+				const submitted = onAgentHighlight(selectedIndex, activeMap ?? undefined);
+				if (submitted) onClose();
+				key.preventDefault();
+				return;
+			}
+		},
+		[activeMap, items.length, onAgentHighlight, onClose, selectedIndex]
+	);
+
+	useKeyboard(handleAgentHighlightKey);
 
 	const layoutItems = useMemo<LayoutItem[]>(() => {
 		return items.map((item: GroundedStatement) => {
@@ -305,6 +324,8 @@ export function GroundingMenu({
 							)}
 							<span fg={COLORS.DAEMON_LABEL}>ENTER</span>
 							<span> open · </span>
+							<span fg={COLORS.DAEMON_LABEL}>H</span>
+							<span> highlight · </span>
 							<span fg={COLORS.DAEMON_LABEL}>C</span>
 							<span> copy · </span>
 							<span fg={COLORS.DAEMON_LABEL}>ESC</span>

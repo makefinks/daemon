@@ -144,7 +144,8 @@ export interface SessionCallbacks {
 }
 
 export interface GroundingCallbacks {
-	onGroundingSelect: (index: number) => void;
+	onGroundingSelect: (index: number, groundingMap?: GroundingMap) => void;
+	onGroundingAgentHighlight: (index: number, groundingMap?: GroundingMap) => boolean;
 	onGroundingCopyHighlight: (index: number) => void;
 	onGroundingIndexChange: (index: number) => void;
 }
