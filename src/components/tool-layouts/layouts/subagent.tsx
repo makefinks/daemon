@@ -1,6 +1,5 @@
 import type { ToolCallStatus } from "../../../types";
 import { COLORS, REASONING_MARKDOWN_STYLE } from "../../../ui/constants";
-import { formatMarkdownTables } from "../../../utils/markdown-tables";
 import { registerToolLayout } from "../registry";
 import type { ToolHeader, ToolLayoutConfig, ToolLayoutRenderProps } from "../types";
 
@@ -236,10 +235,6 @@ function SubagentBody({ call, result }: ToolLayoutRenderProps) {
 		return null;
 	}
 
-	const maxWidth =
-		typeof process !== "undefined" && process.stdout?.columns ? process.stdout.columns : undefined;
-	const renderedResponse = responseText ? formatMarkdownTables(responseText, { maxWidth }) : "";
-
 	return (
 		<box flexDirection="column" paddingLeft={1} marginTop={0}>
 			{steps.map((step, idx) => {
@@ -291,12 +286,19 @@ function SubagentBody({ call, result }: ToolLayoutRenderProps) {
 						paddingTop={0}
 						paddingBottom={0}
 					>
-						<code
-							content={renderedResponse}
-							filetype="markdown"
+						<markdown
+							content={responseText}
 							syntaxStyle={REASONING_MARKDOWN_STYLE}
 							conceal={true}
-							drawUnstyledText={false}
+							tableOptions={{
+								widthMode: "full",
+								columnFitter: "balanced",
+								wrapMode: "word",
+								borders: true,
+								outerBorder: true,
+								borderStyle: "single",
+								selectable: true,
+							}}
 						/>
 					</box>
 				</box>

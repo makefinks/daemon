@@ -1,4 +1,3 @@
-import { formatMarkdownTables } from "../utils/markdown-tables";
 import { COLORS, DAEMON_MARKDOWN_STYLE } from "../ui/constants";
 
 export interface DaemonTextProps {
@@ -8,11 +7,8 @@ export interface DaemonTextProps {
 }
 
 export function DaemonText({ content, showLabel = false, streaming = false }: DaemonTextProps) {
-	const maxWidth =
-		typeof process !== "undefined" && process.stdout?.columns ? process.stdout.columns : undefined;
 	// Trim trailing whitespace when not streaming to avoid gaps before subsequent blocks
 	const trimmedContent = streaming ? content : content.trimEnd();
-	const renderedContent = formatMarkdownTables(trimmedContent, { maxWidth });
 
 	return (
 		<box flexDirection="column">
@@ -21,13 +17,20 @@ export function DaemonText({ content, showLabel = false, streaming = false }: Da
 					<span fg={COLORS.DAEMON_LABEL}>DAEMON: </span>
 				</text>
 			)}
-			<code
-				content={renderedContent}
-				filetype="markdown"
+			<markdown
+				content={trimmedContent}
 				syntaxStyle={DAEMON_MARKDOWN_STYLE}
 				conceal={true}
 				streaming={streaming}
-				drawUnstyledText={false}
+				tableOptions={{
+					widthMode: "full",
+					columnFitter: "balanced",
+					wrapMode: "word",
+					borders: true,
+					outerBorder: true,
+					borderStyle: "single",
+					selectable: true,
+				}}
 			/>
 		</box>
 	);

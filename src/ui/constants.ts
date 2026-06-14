@@ -80,6 +80,7 @@ export const DAEMON_MARKDOWN_STYLE = SyntaxStyle.fromStyles({
 	// Default text inherits daemon green
 	default: { fg: RGBA.fromHex(COLORS.DAEMON_TEXT) },
 	// Headings - cyan hierarchy (daemon label color)
+	"markup.heading": { fg: RGBA.fromHex("#22d3ee"), bold: true },
 	"markup.heading.1": { fg: RGBA.fromHex("#22d3ee"), bold: true },
 	"markup.heading.2": { fg: RGBA.fromHex("#06b6d4"), bold: true },
 	"markup.heading.3": { fg: RGBA.fromHex("#0891b2"), bold: true },
@@ -123,6 +124,7 @@ export const REASONING_MARKDOWN_STYLE = SyntaxStyle.fromStyles({
 	// Default text inherits reasoning dim color
 	default: { fg: RGBA.fromHex(COLORS.REASONING_DIM) },
 	// Headings - slightly brighter
+	"markup.heading": { fg: RGBA.fromHex("#a3a3a3"), bold: true },
 	"markup.heading.1": { fg: RGBA.fromHex("#a3a3a3"), bold: true },
 	"markup.heading.2": { fg: RGBA.fromHex("#a3a3a3"), bold: true },
 	"markup.heading.3": { fg: RGBA.fromHex("#a3a3a3"), bold: true },
