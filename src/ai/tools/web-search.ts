@@ -25,7 +25,7 @@ function recencyToStartDate(recency: z.infer<typeof RecencyEnum>): string {
 
 export const webSearch = tool({
 	description:
-		"Searches the web for information. Returns metadata (title, URL, published date) for relevant web pages. Use this to discover URLs, then use fetchUrls to read contents. Exa is a semantic search engine — use natural language queries describing the ideal page content. Do NOT use boolean operators (AND/OR/NOT), domain prefixes (site:), or other search-engine-specific syntax in the query string; the semantic engine handles relevance automatically. Use the includeDomains parameter instead of 'site:' syntax to scope results to specific domains.",
+		"Searches the web for information. Returns metadata (title, URL, published date) and relevant highlights (query-relevant excerpts) for each result. Highlights are search previews — use them to gauge relevance, then fetch the page with fetchUrls for actual content before relying on claims. Exa is a semantic search engine — use natural language queries describing the ideal page content. Do NOT use boolean operators (AND/OR/NOT), domain prefixes (site:), or other search-engine-specific syntax in the query string; the semantic engine handles relevance automatically. Use the includeDomains parameter instead of 'site:' syntax to scope results to specific domains.",
 	inputSchema: z.object({
 		query: z
 			.string()
@@ -58,6 +58,7 @@ export const webSearch = tool({
 			const searchOptions: Record<string, unknown> = {
 				numResults,
 				type: "auto",
+				contents: { highlights: true },
 			};
 
 			if (recency) {
@@ -69,15 +70,29 @@ export const webSearch = tool({
 			}
 
 			const rawData = (await exaClientResult.client.search(query, searchOptions)) as unknown as {
-				results: Array<{ title?: string; url?: string; publishedDate?: string; [key: string]: unknown }>;
+				results: Array<{
+					title?: string;
+					url?: string;
+					publishedDate?: string;
+					highlights?: string[];
+					[key: string]: unknown;
+				}>;
 			};
 
 			const results = (rawData.results ?? []).map((r) => {
-				const result: { title?: string; url?: string; publishedDate?: string } = {};
+				const result: {
+					title?: string;
+					url?: string;
+					publishedDate?: string;
+					highlights?: string[];
+				} = {};
 				if (typeof r.title === "string") result.title = r.title;
 				if (typeof r.url === "string") result.url = r.url;
 				if (typeof r.publishedDate === "string") {
 					result.publishedDate = r.publishedDate;
+				}
+				if (Array.isArray(r.highlights) && r.highlights.length > 0) {
+					result.highlights = r.highlights.filter((h): h is string => typeof h === "string");
 				}
 				return result;
 			});

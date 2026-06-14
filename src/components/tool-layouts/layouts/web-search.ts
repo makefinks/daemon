@@ -30,6 +30,7 @@ type ExaLikeItem = {
 	title?: unknown;
 	url?: unknown;
 	text?: unknown;
+	highlights?: unknown;
 };
 
 function extractExaItems(data: unknown): ExaLikeItem[] | null {
@@ -52,6 +53,28 @@ function formatExaItemLabel(item: ExaLikeItem): string {
 	return title || url || "(untitled)";
 }
 
+function formatExaItemLines(item: ExaLikeItem, idx: number): string[] {
+	const title = typeof item.title === "string" ? item.title : "";
+	const url = typeof item.url === "string" ? item.url : "";
+	const label = formatExaItemLabel(item);
+	const lines = [`${idx + 1}) ${label}`];
+	if (url && title) lines.push(`   url: ${url}`);
+	return lines;
+}
+
+function extractHighlights(item: ExaLikeItem): string[] {
+	return Array.isArray(item.highlights)
+		? item.highlights.filter((h): h is string => typeof h === "string")
+		: [];
+}
+
+const MAX_COLLAPSED_HIGHLIGHT_CHARS = 120;
+
+function sanitizePreviewHighlight(highlight: string, maxLength = MAX_COLLAPSED_HIGHLIGHT_CHARS): string {
+	const normalized = highlight.replace(/\s+/g, " ").trim();
+	return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 1)}…` : normalized;
+}
+
 function formatWebSearchResult(
 	result: unknown,
 	_input?: unknown,
@@ -68,13 +91,26 @@ function formatWebSearchResult(
 
 	const visibleItems = options?.expanded ? items : items.slice(0, 4);
 	const top = visibleItems.flatMap((item, idx) => {
-		const url = typeof item.url === "string" ? item.url : "";
-		const title = typeof item.title === "string" ? item.title : "";
-		const label = formatExaItemLabel(item);
-		const urlSuffix = url && title ? ` — ${url}` : "";
-		const line = `${idx + 1}) ${label}${urlSuffix}`;
-		if (!options?.expanded || typeof item.text !== "string" || !item.text.trim()) return [line];
-		return [line, ...item.text.trim().split("\n")];
+		const lines = formatExaItemLines(item, idx);
+		const highlights = extractHighlights(item);
+		if (!options?.expanded) {
+			if (highlights.length === 0) return [...lines, "   highlights: none"];
+			const firstHighlight = highlights[0];
+			if (!firstHighlight) return [...lines, "   highlights: none"];
+			const suffix = highlights.length > 1 ? ` (+${highlights.length - 1} more)` : "";
+			return [...lines, `   highlight: ${sanitizePreviewHighlight(firstHighlight)}${suffix}`];
+		}
+		if (highlights.length > 0) {
+			return [
+				...lines,
+				"   highlights:",
+				...highlights.map((h) => `   > ${sanitizePreviewHighlight(h, 240)}`),
+			];
+		}
+		if (typeof item.text === "string" && item.text.trim()) {
+			return [...lines, ...item.text.trim().split("\n")];
+		}
+		return [...lines, "   highlights: none"];
 	});
 
 	return top.length > 0 ? top : null;

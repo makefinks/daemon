@@ -132,7 +132,8 @@ const TOOL_SECTIONS = {
 	webSearch: `
 ### 'webSearch' 
 Searches the web for up-to-date facts, references, or when the user asks 'latest / current / source'. 
-Returns potentially relevant URLs which you can then fetch with fetchUrls.
+Returns metadata (title, URL, date) and query-relevant highlights (excerpts) per result.
+Treat highlights as search previews only: use them to decide which URLs look relevant, not as final evidence for grounded claims. If a result appears to contain information needed for the answer, fetch that URL and verify the claim from the page content before answering or grounding it.
 Do NOT use web search for every request the user makes. Determine if web search is actually needed to answer the question.
 
 **Use webSearch when:**
@@ -161,6 +162,7 @@ Do NOT use web search for every request the user makes. Determine if web search 
 The fetchUrls tool allows for getting the actual contents of web pages.
 Use this tool to read the content of potentially relevant websites returned by the webSearch tool.
 If the user provides a URL, always fetch the content of the URL first before answering.
+If webSearch highlights seem sufficient to answer, still fetch the actual page content for any URL you plan to rely on. Grounded answers should cite fetched page content, not search-result highlight previews.
 
 **Recommended flow**
 
@@ -256,8 +258,9 @@ Searches for code examples, documentation snippets, and technical patterns using
 
   **MANDATORY ordering (strict):**
   - If your final answer contains a factual claim that came from a web source (price, version, statistic, named date, named person, specific quote, etc.), you MUST call groundingManager BEFORE you emit any of your final answer text to the user.
+  - For webSearch results, do not ground directly from highlights. First fetch the pages that appear to contain the relevant evidence, then build grounding items from the fetched page content. Search highlights are only a relevance signal unless fetching is unavailable or fails.
   - Concrete order for any turn that grounds claims:
-    1. webSearch / fetchUrls / codeSearch
+    1. webSearch to discover candidate URLs, then fetchUrls for candidate pages you will rely on / codeSearch for code evidence
     2. groundingManager (a single call with all items)
     3. final answer text
   - Do NOT write your answer first and "attach" groundings afterward. The UI renders text immediately and sources only attach when groundingManager is called *before* that text is emitted. A grounding call that arrives after the answer is effectively orphaned.
