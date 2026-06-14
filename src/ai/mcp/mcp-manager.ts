@@ -8,7 +8,12 @@ import type { ToolSet } from "ai";
 import type { McpServerToggles } from "../../types";
 import { type McpServerConfig, type McpTransportType, loadManualConfig } from "../../utils/config";
 import { debug } from "../../utils/debug-logger";
-import { DEFAULT_MCP_SERVER_META, DEFAULT_MCP_SERVERS, isDefaultMcpServer } from "./default-servers";
+import {
+	DEFAULT_MCP_SERVER_META,
+	DEFAULT_MCP_SERVERS,
+	type DefaultMcpPromptGuidanceOptions,
+	isDefaultMcpServer,
+} from "./default-servers";
 
 export type McpServerLifecycleStatus = "idle" | "loading" | "ready" | "error" | "disabled";
 
@@ -255,10 +260,13 @@ class McpManager extends EventEmitter {
 		return this.toolMetaByName.get(toolName) ?? null;
 	}
 
-	getPromptGuidanceSnapshot(): string[] {
+	getPromptGuidanceSnapshot(options: DefaultMcpPromptGuidanceOptions): string[] {
 		return this.servers
 			.filter((server) => server.enabled && server.isDefault && server.status === "ready")
-			.map((server) => DEFAULT_MCP_SERVER_META[server.id]?.promptGuidance)
+			.map((server) => {
+				const guidance = DEFAULT_MCP_SERVER_META[server.id]?.promptGuidance;
+				return typeof guidance === "function" ? guidance(options) : guidance;
+			})
 			.filter((guidance): guidance is string => Boolean(guidance?.trim()));
 	}
 

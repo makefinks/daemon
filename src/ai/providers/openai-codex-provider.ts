@@ -5,6 +5,7 @@ import { getRuntimeContext } from "../../state/runtime-context";
 import type { ReasoningEffort, ToolApprovalRequest } from "../../types";
 import { debug, toolDebug } from "../../utils/debug-logger";
 import { getWorkspacePath } from "../../utils/workspace-manager";
+import { getModelMetadataForProvider } from "../../utils/model-metadata";
 import { OPENAI_CODEX_BASE_URL, openAiCodexAuthenticatedFetch } from "../openai-codex-fetch";
 import { extractFinalAssistantText } from "../message-utils";
 import { getMcpManager } from "../mcp/mcp-manager";
@@ -71,8 +72,10 @@ async function createDaemonAgent(
 	const toolAvailability =
 		getCachedToolAvailability() ?? (await resolveToolAvailability(getDaemonManager().toolToggles));
 	const workspacePath = sessionId ? getWorkspacePath(sessionId) : undefined;
-	const mcpToolGuidance = getMcpManager().getPromptGuidanceSnapshot();
 	const skillCatalog = await getSkillCatalog();
+	const modelMetadata = await getModelMetadataForProvider(getResponseModel(), "openai-codex");
+	const supportsVision = modelMetadata?.supportsVision === true;
+	const mcpToolGuidance = getMcpManager().getPromptGuidanceSnapshot({ supportsVision });
 
 	return new ToolLoopAgent({
 		model: openAiCodex.responses(getResponseModel()),

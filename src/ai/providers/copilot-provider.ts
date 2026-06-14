@@ -212,7 +212,7 @@ async function streamCopilotSession(params: {
 	const toolAvailability =
 		getCachedToolAvailability() ?? (await resolveToolAvailability(getDaemonManager().toolToggles));
 	const workspacePath = sessionId ? getWorkspacePath(sessionId) : undefined;
-	const mcpToolGuidance = getMcpManager().getPromptGuidanceSnapshot();
+	const mcpToolGuidance = getMcpManager().getPromptGuidanceSnapshot({ supportsVision: false });
 	const skillCatalog = await getSkillCatalog();
 
 	const systemPrompt = buildDaemonSystemPrompt({

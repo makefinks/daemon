@@ -71,10 +71,10 @@ async function createDaemonAgent(
 		getCachedToolAvailability() ?? (await resolveToolAvailability(getDaemonManager().toolToggles));
 
 	const workspacePath = sessionId ? getWorkspacePath(sessionId) : undefined;
-	const mcpToolGuidance = getMcpManager().getPromptGuidanceSnapshot();
 	const skillCatalog = await getSkillCatalog();
 	const modelMetadata = await getModelMetadataForProvider(getResponseModel(), "openrouter");
 	const supportsVision = modelMetadata?.supportsVision === true;
+	const mcpToolGuidance = getMcpManager().getPromptGuidanceSnapshot({ supportsVision });
 
 	return new ToolLoopAgent({
 		model: openrouter.chat(getResponseModel(), modelConfig),
