@@ -24,7 +24,6 @@ const LABEL_HIGHLIGHT = "#8888CC";
 const VALUE_COLOR = "#454570";
 /** Value highlight — brighter pop-in color */
 const VALUE_HIGHLIGHT = "#AAAADD";
-const HIDDEN_COLOR = "#050509";
 const HUD_STAGGER_MS = 130;
 const HUD_FADE_MS = 420;
 

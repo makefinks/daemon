@@ -91,9 +91,6 @@ export function useAppSessions(params: UseAppSessionsParams): UseAppSessionsRetu
 			const list = await listSessions();
 			if (cancelled) return;
 			setSessions(list);
-			const currentIdx = currentSessionIdRef.current
-				? list.findIndex((session) => session.id === currentSessionIdRef.current)
-				: -1;
 		})();
 
 		return () => {

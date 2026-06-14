@@ -1,8 +1,12 @@
 import { spawn } from "node:child_process";
 
 function sanitizeOscText(text: string): string {
-	const re = new RegExp("[\\x00-\\x1f\\x7f]", "g");
-	return text.replace(re, " ").trim().slice(0, 120);
+	let sanitized = "";
+	for (const char of text) {
+		const code = char.charCodeAt(0);
+		sanitized += code <= 0x1f || code === 0x7f ? " " : char;
+	}
+	return sanitized.trim().slice(0, 120);
 }
 
 export interface CompletionAlertOptions {

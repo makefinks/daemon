@@ -12,16 +12,7 @@ import { loginOpenAiCodex } from "../ai/openai-codex-auth";
 import { setAudioDevice } from "../voice/audio-recorder";
 import { getDaemonManager } from "../state/daemon-state";
 import { shutdownApp } from "../utils/app-shutdown";
-import type {
-	AppPreferences,
-	AudioDevice,
-	LlmProvider,
-	ModelOption,
-	OnboardingStep,
-	ReasoningEffort,
-	SpeechSpeed,
-	VoiceInteractionType,
-} from "../types";
+import type { AppPreferences, AudioDevice, LlmProvider, ModelOption, OnboardingStep } from "../types";
 import { determineNextStep } from "./keyboard-handlers";
 
 export interface UseAppCallbacksParams {
@@ -34,9 +25,6 @@ export interface UseAppCallbacksParams {
 	setCurrentOutputDevice: (deviceName: string | undefined) => void;
 	setCurrentOpenRouterProviderTag: (tag: string | undefined) => void;
 	setInteractionMode: (mode: "text" | "voice") => void;
-	setVoiceInteractionType: (type: VoiceInteractionType) => void;
-	setSpeechSpeed: (speed: SpeechSpeed) => void;
-	setReasoningEffort: (effort: ReasoningEffort) => void;
 	persistPreferences: (updates: Partial<AppPreferences>) => void;
 	loadedPreferences: AppPreferences | null;
 	onboardingStep: OnboardingStep;
@@ -78,9 +66,6 @@ export function useAppCallbacks(params: UseAppCallbacksParams): UseAppCallbacksR
 		setCurrentOutputDevice,
 		setCurrentOpenRouterProviderTag,
 		setInteractionMode,
-		setVoiceInteractionType,
-		setSpeechSpeed,
-		setReasoningEffort,
 		persistPreferences,
 		loadedPreferences,
 		onboardingStep,

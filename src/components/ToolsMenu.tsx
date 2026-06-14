@@ -30,29 +30,6 @@ type MenuToolItem = {
 	disabledReason?: string;
 };
 
-function getToolLabel(id: ToolToggleId): string {
-	switch (id) {
-		case "readFile":
-			return "readFile";
-		case "readImage":
-			return "readImage";
-		case "runBash":
-			return "runBash";
-		case "webSearch":
-			return "webSearch";
-		case "fetchUrls":
-			return "fetchUrls";
-		case "todoManager":
-			return "todoManager";
-		case "groundingManager":
-			return "groundingManager";
-		case "subagent":
-			return "subagent";
-		default:
-			return id;
-	}
-}
-
 export function ToolsMenu({ persistPreferences, onClose }: ToolsMenuProps) {
 	const manager = getDaemonManager();
 	const [toggles, setToggles] = useState<ToolToggles>(manager.toolToggles ?? { ...DEFAULT_TOOL_TOGGLES });

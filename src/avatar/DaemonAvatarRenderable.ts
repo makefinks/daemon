@@ -250,8 +250,6 @@ export class DaemonAvatarRenderable extends FrameBufferRenderable {
 			);
 		} else if (!this.three || !this.rig) {
 			const fb = this.frameBuffer;
-			const w = fb.width;
-			const h = fb.height;
 			fb.clear(RGBA.fromValues(0, 0, 0, 0));
 		} else {
 			this.kickRenderFrame();

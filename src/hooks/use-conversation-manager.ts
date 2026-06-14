@@ -4,12 +4,11 @@ import { getDaemonManager } from "../state/daemon-state";
 import { sessionRuntimeStore } from "../state/session-runtime-store";
 import {
 	buildModelHistoryFromConversation,
-	deleteSession,
 	loadSessionSnapshot,
 	saveSessionSnapshot,
 } from "../state/session-store";
 import { DaemonState } from "../types";
-import type { ConversationMessage, SessionInfo, TokenUsage } from "../types";
+import type { ConversationMessage, TokenUsage } from "../types";
 
 export interface UseConversationManagerParams {
 	conversationHistory: ConversationMessage[];
@@ -18,7 +17,6 @@ export interface UseConversationManagerParams {
 	ensureSessionId: () => Promise<string>;
 	setCurrentSessionIdSafe: (sessionId: string | null) => void;
 	currentSessionIdRef: React.RefObject<string | null>;
-	setSessions: React.Dispatch<React.SetStateAction<SessionInfo[]>>;
 
 	hydrateConversationHistory: (history: ConversationMessage[]) => void;
 	setCurrentTranscription: React.Dispatch<React.SetStateAction<string>>;
@@ -26,7 +24,6 @@ export interface UseConversationManagerParams {
 	clearCurrentContentBlocks: () => void;
 	clearReasoningState: () => void;
 	resetSessionUsage: () => void;
-	setSessionUsage: React.Dispatch<React.SetStateAction<TokenUsage>>;
 	currentUserInputRef: React.RefObject<string>;
 }
 
@@ -45,7 +42,6 @@ export function useConversationManager(params: UseConversationManagerParams): Us
 		ensureSessionId,
 		setCurrentSessionIdSafe,
 		currentSessionIdRef,
-		setSessions,
 
 		hydrateConversationHistory,
 		setCurrentTranscription,
@@ -53,7 +49,6 @@ export function useConversationManager(params: UseConversationManagerParams): Us
 		clearCurrentContentBlocks,
 		clearReasoningState,
 		resetSessionUsage,
-		setSessionUsage,
 		currentUserInputRef,
 	} = params;
 

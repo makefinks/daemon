@@ -73,7 +73,7 @@ function truncate(text: string): string {
 	return text.length > MAX_LINE_CHARS ? `${text.slice(0, MAX_LINE_CHARS - 1)}…` : text;
 }
 
-function EditFileBody({ call, result }: ToolLayoutRenderProps) {
+function EditFileBody({ result }: ToolLayoutRenderProps) {
 	if (!isRecord(result)) return null;
 	if (result.success === false && typeof result.error === "string") {
 		return (

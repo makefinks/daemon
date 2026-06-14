@@ -134,7 +134,7 @@ const STATUS_ICON: Record<string, string> = {
 /**
  * Format a single todo item for display
  */
-export function formatTodoItem(todo: { content: string; status?: string }, idx: number): FormattedTodoItem {
+export function formatTodoItem(todo: { content: string; status?: string }, _idx: number): FormattedTodoItem {
 	const status = todo.status || "pending";
 	const icon = STATUS_ICON[status] || "[ ]";
 	return {

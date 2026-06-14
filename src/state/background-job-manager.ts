@@ -1,6 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { EventEmitter } from "node:events";
-import type { BackgroundJobSnapshot, BackgroundJobState, BackgroundJobType } from "../types";
+import type { BackgroundJobSnapshot, BackgroundJobState } from "../types";
 
 const MAX_OUTPUT_LENGTH = 50000;
 const MAX_NOTIFICATION_PREVIEW_LENGTH = 1200;
