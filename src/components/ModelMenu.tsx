@@ -205,7 +205,8 @@ export function ModelMenu({
 		const fixedCols = COL_WIDTH.CTX + COL_WIDTH.IN + COL_WIDTH.OUT + COL_WIDTH.CACHE + COL_WIDTH.IMG;
 		const gaps = 5 * COL_GAP.length;
 		const containerInner = 120 - 6;
-		const maxModel = containerInner - 2 - fixedCols - gaps;
+		const rowChrome = 5; // prefix + row padding + scroll bar; prevents IMG wrapping alone.
+		const maxModel = containerInner - rowChrome - fixedCols - gaps;
 		return Math.min(Math.max(raw + 2, 28), maxModel);
 	}, [currentModelId, menuItems]);
 
@@ -454,7 +455,7 @@ export function ModelMenu({
 										<span fg={COLORS.DAEMON_LABEL}>[ SAVED ]</span>
 									</text>
 								</box>
-								<box flexDirection="column">
+								<box flexDirection="column" marginBottom={1}>
 									{savedModels.map((model, idx) =>
 										renderModelRow(
 											model,
