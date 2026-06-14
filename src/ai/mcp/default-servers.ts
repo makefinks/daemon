@@ -1,4 +1,5 @@
 import type { McpServerConfig } from "../../utils/config";
+import { getAppConfigDir } from "../../utils/preferences";
 
 export interface DefaultMcpServerMeta {
 	id: string;
@@ -8,39 +9,44 @@ export interface DefaultMcpServerMeta {
 
 export const DEFAULT_MCP_SERVERS: McpServerConfig[] = [
 	{
-		id: "chrome-devtools",
+		id: "puppeteer",
 		type: "stdio",
 		command: "npx",
-		args: [
-			"-y",
-			"chrome-devtools-mcp@latest",
-			"--chrome-arg=--accept-lang=en-US,en",
-			"--chrome-arg=--lang=en-US",
-		],
+		args: ["-y", "@modelcontextprotocol/server-puppeteer"],
+		env: {
+			PUPPETEER_LAUNCH_OPTIONS: JSON.stringify({
+				headless: true,
+				defaultViewport: { width: 1280, height: 800 },
+				args: ["--lang=en-US"],
+				userDataDir: `${getAppConfigDir()}/puppeteer-profile`,
+			}),
+		},
 	},
 ];
 
 export const DEFAULT_MCP_SERVER_META: Record<string, DefaultMcpServerMeta> = {
-	"chrome-devtools": {
-		id: "chrome-devtools",
-		label: "Chrome DevTools",
+	puppeteer: {
+		id: "puppeteer",
+		label: "Puppeteer",
 		promptGuidance: `
-### Chrome DevTools MCP
-Use Chrome DevTools MCP for live browser/page tasks that require direct interaction or runtime inspection: exact DOM targeting, visual highlighting, page automation, console errors, network debugging, performance traces, Lighthouse-style audits, and screenshots when explicitly useful.
+### Puppeteer MCP
+Use Puppeteer MCP for browser/page tasks that require direct interaction or runtime inspection: exact DOM targeting, visual highlighting, page automation, console errors, rendered JavaScript state, form flows, and screenshots when explicitly useful.
 
-Do not use Chrome DevTools MCP as the default way to gather information from webpages. Prefer fetchUrls for reading page contents, extracting article/document text, and gathering information from public URLs. Use Chrome DevTools MCP only when fetchUrls is insufficient or when the task specifically depends on actual browser behavior, client-side state, runtime JavaScript, layout, interaction, exact DOM location, or debugging a frontend app.
+Do not use Puppeteer MCP as the default way to gather information from webpages. Prefer fetchUrls for reading page contents, extracting article/document text, and gathering information from public URLs. Use Puppeteer MCP only when fetchUrls is insufficient or when the task specifically depends on actual browser behavior, client-side state, runtime JavaScript, layout, interaction, exact DOM location, or debugging a frontend app.
 
-For content questions, first use fetchUrls when available. If a page is JavaScript-rendered and fetchUrls cannot provide the needed content, Chrome DevTools MCP can extract rendered content with take_snapshot for readable page structure or evaluate_script for targeted DOM text such as document.body.innerText. Keep this extraction focused on the needed target rather than broadly browsing for information.
+For content questions, first use fetchUrls when available. If a page is JavaScript-rendered and fetchUrls cannot provide the needed content, Puppeteer MCP can extract rendered content with puppeteer_evaluate for targeted DOM text such as document.body.innerText. Keep this extraction focused on the needed target rather than broadly browsing for information.
 
-Use snapshots, console messages, and network requests before guessing about frontend bugs.
+Use screenshots, console messages, and targeted page evaluation before guessing about frontend bugs.
 
-When the user asks to show, locate, point to, or highlight something on a webpage, use Chrome DevTools MCP to open/select the page and visually highlight the relevant page section in the browser.
+Puppeteer starts headless by default so background browser work does not disrupt the user. Keep preparation, research, extraction, and routine page automation headless unless the user asks to watch the browser or visible browser output is needed.
+
+When the user asks to show, locate, point to, or highlight something on a webpage, reveal the browser by navigating with launchOptions that include headless=false and the same userDataDir used by the default server profile. After visible work is complete, switch future background browser work back to headless=true with the same userDataDir.
 
 If the request relates to a grounded source, citation, text fragment, or exact piece of information used in your answer:
 - navigate to the source URL if needed
-- use evaluate_script to find the relevant text or element in the DOM
+- use puppeteer_evaluate to find the relevant text or element in the DOM
 - scroll it into view
-- before revealing the page to the user, clear visual noise that would obscure the target, such as cookie banners, consent dialogs, newsletter popups, sticky ads, or large overlays; prefer normal dismiss/close controls when available, otherwise use evaluate_script to temporarily hide blocking noise for the current page view
+- before revealing the page to the user, clear visual noise that would obscure the target, such as cookie banners, consent dialogs, newsletter popups, sticky ads, or large overlays; prefer normal dismiss/close controls when available, otherwise use puppeteer_evaluate to temporarily hide blocking noise for the current page view
 - add a temporary visual highlight with an outline/background tint and a visible label
 - tell the user that the relevant section is highlighted in the browser
 

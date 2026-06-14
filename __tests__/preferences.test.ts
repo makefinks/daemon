@@ -84,14 +84,14 @@ describe("parsePreferences", () => {
 	it("includes MCP server toggles", () => {
 		const result = parsePreferences({
 			mcpServerToggles: {
-				"chrome-devtools": false,
+				puppeteer: false,
 				"local-mcp": true,
 				invalid: "yes",
 			},
 		});
 
 		expect(result?.mcpServerToggles).toEqual({
-			"chrome-devtools": false,
+			puppeteer: false,
 			"local-mcp": true,
 		});
 	});

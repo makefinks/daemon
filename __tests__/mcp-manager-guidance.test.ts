@@ -20,7 +20,7 @@ describe("MCP prompt guidance gating", () => {
 		const manager = getMcpManager() as MutableMcpManager;
 		manager.servers = [
 			{
-				id: "chrome-devtools",
+				id: "puppeteer",
 				isDefault: true,
 				enabled: true,
 				status: "ready",
@@ -30,10 +30,13 @@ describe("MCP prompt guidance gating", () => {
 		const guidance = manager.getPromptGuidanceSnapshot();
 
 		expect(guidance).toHaveLength(1);
-		expect(guidance[0]).toContain("Chrome DevTools MCP");
-		expect(guidance[0]).toContain("Do not use Chrome DevTools MCP as the default way to gather information");
+		expect(guidance[0]).toContain("Puppeteer MCP");
+		expect(guidance[0]).toContain("Do not use Puppeteer MCP as the default way to gather information");
 		expect(guidance[0]).toContain("Prefer fetchUrls for reading page contents");
-		expect(guidance[0]).toContain("evaluate_script");
+		expect(guidance[0]).toContain("puppeteer_evaluate");
+		expect(guidance[0]).toContain("starts headless by default");
+		expect(guidance[0]).toContain("headless=false");
+		expect(guidance[0]).toContain("headless=true");
 		expect(guidance[0]).toContain('data-daemon-highlight="true"');
 		expect(guidance[0]).toContain("#f59e0b");
 		expect(guidance[0]).toContain("no emoji");
@@ -54,7 +57,7 @@ describe("MCP prompt guidance gating", () => {
 		const manager = getMcpManager() as MutableMcpManager;
 		manager.servers = [
 			{
-				id: "chrome-devtools",
+				id: "puppeteer",
 				isDefault: true,
 				enabled: false,
 				status: "disabled",
@@ -68,7 +71,7 @@ describe("MCP prompt guidance gating", () => {
 		const manager = getMcpManager() as MutableMcpManager;
 		manager.servers = [
 			{
-				id: "chrome-devtools",
+				id: "puppeteer",
 				isDefault: true,
 				enabled: true,
 				status: "loading",

@@ -97,7 +97,7 @@ DAEMON can persist user-specific facts across sessions using [mem0](https://gith
 | Background Jobs | Long-running bash and subagent jobs run in the background. |
 | Subagents | Delegate parallel subtasks to isolated subagents. |
 | Headless Mode | Run `daemon "your prompt"` to execute a single prompt non-interactively. |
-| Browser Tools | Built-in Chrome DevTools MCP for rendered pages, browser inspection, and frontend debugging. |
+| Browser Tools | Built-in Puppeteer MCP for headless rendered-page work, browser inspection, and frontend debugging. |
 | MCP | Model Context Protocol tools. |
 | Agent Skills | Progressive-disclosure skills loaded on demand from user-configured directories. |
 
@@ -161,7 +161,7 @@ sudo pacman -S sox
 ## 🔌 MCP server setup (Model Context Protocol)
 
 DAEMON can load MCP tools from external servers and expose them to the agent at runtime.
-Chrome DevTools MCP ships as a built-in default server and can be toggled from the **Tools** menu.
+Puppeteer MCP ships as a built-in default server and can be toggled from the **Tools** menu.
 Additional MCP servers are configured via a local config file.
 
 Default config path:
@@ -194,12 +194,13 @@ Example config:
 
 Notes:
 
-- The built-in Chrome DevTools server uses `npx -y chrome-devtools-mcp@latest` and launches Chrome with US English locale headers by default.
+- The built-in Puppeteer server uses `npx -y @modelcontextprotocol/server-puppeteer` and launches headless by default so background browser work does not disrupt you.
+- DAEMON can switch Puppeteer to a visible browser for source highlighting or visual checks by changing Puppeteer launch options during browser navigation, then switch back to headless for background work.
 - `type` must be `http`, `sse`, or `stdio`.
 - `url` is required for `http` and `sse` servers.
 - `command` is required for `stdio` servers, and `args`, `cwd`, and `env` are optional.
 - `id` is optional; if omitted, DAEMON derives one from the host.
-- Defining a server with `id: "chrome-devtools"` overrides the built-in Chrome DevTools config.
+- Defining a server with `id: "puppeteer"` overrides the built-in Puppeteer config.
 - MCP server status, source, and enablement appear in the **Tools** menu.
 
 ## 🧩 Agent Skills
