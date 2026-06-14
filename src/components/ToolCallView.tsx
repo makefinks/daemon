@@ -111,7 +111,7 @@ export function ToolCallView({ call, result, showOutput = true }: ToolCallViewPr
 	}, [call.input, result, layout, mcpMeta]);
 
 	const body = useMemo(() => {
-		const base = layout.getBody?.(call.input, result, call) ?? null;
+		const base = layout.getBody?.(call.input, result, call, { expanded: previewFocused }) ?? null;
 		if (base) return base;
 		if (!mcpMeta) return null;
 		const lines = formatToolInputLines(call.input);
@@ -122,7 +122,7 @@ export function ToolCallView({ call, result, showOutput = true }: ToolCallViewPr
 				color: COLORS.REASONING_DIM,
 			})),
 		};
-	}, [call.input, result, call, layout, mcpMeta]);
+	}, [call.input, result, call, layout, mcpMeta, previewFocused]);
 
 	const requestSize = useMemo(() => {
 		if (typeof call.inputText === "string" && call.inputText.length > 0) {
@@ -165,7 +165,9 @@ export function ToolCallView({ call, result, showOutput = true }: ToolCallViewPr
 		? "#3b82f6"
 		: (layout.getBorderColor?.(call) ?? getStatusBorderColor(call.status));
 
-	const customBody = layout.renderBody ? layout.renderBody({ call, result, showOutput }) : null;
+	const customBody = layout.renderBody
+		? layout.renderBody({ call, result, showOutput, previewFocused })
+		: null;
 
 	const toggleFocusedPreview = (event: { stopPropagation: () => void }) => {
 		if (supportsFocusedPreview && call.toolCallId) {

@@ -45,18 +45,20 @@ function BashCardBody({
 	call,
 	result,
 	showOutput = true,
+	previewFocused = false,
 }: {
 	call: ToolCall;
 	result: unknown;
 	showOutput?: boolean;
+	previewFocused?: boolean;
 }): ReactNode {
 	const focused = useToolScrollFocus(call.toolCallId);
 
-	const body = bashLayout.getBody?.(call.input, result, call);
+	const body = bashLayout.getBody?.(call.input, result, call, { expanded: previewFocused });
 	const live = call.toolCallId
 		? sessionRuntimeStore.getLiveOutput(call.sessionId ?? null, call.toolCallId)
 		: null;
-	const commandLine = body?.lines[0]?.text;
+	const commandLines = body?.lines ?? [];
 
 	const resultOutput =
 		!live || (live.stdout.length === 0 && live.stderr.length === 0)
@@ -72,11 +74,22 @@ function BashCardBody({
 
 	return (
 		<box flexDirection="column" width="100%" onMouseDown={toggleFocus}>
-			{commandLine && (
-				<box flexDirection="row" paddingLeft={2} marginTop={0}>
-					<text>
-						<span fg={COLORS.TOOL_INPUT_TEXT}>{commandLine}</span>
-					</text>
+			{commandLines.length > 0 && (
+				<box flexDirection="column" paddingLeft={2} marginTop={0}>
+					<box
+						borderStyle="single"
+						borderColor={COLORS.TOOL_INPUT_BORDER}
+						paddingLeft={1}
+						paddingRight={1}
+						paddingTop={0}
+						paddingBottom={0}
+					>
+						{commandLines.map((line, idx) => (
+							<text key={idx}>
+								<span fg={COLORS.TOOL_INPUT_TEXT}>{line.text}</span>
+							</text>
+						))}
+					</box>
 				</box>
 			)}
 			{showOutput &&
@@ -116,7 +129,7 @@ export const bashLayout: ToolLayoutConfig = {
 		};
 	},
 
-	getBody: (input): ToolBody | null => {
+	getBody: (input, _result, _call, options): ToolBody | null => {
 		const bashInput = extractBashInput(input);
 		if (!bashInput) return null;
 
@@ -124,22 +137,30 @@ export const bashLayout: ToolLayoutConfig = {
 		const lines = command.split("\n");
 		const isMultiLine = lines.length > 1;
 		const MAX_DISPLAY_LENGTH = 120;
+		const MAX_PREVIEW_LINES = 3;
+		const expanded = options?.expanded === true;
 
-		let displayText: string;
+		const formatLine = (line: string): string => {
+			const trimmed = line.trimEnd();
+			return trimmed.length > MAX_DISPLAY_LENGTH ? `${trimmed.slice(0, MAX_DISPLAY_LENGTH - 1)}…` : trimmed;
+		};
+
 		if (isMultiLine) {
-			const firstLine = lines[0]?.trimEnd() ?? "";
-			const truncatedFirst =
-				firstLine.length > MAX_DISPLAY_LENGTH ? `${firstLine.slice(0, MAX_DISPLAY_LENGTH - 1)}…` : firstLine;
-			displayText = `${truncatedFirst} (+${lines.length - 1} more lines)`;
-		} else if (command.length > MAX_DISPLAY_LENGTH) {
-			displayText = `${command.slice(0, MAX_DISPLAY_LENGTH - 1)}…`;
-		} else {
-			displayText = command;
+			const limit = expanded ? lines.length : MAX_PREVIEW_LINES;
+			const previewLines = lines.slice(0, limit).map(formatLine);
+			const remaining = lines.length - previewLines.length;
+			const lines_ = previewLines.map((text) => ({ text }));
+			if (remaining > 0 && !expanded) {
+				lines_.push({ text: `(+${remaining} more lines)` });
+			}
+			return { lines: lines_ };
 		}
 
-		return {
-			lines: [{ text: displayText }],
-		};
+		if (command.length > MAX_DISPLAY_LENGTH) {
+			return { lines: [{ text: `${command.slice(0, MAX_DISPLAY_LENGTH - 1)}…` }] };
+		}
+
+		return { lines: [{ text: command }] };
 	},
 
 	formatResult: () => null,
@@ -151,8 +172,10 @@ export const bashLayout: ToolLayoutConfig = {
 		return undefined;
 	},
 
-	renderBody: ({ call, result, showOutput = true }): ReactNode => {
-		return <BashCardBody call={call} result={result} showOutput={showOutput} />;
+	renderBody: ({ call, result, showOutput = true, previewFocused = false }): ReactNode => {
+		return (
+			<BashCardBody call={call} result={result} showOutput={showOutput} previewFocused={previewFocused} />
+		);
 	},
 };
 

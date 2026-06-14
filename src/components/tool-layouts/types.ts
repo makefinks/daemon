@@ -67,6 +67,8 @@ export interface ToolLayoutRenderProps {
 	result?: unknown;
 	/** Whether to show output preview */
 	showOutput?: boolean;
+	/** Whether the tool card is focused (clicked) for expanded preview. */
+	previewFocused?: boolean;
 }
 
 /**
@@ -87,7 +89,12 @@ export interface ToolLayoutConfig {
 	 * Extract body content for rendering below the header.
 	 * For tools that need multi-line display (e.g., bash command, steps).
 	 */
-	getBody?: (input: unknown, result?: unknown, call?: ToolCall) => ToolBody | null;
+	getBody?: (
+		input: unknown,
+		result?: unknown,
+		call?: ToolCall,
+		options?: { expanded?: boolean }
+	) => ToolBody | null;
 
 	/**
 	 * Format result preview lines.
