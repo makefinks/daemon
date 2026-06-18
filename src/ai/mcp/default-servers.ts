@@ -50,6 +50,16 @@ Highlight styling guidance:
 - do not add a "DAEMON SOURCE" label or any other label; the highlighted text itself is sufficient
 ${highlightVerificationGuidance}
 
+Puppeteer DOM search and highlighting rules:
+- Wrap every puppeteer_evaluate script in an IIFE: (() => { ... })() to avoid leaked variable redeclarations across retries.
+- Search only visible rendered DOM. Skip script, style, noscript, template, JSON-LD, and hidden ancestors.
+- Verify candidates with getClientRects().length > 0 and computed style: skip elements with display:none, visibility:hidden, or opacity:0.
+- On Next.js/RSC pages, ignore self.__next_f.push(...) script content and other hydration/data payloads.
+- Do not use innerHTML.replace() for highlighting unless the match is fully inside one simple text node. Prefer Range.surroundContents() or text-node splitting for exact visible text.
+- If text spans links/elements, highlight the smallest visible element/text ranges instead of rewriting parent HTML.
+- If exact source text is not present, stop and report the mismatch before highlighting a closest match.
+- Do not promise multiple tabs unless the Puppeteer MCP exposes tab creation/switching. Otherwise say "one page at a time" or create a comparison page.
+
 Do not present a screenshot as the user-facing output for this behavior unless the user explicitly asks for one; screenshot use for internal visual verification is only available when the active model supports vision.
 
 When the user explicitly asks for a screenshot that will be viewed by them or used in a deliverable (report, website, evidence, etc.), do NOT screenshot the full page. Only capture the relevant section — the specific element, evidence text, or area of interest. If no specific element is targeted, use a reasonable default viewport size (e.g. 1280x800) rather than the full page height.

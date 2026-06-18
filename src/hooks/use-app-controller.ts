@@ -10,7 +10,7 @@ import { useAppMenus } from "./use-app-menus";
 import { useAppModel } from "./use-app-model";
 import { useAppPreferencesBootstrap } from "./use-app-preferences-bootstrap";
 import { useAppSettings } from "./use-app-settings";
-import { getCurrentTodos } from "../ai/tools/todo-manager";
+
 import { useBootstrapController } from "./use-bootstrap-controller";
 import { useConversationManager } from "./use-conversation-manager";
 import { useCopyOnSelect } from "./use-copy-on-select";
@@ -624,8 +624,6 @@ export function useAppController({
 	} = displayState;
 
 	const statusBarHeight = daemon.hasInteracted ? (apiKeyMissingError ? 5 : 3) : 0;
-	const currentTodoLabel =
-		getCurrentTodos(session.currentSessionId).find((todo) => todo.status === "in_progress")?.content ?? null;
 
 	useEffect(() => {
 		manager.setGetSessionTitle(
@@ -876,7 +874,6 @@ export function useAppController({
 				workingSpinnerLabel,
 				isToolCalling,
 				responseElapsedMs: daemon.responseElapsedMs,
-				currentTodoLabel,
 			},
 			typing: {
 				typingTextareaRef: daemon.typing.typingTextareaRef,

@@ -1,14 +1,14 @@
 import { TextAttributes } from "@opentui/core";
 import { COLORS } from "../ui/constants";
 import { DaemonState } from "../types";
-import { ShimmerText } from "./ShimmerText";
+
 
 export interface InlineStatusProps {
 	daemonState: DaemonState;
 	isToolCalling: boolean;
 	isReasoning: boolean;
 	responseElapsedMs: number;
-	currentTodoLabel?: string | null;
+
 }
 
 type InlineStatusConfig = {
@@ -83,7 +83,7 @@ export function InlineStatusIndicator({
 	isToolCalling,
 	isReasoning,
 	responseElapsedMs,
-	currentTodoLabel,
+
 }: InlineStatusProps) {
 	const elapsedSuffix = buildElapsedSuffix(responseElapsedMs);
 	const config = getInlineStatusConfig({
@@ -106,12 +106,6 @@ export function InlineStatusIndicator({
 				<span fg={color} attributes={TextAttributes.BOLD}>
 					{label}
 				</span>
-				{currentTodoLabel && (
-					<>
-						<span fg={COLORS.REASONING_DIM}> — </span>
-						<ShimmerText text={currentTodoLabel} baseColor={color} attributes={TextAttributes.ITALIC} />
-					</>
-				)}
 			</text>
 		</box>
 	);
