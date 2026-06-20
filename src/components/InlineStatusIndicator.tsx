@@ -2,13 +2,11 @@ import { TextAttributes } from "@opentui/core";
 import { COLORS } from "../ui/constants";
 import { DaemonState } from "../types";
 
-
 export interface InlineStatusProps {
 	daemonState: DaemonState;
 	isToolCalling: boolean;
 	isReasoning: boolean;
 	responseElapsedMs: number;
-
 }
 
 type InlineStatusConfig = {
@@ -83,7 +81,6 @@ export function InlineStatusIndicator({
 	isToolCalling,
 	isReasoning,
 	responseElapsedMs,
-
 }: InlineStatusProps) {
 	const elapsedSuffix = buildElapsedSuffix(responseElapsedMs);
 	const config = getInlineStatusConfig({

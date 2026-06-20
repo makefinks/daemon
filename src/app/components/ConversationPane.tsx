@@ -57,7 +57,6 @@ export interface ProgressDisplayState {
 	workingSpinnerLabel: string;
 	isToolCalling: boolean;
 	responseElapsedMs: number;
-
 }
 
 export interface TypingInputState {
