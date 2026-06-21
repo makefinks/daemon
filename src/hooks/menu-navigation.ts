@@ -22,17 +22,25 @@ export function navigateDown(currentIdx: number, itemCount: number): number {
 }
 
 /**
- * Check if a key is a navigation up key (up arrow or k).
+ * Check if a key is a navigation up key (up arrow, k, or Ctrl+P).
  */
 export function isNavigateUpKey(key: KeyEvent, enableViKeys = true): boolean {
-	return key.name === "up" || (enableViKeys && key.sequence === "k");
+	return (
+		key.name === "up" ||
+		(key.ctrl && (key.name === "p" || key.sequence === "\u0010")) ||
+		(enableViKeys && key.sequence === "k")
+	);
 }
 
 /**
- * Check if a key is a navigation down key (down arrow or j).
+ * Check if a key is a navigation down key (down arrow, j, or Ctrl+N).
  */
 export function isNavigateDownKey(key: KeyEvent, enableViKeys = true): boolean {
-	return key.name === "down" || (enableViKeys && key.sequence === "j");
+	return (
+		key.name === "down" ||
+		(key.ctrl && (key.name === "n" || key.sequence === "\u000e")) ||
+		(enableViKeys && key.sequence === "j")
+	);
 }
 
 /**

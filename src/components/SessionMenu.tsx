@@ -6,6 +6,7 @@ import type { SessionRuntimeStatus } from "../state/session-runtime-store";
 import { useMenuKeyboard } from "../hooks/use-menu-keyboard";
 import { formatCost } from "../utils/model-metadata";
 import { COLORS } from "../ui/constants";
+import { SearchHighlight } from "./SearchHighlight";
 
 export interface SessionMenuItem extends SessionInfo {
 	isNew?: boolean;
@@ -129,6 +130,7 @@ export function SessionMenu({ items, currentSessionId, onClose, onSelect, onDele
 		MAX_SCROLLBOX_HEIGHT,
 		Math.max(SESSION_ITEM_HEIGHT, filteredItems.length * SESSION_ITEM_HEIGHT)
 	);
+	const highlightQuery = searchQuery.trim();
 
 	useEffect(() => {
 		const scrollbox = scrollRef.current;
@@ -354,10 +356,12 @@ export function SessionMenu({ items, currentSessionId, onClose, onSelect, onDele
 									>
 										<box width={nameColumnWidth}>
 											<text>
-												<span fg={labelColor}>
-													{isSelected ? "▶ " : "  "}
-													{item.isNew ? "+ NEW SESSION" : item.title}
-												</span>
+												<span fg={labelColor}>{isSelected ? "▶ " : "  "}</span>
+												<SearchHighlight
+													text={item.isNew ? "+ NEW SESSION" : item.title}
+													query={highlightQuery}
+													color={labelColor}
+												/>
 												{isCurrent && <span fg={currentIndicatorColor}> ●</span>}
 											</text>
 										</box>

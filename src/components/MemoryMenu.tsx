@@ -6,6 +6,7 @@ import { useMenuKeyboard } from "../hooks/use-menu-keyboard";
 import { daemonEvents } from "../state/daemon-events";
 import type { MemoryEntry } from "../types";
 import { COLORS } from "../ui/constants";
+import { SearchHighlight } from "./SearchHighlight";
 
 interface MemoryMenuProps {
 	onClose: () => void;
@@ -130,6 +131,7 @@ export function MemoryMenu({ onClose }: MemoryMenuProps) {
 		MAX_SCROLLBOX_HEIGHT,
 		Math.max(MEMORY_ITEM_HEIGHT, filteredMemories.length * MEMORY_ITEM_HEIGHT)
 	);
+	const highlightQuery = searchQuery.trim();
 
 	// Auto-scroll to selected item
 	useEffect(() => {
@@ -320,7 +322,11 @@ export function MemoryMenu({ onClose }: MemoryMenuProps) {
 											</box>
 											<box flexGrow={1}>
 												<text>
-													<span fg={labelColor}>{truncateText(memory.memory, 200)}</span>
+													<SearchHighlight
+														text={truncateText(memory.memory, 200)}
+														query={highlightQuery}
+														color={labelColor}
+													/>
 													{scoreText && <span fg={COLORS.STATUS_COMPLETED}>{scoreText}</span>}
 												</text>
 											</box>

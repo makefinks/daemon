@@ -5,6 +5,7 @@ import { useMenuKeyboard } from "../hooks/use-menu-keyboard";
 import type { LlmProvider, ModelOption } from "../types";
 import { COLORS } from "../ui/constants";
 import { formatContextWindowK, formatPrice } from "../utils/formatters";
+import { SearchHighlight } from "./SearchHighlight";
 
 const COL_WIDTH = {
 	CTX: 7,
@@ -137,7 +138,6 @@ export function ModelMenu({
 		},
 		enableViKeys: !isSearchFocused,
 		ignoreEscape: isSearchFocused,
-		disabled: isSearchFocused,
 	});
 
 	useKeyboard((key) => {
@@ -196,6 +196,7 @@ export function ModelMenu({
 
 	const updatedAtLabel = formatUpdatedAt(allModelsUpdatedAt);
 	const needsSearchHint = !isCopilotProvider && searchQuery.trim().length < MIN_ALL_MODEL_QUERY_LENGTH;
+	const highlightQuery = searchQuery.trim();
 	const modelWidth = useMemo(() => {
 		const raw = menuItems.reduce((max, model) => {
 			const freeSuffix = model.id.endsWith(":free") ? " [FREE]" : "";
@@ -241,6 +242,7 @@ export function ModelMenu({
 		const modelText = truncateText(`${model.name}${freeSuffix}${currentSuffix}`, modelWidth).padEnd(
 			modelWidth
 		);
+		const modelColor = isSelected ? COLORS.DAEMON_LABEL : COLORS.MENU_TEXT;
 
 		return (
 			<box
@@ -250,8 +252,8 @@ export function ModelMenu({
 				paddingRight={1}
 			>
 				<text>
-					<span fg={isSelected ? COLORS.DAEMON_LABEL : COLORS.MENU_TEXT}>{isSelected ? "▶ " : "  "}</span>
-					<span fg={isSelected ? COLORS.DAEMON_LABEL : COLORS.MENU_TEXT}>{modelText}</span>
+					<span fg={modelColor}>{isSelected ? "▶ " : "  "}</span>
+					<SearchHighlight text={modelText} query={highlightQuery} color={modelColor} />
 					<span fg={COLORS.REASONING_DIM}>{COL_GAP}</span>
 					<span fg={COLORS.MENU_TEXT}>{ctxText.padStart(COL_WIDTH.CTX)}</span>
 					<span fg={COLORS.REASONING_DIM}>{COL_GAP}</span>
