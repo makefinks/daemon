@@ -11,7 +11,6 @@ export interface KeyboardHandlerState {
 	isOverlayOpen: boolean;
 	escPendingCancel: boolean;
 	hasInteracted: boolean;
-	hasGrounding: boolean;
 	showFullReasoning: boolean;
 	showToolOutput: boolean;
 	currentModelProvider: LlmProvider;
@@ -55,7 +54,6 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 		isOverlayOpen,
 		escPendingCancel,
 		hasInteracted,
-		hasGrounding,
 		showFullReasoning,
 		currentModelProvider,
 		supportsReasoning,
@@ -192,14 +190,13 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 				return;
 			}
 
-			// 'G' key to open grounding menu (in IDLE, SPEAKING, or RESPONDING state when grounding exists)
+			// 'G' key to open grounding menu for the latest message.
 			if (
 				(key.sequence === "g" || key.sequence === "G") &&
 				key.eventType === "press" &&
 				(currentState === DaemonState.IDLE ||
 					currentState === DaemonState.SPEAKING ||
-					currentState === DaemonState.RESPONDING) &&
-				hasGrounding
+					currentState === DaemonState.RESPONDING)
 			) {
 				closeAllMenus();
 				actions.setShowGroundingMenu(true);
@@ -500,7 +497,6 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 			isOverlayOpen,
 			escPendingCancel,
 			hasInteracted,
-			hasGrounding,
 			showFullReasoning,
 			state.showToolOutput,
 			currentModelProvider,

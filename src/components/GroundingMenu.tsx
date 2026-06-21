@@ -72,6 +72,7 @@ interface LayoutItem {
 interface GroundingMenuProps {
 	allGroundingMaps: Map<number, GroundingMap>;
 	conversationHistory: ConversationMessage[];
+	targetMessageId?: number;
 	initialIndex?: number;
 	onClose: () => void;
 	onSelect: (index: number, groundingMap?: GroundingMap) => void;
@@ -83,6 +84,7 @@ interface GroundingMenuProps {
 export function GroundingMenu({
 	allGroundingMaps,
 	conversationHistory,
+	targetMessageId,
 	initialIndex = 0,
 	onClose,
 	onSelect,
@@ -97,25 +99,38 @@ export function GroundingMenu({
 		() => [...allGroundingMaps.values()].sort((a, b) => a.messageId - b.messageId),
 		[allGroundingMaps]
 	);
+	const targetMapIndex =
+		targetMessageId === undefined ? -1 : sortedMaps.findIndex((map) => map.messageId === targetMessageId);
+	const hasTargetPlaceholder = targetMessageId !== undefined && targetMapIndex === -1;
+	const targetPlaceholderIndex = sortedMaps.length;
 
 	const [mapIndex, setMapIndex] = useState(() => (sortedMaps.length > 0 ? sortedMaps.length - 1 : 0));
 
-	// Jump to latest on mount and when maps change
+	// Open on the latest visible message, but keep past grounding maps available via left/right.
 	useEffect(() => {
-		if (sortedMaps.length > 0) {
+		if (targetMapIndex >= 0) {
+			setMapIndex(targetMapIndex);
+		} else if (hasTargetPlaceholder) {
+			setMapIndex(targetPlaceholderIndex);
+		} else if (sortedMaps.length > 0) {
 			setMapIndex(sortedMaps.length - 1);
+		} else {
+			setMapIndex(0);
 		}
-	}, [allGroundingMaps]);
+	}, [hasTargetPlaceholder, sortedMaps.length, targetMapIndex, targetPlaceholderIndex]);
 
-	const activeMap = sortedMaps[mapIndex] ?? sortedMaps[sortedMaps.length - 1] ?? null;
+	const activeMap = mapIndex < sortedMaps.length ? (sortedMaps[mapIndex] ?? null) : null;
 	const items = activeMap?.items ?? [];
-	const totalMaps = sortedMaps.length;
+	const totalMaps = sortedMaps.length + (hasTargetPlaceholder ? 1 : 0);
 	const mapPosition = totalMaps > 0 ? mapIndex + 1 : 0;
+	const targetMessage =
+		targetMessageId !== undefined
+			? conversationHistory.find((message) => message.id === targetMessageId)
+			: null;
 
 	const menuWidth = useMemo(() => {
 		return Math.max(80, Math.min(300, Math.floor(renderer.terminalWidth * 0.85)));
 	}, [renderer.terminalWidth]);
-
 	const { statementWidth, quoteWidth } = useMemo(() => {
 		const cw = menuWidth - 6;
 		return {
@@ -137,10 +152,10 @@ export function GroundingMenu({
 			if (key.eventType !== "press") return;
 			if (totalMaps <= 1) return;
 
-			if (key.name === "left") {
+			if (key.name === "left" || (key.sequence === "h" && !key.shift)) {
 				setMapIndex((prev) => (prev <= 0 ? totalMaps - 1 : prev - 1));
 				key.preventDefault();
-			} else if (key.name === "right") {
+			} else if (key.name === "right" || (key.sequence === "l" && !key.shift)) {
 				setMapIndex((prev) => (prev >= totalMaps - 1 ? 0 : prev + 1));
 				key.preventDefault();
 			}
@@ -169,7 +184,7 @@ export function GroundingMenu({
 			if (key.eventType !== "press") return;
 			if (items.length === 0) return;
 
-			if (key.sequence === "h" || key.sequence === "H") {
+			if (key.sequence === "H" || (key.sequence === "h" && key.shift)) {
 				const submitted = onAgentHighlight(selectedIndex, activeMap ?? undefined);
 				if (submitted) onClose();
 				key.preventDefault();
@@ -287,7 +302,7 @@ export function GroundingMenu({
 				paddingTop={1}
 				paddingBottom={1}
 				width={menuWidth}
-				maxHeight="85%"
+				height="85%"
 			>
 				<box marginBottom={1} flexDirection="row" width="100%">
 					<text>
@@ -318,7 +333,7 @@ export function GroundingMenu({
 						<span fg={COLORS.USER_LABEL}>
 							{totalMaps > 1 && (
 								<>
-									<span fg={COLORS.DAEMON_LABEL}>←/→</span>
+									<span fg={COLORS.DAEMON_LABEL}>←/→/h/l</span>
 									<span> switch · </span>
 								</>
 							)}
@@ -334,11 +349,18 @@ export function GroundingMenu({
 					</text>
 				</box>
 
-				{activeMap &&
-					totalMaps > 0 &&
+				{(activeMap || targetMessage) &&
 					(() => {
-						const daemonMsg = conversationHistory.find((m) => m.id === activeMap.messageId);
-						const userMsg = daemonMsg ? findUserMessage(activeMap.messageId, conversationHistory) : undefined;
+						const daemonMsg = activeMap
+							? conversationHistory.find((m) => m.id === activeMap.messageId)
+							: targetMessage?.type === "daemon"
+								? targetMessage
+								: undefined;
+						const userMsg = daemonMsg ? findUserMessage(daemonMsg.id, conversationHistory) : undefined;
+						const standaloneMsg = daemonMsg || userMsg ? null : targetMessage;
+						const userPreview = userMsg ? truncateText(messageContent(userMsg), 80) : "";
+						const daemonPreview = daemonMsg ? truncateText(messageContent(daemonMsg), 80) : "";
+						const messagePairWidth = 13 + Math.max(userPreview.length, daemonPreview.length);
 						return (
 							<box flexDirection="column" marginBottom={1}>
 								{userMsg && (
@@ -347,6 +369,7 @@ export function GroundingMenu({
 										backgroundColor={COLORS.USER_BG}
 										paddingLeft={1}
 										paddingRight={1}
+										width={messagePairWidth}
 										flexDirection="row"
 										alignSelf="flex-start"
 									>
@@ -359,7 +382,7 @@ export function GroundingMenu({
 										</box>
 										<text>
 											<span fg={COLORS.REASONING_DIM}>│ </span>
-											<span fg={COLORS.USER_TEXT}>{truncateText(messageContent(userMsg), 80)}</span>
+											<span fg={COLORS.USER_TEXT}>{userPreview}</span>
 										</text>
 									</box>
 								)}
@@ -369,6 +392,7 @@ export function GroundingMenu({
 										backgroundColor={COLORS.MENU_SELECTED_BG}
 										paddingLeft={1}
 										paddingRight={1}
+										width={messagePairWidth}
 										flexDirection="row"
 										alignSelf="flex-start"
 									>
@@ -381,7 +405,32 @@ export function GroundingMenu({
 										</box>
 										<text>
 											<span fg={COLORS.REASONING_DIM}>│ </span>
-											<span fg={COLORS.DAEMON_TEXT}>{truncateText(messageContent(daemonMsg), 80)}</span>
+											<span fg={COLORS.DAEMON_TEXT}>{daemonPreview}</span>
+										</text>
+									</box>
+								)}
+								{standaloneMsg && (
+									<box
+										backgroundColor={standaloneMsg.type === "user" ? COLORS.USER_BG : COLORS.MENU_SELECTED_BG}
+										paddingLeft={1}
+										paddingRight={1}
+										flexDirection="row"
+										alignSelf="flex-start"
+									>
+										<box width={9}>
+											<text>
+												<strong>
+													<span fg={standaloneMsg.type === "user" ? COLORS.USER_LABEL : COLORS.DAEMON_LABEL}>
+														{standaloneMsg.type === "user" ? "MESSAGE" : "RESPONSE"}
+													</span>
+												</strong>
+											</text>
+										</box>
+										<text>
+											<span fg={COLORS.REASONING_DIM}>│ </span>
+											<span fg={standaloneMsg.type === "user" ? COLORS.USER_TEXT : COLORS.DAEMON_TEXT}>
+												{truncateText(messageContent(standaloneMsg), 80)}
+											</span>
 										</text>
 									</box>
 								)}
@@ -390,9 +439,14 @@ export function GroundingMenu({
 					})()}
 
 				{items.length === 0 ? (
-					<box height={3} justifyContent="center" alignItems="center">
+					<box flexGrow={1} justifyContent="center" alignItems="center" flexDirection="column">
 						<text>
-							<span fg={COLORS.USER_TEXT}>No grounded statements recorded.</span>
+							<span fg={COLORS.USER_TEXT}>No groundings recorded for this message.</span>
+						</text>
+						<text>
+							<span fg={COLORS.REASONING_DIM}>
+								Groundings only appear when DAEMON attached sources to this response.
+							</span>
 						</text>
 					</box>
 				) : (

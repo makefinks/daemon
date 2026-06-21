@@ -574,7 +574,6 @@ export function useAppController({
 			isOverlayOpen,
 			escPendingCancel,
 			hasInteracted: daemon.hasInteracted,
-			hasGrounding: session.hasGrounding,
 			showFullReasoning,
 			showToolOutput,
 			currentModelProvider,

@@ -24,6 +24,7 @@ interface AppOverlaysProps {
 function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverlaysProps) {
 	const ctx = useAppContext();
 	const { menus, device, settings, model, session, grounding, onboarding } = ctx;
+	const latestMessage = conversationHistory.findLast((message) => !message.hidden);
 
 	const urlMenuItems = useUrlMenuItems({
 		conversationHistory,
@@ -130,10 +131,11 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 
 			{menus.showHotkeysPane && <HotkeysPane onClose={() => menus.setShowHotkeysPane(false)} />}
 
-			{menus.showGroundingMenu && grounding.allGroundingMaps.size > 0 && (
+			{menus.showGroundingMenu && (
 				<GroundingMenu
 					allGroundingMaps={grounding.allGroundingMaps}
 					conversationHistory={conversationHistory}
+					targetMessageId={latestMessage?.id}
 					initialIndex={grounding.groundingInitialIndex}
 					onClose={() => menus.setShowGroundingMenu(false)}
 					onSelect={groundingCallbacks.onGroundingSelect}
