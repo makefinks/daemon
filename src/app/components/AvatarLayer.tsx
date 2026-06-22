@@ -7,6 +7,7 @@ import type { DaemonStats } from "../../types";
 import { COLORS } from "../../ui/constants";
 import { APP_VERSION } from "../../utils/app-version";
 import { AvatarHud } from "./AvatarHud";
+import { LiveTranscriptionPreview } from "./LiveTranscriptionPreview";
 
 export interface AvatarLayerProps {
 	avatarRef: RefObject<DaemonAvatarRenderable | null>;
@@ -24,6 +25,7 @@ export interface AvatarLayerProps {
 	stats?: DaemonStats | null;
 	showHud?: boolean;
 	approvalSessionCount?: number;
+	transcriptionPreviewText?: string;
 }
 
 function AvatarLayerImpl(props: AvatarLayerProps) {
@@ -43,6 +45,7 @@ function AvatarLayerImpl(props: AvatarLayerProps) {
 		stats = null,
 		showHud = false,
 		approvalSessionCount = 0,
+		transcriptionPreviewText = "",
 	} = props;
 
 	// Use glitchy banner animation when animateBanner is true
@@ -51,6 +54,7 @@ function AvatarLayerImpl(props: AvatarLayerProps) {
 	// Determine which lines/colors to use
 	const bannerLines = animateBanner ? glitchyBanner.lines : DAEMON_BANNER_LINES;
 	const bannerColors = animateBanner ? glitchyBanner.colors : BANNER_GRADIENT;
+	const previewTop = Math.min(terminalHeight - 2, Math.floor(terminalHeight / 2 + height * 0.25));
 
 	// Keep a stable callback ref so we don't detach/reattach on daemonState changes.
 	const daemonStateRef = useRef(daemonState);
@@ -166,6 +170,21 @@ function AvatarLayerImpl(props: AvatarLayerProps) {
 						respectAlpha={true}
 						ref={handleAvatarRef}
 					/>
+				</box>
+			)}
+			{transcriptionPreviewText.trim().length > 0 && (
+				<box
+					position="absolute"
+					top={previewTop}
+					left={0}
+					width="100%"
+					alignItems="center"
+					justifyContent="center"
+					zIndex={zIndex + 1}
+				>
+					<box maxWidth={120} justifyContent="center">
+						<LiveTranscriptionPreview text={transcriptionPreviewText} />
+					</box>
 				</box>
 			)}
 		</>

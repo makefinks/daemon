@@ -66,7 +66,7 @@ export type AudioRecorderEvents = {
 };
 
 export type AudioRecorderOptions = {
-	/** Sample rate in Hz (default: 16000) */
+	/** Sample rate in Hz (default: 24000) */
 	sampleRate?: number;
 	/** Input device name for coreaudio (optional - uses default if not specified) */
 	deviceName?: string;
@@ -204,7 +204,7 @@ export class AudioRecorder extends EventEmitter {
 	constructor(options: AudioRecorderOptions = {}) {
 		super();
 		this.options = {
-			sampleRate: options.sampleRate ?? 16000,
+			sampleRate: options.sampleRate ?? 24000,
 			deviceName: options.deviceName,
 		};
 	}
@@ -470,11 +470,11 @@ export function setAudioDevice(deviceName: string): void {
 		recorder.destroy();
 	}
 	recorder = new AudioRecorder({
-		sampleRate: current.sampleRate ?? 16000,
+		sampleRate: current.sampleRate ?? 24000,
 		deviceName,
 	});
 	recorderConfig = {
-		sampleRate: current.sampleRate ?? 16000,
+		sampleRate: current.sampleRate ?? 24000,
 		deviceName,
 	};
 }

@@ -3,8 +3,7 @@
  * Handles transcription and response generation.
  */
 
-import { createOpenAI } from "@ai-sdk/openai";
-import { type ModelMessage, experimental_transcribe as transcribe } from "ai";
+import { type ModelMessage } from "ai";
 import { getDaemonManager } from "../state/daemon-state";
 import { getRuntimeContext } from "../state/runtime-context";
 import { sessionRuntimeStore } from "../state/session-runtime-store";
@@ -15,18 +14,15 @@ import type {
 	PromptImageAttachment,
 	StreamCallbacks,
 	TokenUsage,
-	TranscriptionResult,
 } from "../types";
 import { debug } from "../utils/debug-logger";
 import { buildMemoryInjection, getMemoryManager, isMemoryAvailable } from "./memory";
-import { TRANSCRIPTION_MODEL, getModelProvider } from "./model-config";
+import { getModelProvider } from "./model-config";
 import { getProviderAdapter } from "./providers/registry";
 import { type InteractionMode } from "./system-prompt";
 import { runWithSubagentProgressEmitter } from "./tools/subagents";
 
 export type { ModelMessage } from "ai";
-
-const openai = createOpenAI({});
 
 function isMemoryPipelineUsableForCurrentProvider(): boolean {
 	if (!isMemoryAvailable()) {
@@ -56,35 +52,6 @@ async function buildMemoryInjectionForPrompt(userMessage: string): Promise<strin
 
 	const injection = await buildMemoryInjection(userMessage);
 	return injection || undefined;
-}
-
-/**
- * Transcribe audio using GPT-4o transcribe model via AI SDK.
- * @param audioBuffer - WAV audio buffer to transcribe
- * @param abortSignal - Optional abort signal to cancel the request
- * @returns Transcription result with text
- */
-export async function transcribeAudio(
-	audioBuffer: Buffer,
-	abortSignal?: AbortSignal
-): Promise<TranscriptionResult> {
-	try {
-		const result = await transcribe({
-			model: openai.transcription(TRANSCRIPTION_MODEL),
-			audio: audioBuffer,
-			abortSignal,
-		});
-
-		return {
-			text: result.text,
-		};
-	} catch (error) {
-		if (error instanceof Error && error.name === "AbortError") {
-			throw error;
-		}
-		const err = error instanceof Error ? error : new Error(String(error));
-		throw new Error(`Transcription failed: ${err.message}`);
-	}
 }
 
 /**

@@ -4,6 +4,7 @@ import { getRecorder, destroyRecorder } from "./audio-recorder";
 import { computeMicLevelFromPcm16Chunk, smoothMicLevel } from "./mic-level";
 
 export interface VoiceInputControllerEvents {
+	audioData: (chunk: Buffer) => void;
 	micLevel: (level: number) => void;
 	error: (error: Error) => void;
 }
@@ -48,6 +49,7 @@ export class VoiceInputController extends EventEmitter {
 		this.micLevelLastEmitMs = 0;
 
 		this.recorderDataHandler = (chunk: Buffer) => {
+			this.emit("audioData", chunk);
 			this.emitMicLevelFromChunk(chunk);
 		};
 		this.recorderErrorHandler = (err: Error) => {
@@ -67,11 +69,10 @@ export class VoiceInputController extends EventEmitter {
 
 	async stop(): Promise<{ audioBuffer: Buffer; duration: number }> {
 		const recorder = this.activeRecorder ?? getRecorder();
-		this.detachRecorderListeners();
-		this.activeRecorder = null;
-
 		const duration = recorder.getDuration();
 		const audioBuffer = await recorder.stopAsync();
+		this.detachRecorderListeners();
+		this.activeRecorder = null;
 
 		return { audioBuffer, duration };
 	}

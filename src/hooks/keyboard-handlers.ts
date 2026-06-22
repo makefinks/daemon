@@ -436,10 +436,10 @@ function handleSettingsReturn(ctx: SettingsMenuContext, key: KeyEvent): boolean 
 			return true;
 		}
 		case "voice-interaction-type": {
-			ctx.setVoiceInteractionType(ctx.voiceInteractionType === "direct" ? "review" : "direct");
-			ctx.persistPreferences({
-				voiceInteractionType: ctx.manager.voiceInteractionType === "direct" ? "review" : "direct",
-			});
+			const nextType: VoiceInteractionType = ctx.voiceInteractionType === "direct" ? "review" : "direct";
+			ctx.manager.voiceInteractionType = nextType;
+			ctx.setVoiceInteractionType(nextType);
+			ctx.persistPreferences({ voiceInteractionType: nextType });
 			key.preventDefault();
 			return true;
 		}

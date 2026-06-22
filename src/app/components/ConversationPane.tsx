@@ -25,6 +25,7 @@ import { DaemonState } from "../../types";
 import { COLORS } from "../../ui/constants";
 import { renderReasoningTicker } from "../../ui/reasoning-ticker";
 import type { ModelMetadata } from "../../utils/model-metadata";
+import { LiveTranscriptionPreview } from "./LiveTranscriptionPreview";
 
 export interface ConversationDisplayState {
 	conversationHistory: ConversationMessage[];
@@ -273,6 +274,10 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 	const showSessionDebug = Boolean(process.env.DEBUG_SESSION);
 
 	const showTypingInput = hasInteracted && daemonState === DaemonState.TYPING;
+	const showMainMenuTranscriptionPreview =
+		!hasInteracted &&
+		(daemonState === DaemonState.LISTENING || daemonState === DaemonState.TRANSCRIBING) &&
+		currentTranscription.trim().length > 0;
 	const isReasoning =
 		daemonState === DaemonState.RESPONDING &&
 		(!conversation.currentResponse || !!reasoningDisplay || !!reasoningQueue);
@@ -310,6 +315,12 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 							reasoningEffortLabel={reasoningEffortLabel}
 							fadeProgress={startupMenuFadeProgress}
 						/>
+
+						{showMainMenuTranscriptionPreview && (
+							<box marginTop={1} width="75%" maxWidth={120} justifyContent="center">
+								<LiveTranscriptionPreview text={currentTranscription} />
+							</box>
+						)}
 
 						{isVoiceOutputEnabled && daemonState === DaemonState.IDLE && (
 							<box marginTop={1}>
@@ -420,23 +431,6 @@ function ConversationPaneImpl(props: ConversationPaneProps) {
 							showToolOutput={showToolOutput}
 							bashLivePreviewAlways={bashLivePreviewAlways}
 						/>
-
-						{currentTranscription && (
-							<box
-								marginBottom={1}
-								paddingLeft={2}
-								paddingRight={2}
-								paddingTop={1}
-								paddingBottom={1}
-								backgroundColor={COLORS.USER_BG}
-								width="100%"
-							>
-								<text>
-									<span fg={COLORS.USER_LABEL}>YOU: </span>
-									<span fg={COLORS.USER_TEXT}>{currentTranscription}</span>
-								</text>
-							</box>
-						)}
 
 						{currentContentBlocks.length > 0 && (
 							<box flexDirection="column">

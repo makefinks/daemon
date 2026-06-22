@@ -4,7 +4,6 @@
  */
 
 import { AgentTurnRunner } from "../ai/agent-turn-runner";
-import { transcribeAudio } from "../ai/daemon-ai";
 import { backgroundJobManager } from "./background-job-manager";
 import type {
 	BashApprovalLevel,
@@ -23,6 +22,7 @@ import type {
 import { DEFAULT_TOOL_TOGGLES } from "../types";
 import { DaemonState } from "../types";
 import { debug, messageDebug } from "../utils/debug-logger";
+import { RealtimeTranscriptionController } from "../voice/realtime-transcription-controller";
 import { SpeechController } from "../voice/tts/speech-controller";
 import { VoiceInputController } from "../voice/voice-input-controller";
 import { type DaemonStateEvents, daemonEvents } from "./daemon-events";
@@ -56,6 +56,7 @@ class DaemonStateManager {
 	private getSessionTitleFn: ((sessionId: string) => string | null) | null = null;
 	private onFirstMessageFn: ((sessionId: string, message: string) => Promise<string | null>) | null = null;
 	private voiceInput = new VoiceInputController();
+	private realtimeTranscription = new RealtimeTranscriptionController();
 	private speechController = new SpeechController();
 	private agentTurnRunner = new AgentTurnRunner();
 	private sessionAgentTurnRunners = new Map<string, AgentTurnRunner>();
@@ -107,9 +108,25 @@ class DaemonStateManager {
 			if (this._state !== DaemonState.LISTENING) return;
 			this.emitEvent("micLevel", level);
 		});
+		this.voiceInput.on("audioData", (chunk: Buffer) => {
+			if (this._state !== DaemonState.LISTENING) return;
+			this.realtimeTranscription.appendAudio(chunk);
+		});
 		this.voiceInput.on("error", (error: Error) => {
+			this.realtimeTranscription.stop();
 			this.emitEvent("error", error);
 			this.setState(DaemonState.IDLE);
+		});
+		this.realtimeTranscription.on("update", (text: string) => {
+			this._transcription = text;
+			this.emitEvent("transcriptionUpdate", text);
+		});
+		this.realtimeTranscription.on("error", (error: Error) => {
+			if (this._state === DaemonState.LISTENING) {
+				this.voiceInput.cancel();
+				this.setState(DaemonState.IDLE);
+			}
+			this.emitEvent("error", error);
 		});
 
 		this.speechController.on("audioLevel", (level: number) => {
@@ -312,6 +329,10 @@ class DaemonStateManager {
 		}
 
 		this._transcription = "";
+		if (!this.realtimeTranscription.start()) {
+			this.setState(DaemonState.IDLE);
+			return;
+		}
 		this.setState(DaemonState.LISTENING);
 		this.voiceInput.start();
 	}
@@ -329,6 +350,7 @@ class DaemonStateManager {
 		// Check if we have enough audio data
 		const minDuration = 0.5;
 		if (audioBuffer.length < 1000 || duration < minDuration) {
+			this.realtimeTranscription.stop();
 			this.emitEvent("error", new Error(`Recording too short (${duration.toFixed(1)}s). Hold longer.`));
 			this.setState(DaemonState.IDLE);
 			return;
@@ -339,26 +361,27 @@ class DaemonStateManager {
 		this.transcriptionAbortController = new AbortController();
 
 		try {
-			const result = await transcribeAudio(audioBuffer, this.transcriptionAbortController.signal);
+			const text = await this.realtimeTranscription.finish();
 			this.transcriptionAbortController = null;
-			this._transcription = result.text;
+			this._transcription = text;
+			this.emitEvent("transcriptionUpdate", text);
 
-			if (!result.text.trim()) {
+			if (!text.trim()) {
 				this.setState(DaemonState.IDLE);
 				return;
 			}
 
 			if (this._voiceInteractionType === "review") {
 				this.setState(DaemonState.TYPING);
-				this.emitEvent("transcriptionReady", result.text);
+				this.emitEvent("transcriptionReady", text);
 			} else {
 				const sessionId = await this.ensureSessionId();
 				if (!sessionId) {
 					this.setState(DaemonState.IDLE);
 					return;
 				}
-				sessionRuntimeStore.setCurrentTranscription(sessionId, result.text);
-				await this.generateResponseFromText(sessionId, result.text);
+				sessionRuntimeStore.setCurrentTranscription(sessionId, text);
+				await this.generateResponseFromText(sessionId, text);
 			}
 		} catch (error) {
 			if (error instanceof Error && error.name === "AbortError") {
@@ -368,6 +391,7 @@ class DaemonStateManager {
 				return;
 			}
 			this.transcriptionAbortController = null;
+			this.realtimeTranscription.stop();
 			const err = error instanceof Error ? error : new Error(String(error));
 			this.emitEvent("error", err);
 			this.setState(DaemonState.IDLE);
@@ -662,6 +686,7 @@ class DaemonStateManager {
 		}
 
 		this.voiceInput.cancel();
+		this.realtimeTranscription.stop();
 		this._transcription = "";
 		this.emitEvent("cancelled");
 		this.setState(DaemonState.IDLE);
@@ -697,6 +722,7 @@ class DaemonStateManager {
 		if (this._state === DaemonState.TRANSCRIBING && this.transcriptionAbortController) {
 			this.transcriptionAbortController.abort();
 			this.transcriptionAbortController = null;
+			this.realtimeTranscription.stop();
 		}
 
 		if (this._state === DaemonState.RESPONDING) {
@@ -754,6 +780,7 @@ class DaemonStateManager {
 			this.transcriptionAbortController.abort();
 			this.transcriptionAbortController = null;
 		}
+		this.realtimeTranscription.stop();
 		this.speechController.destroy();
 		this.voiceInput.destroy();
 	}

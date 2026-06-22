@@ -221,7 +221,8 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 			} else if (
 				state === DaemonState.SPEAKING ||
 				state === DaemonState.LISTENING ||
-				state === DaemonState.TRANSCRIBING
+				state === DaemonState.TRANSCRIBING ||
+				state === DaemonState.TYPING
 			) {
 				setDaemonState(state);
 			} else if (state === DaemonState.IDLE) {
@@ -246,12 +247,16 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 			if (!description) return;
 			toast.success(`Memory saved (${preview.operation})`, { description });
 		};
+		const handleTranscriptionUpdate = (text: string) => {
+			setCurrentTranscriptionState(text);
+		};
 
 		sessionRuntimeStore.events.on("updated", handleRuntimeUpdate);
 		daemonEvents.on("stateChange", handleStateChange);
 		daemonEvents.on("toolApprovalResolved", handleApprovalResolved);
 		daemonEvents.on("error", handleError);
 		daemonEvents.on("memorySaved", handleMemorySaved);
+		daemonEvents.on("transcriptionUpdate", handleTranscriptionUpdate);
 		const handleReasoningToken = (token: string) => {
 			const isNewReasoningSegment = !reasoningActiveRef.current;
 			reasoningActiveRef.current = true;
@@ -277,6 +282,7 @@ export function useDaemonEvents(params: UseDaemonEventsParams): UseDaemonEventsR
 			daemonEvents.off("toolApprovalResolved", handleApprovalResolved);
 			daemonEvents.off("error", handleError);
 			daemonEvents.off("memorySaved", handleMemorySaved);
+			daemonEvents.off("transcriptionUpdate", handleTranscriptionUpdate);
 			daemonEvents.off("reasoningToken", handleReasoningToken);
 		};
 	}, [applyRuntimeSnapshot, sessionIdRef]);

@@ -192,13 +192,6 @@ export interface AvatarColorTheme {
 export type DaemonColorTheme = AvatarColorTheme;
 
 /**
- * Transcription result from voice input
- */
-export interface TranscriptionResult {
-	text: string;
-}
-
-/**
  * LLM backend provider used for agent responses.
  */
 export type LlmProvider = "openrouter" | "openai-codex" | "copilot";

@@ -135,8 +135,7 @@ export function useDaemonRuntimeController({
 
 	const conversationScrollRef = useRef<ScrollBoxRenderable | null>(null);
 
-	const hasInteracted =
-		conversationHistory.length > 0 || currentTranscription.length > 0 || currentContentBlocks.length > 0;
+	const hasInteracted = conversationHistory.length > 0 || currentContentBlocks.length > 0;
 
 	useEffect(() => {
 		manager.setGetSessionViewVisible(() => hasInteracted);

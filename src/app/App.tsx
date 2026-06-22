@@ -78,6 +78,7 @@ export function App() {
 					stats={controller.avatarLayerProps.stats}
 					showHud={controller.avatarLayerProps.showHud}
 					approvalSessionCount={controller.avatarLayerProps.approvalSessionCount}
+					transcriptionPreviewText={controller.avatarLayerProps.transcriptionPreviewText}
 				/>
 
 				{controller.isListeningDim ? (

@@ -50,6 +50,7 @@ export interface AppControllerResult {
 		stats: DaemonStats | null;
 		showHud: boolean;
 		approvalSessionCount: number;
+		transcriptionPreviewText: string;
 	};
 	isListeningDim: boolean;
 	listeningDimTop: number;
@@ -399,6 +400,15 @@ export function useAppController({
 		daemon.applyAvatarForState(DaemonState.IDLE);
 	}, [startNewSession, daemon.applyAvatarForState]);
 
+	const handleSetVoiceInteractionType = useCallback(
+		(next: "direct" | "review") => {
+			manager.voiceInteractionType = next;
+			setVoiceInteractionType(next);
+			persistPreferences({ voiceInteractionType: next });
+		},
+		[manager, persistPreferences, setVoiceInteractionType]
+	);
+
 	const {
 		handleDeviceSelect,
 		handleOutputDeviceSelect,
@@ -623,6 +633,7 @@ export function useAppController({
 	} = displayState;
 
 	const statusBarHeight = daemon.hasInteracted ? (apiKeyMissingError ? 5 : 3) : 0;
+	const conversationContainerZIndex = isListening ? 0 : 1;
 
 	useEffect(() => {
 		manager.setGetSessionTitle(
@@ -795,7 +806,7 @@ export function useAppController({
 			onCycleModelProvider: cycleModelProvider,
 			onManageOpenAiCodexAuth: manageOpenAiCodexAuth,
 			onManageCopilotAuth: manageCopilotAuth,
-			onSetVoiceInteractionType: setVoiceInteractionType,
+			onSetVoiceInteractionType: handleSetVoiceInteractionType,
 			onSetSpeechSpeed: setSpeechSpeed,
 			onSetReasoningEffort: setReasoningEffort,
 			onSetBashApprovalLevel: setBashApprovalLevel,
@@ -840,10 +851,11 @@ export function useAppController({
 			stats: daemonStats,
 			showHud,
 			approvalSessionCount,
+			transcriptionPreviewText: isListening && daemon.hasInteracted ? daemon.currentTranscription : "",
 		},
 		isListeningDim,
 		listeningDimTop: statusBarHeight,
-		conversationContainerZIndex: isListening ? 0 : 1,
+		conversationContainerZIndex,
 		conversationPaneProps: {
 			conversation: {
 				conversationHistory: daemon.conversationHistory,

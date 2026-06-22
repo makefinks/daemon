@@ -52,8 +52,7 @@ For GitHub Copilot, DAEMON can use your Copilot subscription and list available 
 
 
 ### 🎙️ Voice capabilities
-SOTA transcription accuracy is achieved by using OpenAI's latest transcription model `gpt-4o-mini-transcribe-2025-03-20`.
-It features a large vocabulary and can transcribe multilingual inputs with complex terminology.
+Low-latency streaming transcription is achieved by using OpenAI's realtime model `gpt-realtime-whisper` via the Realtime WebSocket API.
 
 OpenAI's TTS model `gpt-4o-mini-tts-2025-03-20` is used to generate voice output with as little latency as possible.
 

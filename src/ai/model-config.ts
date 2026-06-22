@@ -132,7 +132,7 @@ export function buildOpenRouterChatSettings(
 }
 
 // Transcription model (OpenAI)
-export const TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe-2025-12-15";
+export const TRANSCRIPTION_MODEL = "gpt-realtime-whisper";
 
 // Default model for memory operations.
 export const DEFAULT_MEMORY_MODEL_OPENROUTER = "deepseek/deepseek-v4-flash";
