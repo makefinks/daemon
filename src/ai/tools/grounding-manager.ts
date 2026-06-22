@@ -97,6 +97,11 @@ export const groundingManager = tool({
 				success: true,
 				itemCount: items.length,
 				currentItems: items,
+				reminder: `<grounding-reminder>
+${items.length} grounding items recorded. Write your final answer now.
+Append **(G1)**, **(G2)**, etc. at the end of each sentence that makes a grounded claim. The number is the 1-based position of the item in the array you just submitted (first item = G1, second = G2, ...).
+Do NOT add a "Sources:" footer or bibliography — the UI renders sources separately.
+</grounding-reminder>`,
 			};
 		} catch (error) {
 			const err = error instanceof Error ? error : new Error(String(error));

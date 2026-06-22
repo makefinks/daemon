@@ -199,6 +199,9 @@ function formatFetchUrlsXml(results: FetchUrlsItem[]): string {
 		lines.push("  </url>");
 	}
 
+	lines.push(
+		`  <fetch-reminder>If your final answer uses any factual claim from these pages (price, version, statistic, named date, quote, etc.), call groundingManager with the sources BEFORE writing the answer text.</fetch-reminder>`
+	);
 	lines.push("</fetchUrls>");
 	return lines.join("\n");
 }

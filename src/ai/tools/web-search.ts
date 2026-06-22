@@ -100,6 +100,10 @@ export const webSearch = tool({
 			return {
 				success: true,
 				data: { results },
+				reminder: `<web-search-reminder>
+Results here are search previews: title, URL, published date, and short query-relevant highlights. Highlights are excerpts taken out of context and may be incomplete or misleading.
+Before relying on any claim from a result, call fetchUrls to read the actual page content. Do not ground statements directly from these highlights.
+</web-search-reminder>`,
 			};
 		} catch (error) {
 			const err = error instanceof Error ? error : new Error(String(error));
