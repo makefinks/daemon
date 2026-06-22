@@ -4,10 +4,11 @@ import { useCallback } from "react";
 import { COLORS } from "../ui/constants";
 
 interface HotkeysPaneProps {
+	hasGrounding: boolean;
 	onClose: () => void;
 }
 
-export function HotkeysPane({ onClose }: HotkeysPaneProps) {
+export function HotkeysPane({ hasGrounding, onClose }: HotkeysPaneProps) {
 	const handleKeyPress = useCallback(
 		(key: KeyEvent) => {
 			if (key.eventType !== "press") return;
@@ -20,6 +21,13 @@ export function HotkeysPane({ onClose }: HotkeysPaneProps) {
 	);
 
 	useKeyboard(handleKeyPress);
+
+	const groundingHotkeys = hasGrounding
+		? [
+				{ key: "G", label: "Open Grounding Menu" },
+				{ key: "H", label: "Grounding menu: highlight selected in browser" },
+			]
+		: [];
 
 	const sections = [
 		{
@@ -41,8 +49,7 @@ export function HotkeysPane({ onClose }: HotkeysPaneProps) {
 				{ key: "O", label: "Toggle tool output previews" },
 				{ key: "CTRL+Y", label: "Copy message / transcript" },
 				{ key: "CTRL+N", label: "New session" },
-				{ key: "G", label: "Open Grounding Menu" },
-				{ key: "H", label: "Grounding menu: highlight selected in browser" },
+				...groundingHotkeys,
 				{ key: "U", label: "Open URL Menu" },
 				{ key: "CTRL+X", label: "Undo last message" },
 			],

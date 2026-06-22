@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMenuKeyboard } from "../hooks/use-menu-keyboard";
 import type { ConversationMessage, GroundedStatement, GroundingMap } from "../types";
 import { COLORS } from "../ui/constants";
-import { textFragmentDisplayText } from "../utils/text-fragment";
 
 const QUOTE_INDENT = 2;
 const QUOTE_MARKER_WIDTH = 2;
@@ -64,7 +63,6 @@ interface LayoutItem {
 	item: GroundedStatement;
 	statementLines: string[];
 	quoteLines: string[];
-	textFragment: string;
 	sourceDomain: string;
 	height: number;
 }
@@ -208,8 +206,6 @@ export function GroundingMenu({
 				quoteLines[3] = truncateText(lastLine, quoteWidth - 3);
 			}
 
-			const textFragment = textFragmentDisplayText(item.source.textFragment);
-
 			let sourceDomain = "";
 			try {
 				sourceDomain = new URL(item.source.url).hostname;
@@ -232,7 +228,6 @@ export function GroundingMenu({
 				item,
 				statementLines,
 				quoteLines,
-				textFragment,
 				sourceDomain,
 				height: h,
 			};
@@ -304,7 +299,7 @@ export function GroundingMenu({
 				width={menuWidth}
 				height="85%"
 			>
-				<box marginBottom={1} flexDirection="row" width="100%">
+				<box marginBottom={2} flexDirection="row" width="100%">
 					<text>
 						<strong>
 							<span fg={COLORS.DAEMON_LABEL}>[ GROUNDING ]</span>
@@ -362,7 +357,7 @@ export function GroundingMenu({
 						const daemonPreview = daemonMsg ? truncateText(messageContent(daemonMsg), 80) : "";
 						const messagePairWidth = 13 + Math.max(userPreview.length, daemonPreview.length);
 						return (
-							<box flexDirection="column" marginBottom={1}>
+							<box flexDirection="column" marginBottom={2}>
 								{userMsg && (
 									<box
 										marginBottom={0}
@@ -461,7 +456,7 @@ export function GroundingMenu({
 						<box flexDirection="column" paddingBottom={1}>
 							{layoutItems.map((layout, idx) => {
 								const isSelected = idx === selectedIndex;
-								const { item, statementLines, quoteLines, textFragment, sourceDomain } = layout;
+								const { item, statementLines, quoteLines, sourceDomain } = layout;
 
 								return (
 									<box
@@ -515,12 +510,6 @@ export function GroundingMenu({
 												<span fg={isSelected ? COLORS.DAEMON_LABEL : COLORS.REASONING_DIM}>
 													[{idx + 1}] ↗ {sourceDomain}
 												</span>
-												{textFragment && (
-													<span fg={COLORS.REASONING_DIM}>
-														{" · highlight: "}
-														{truncateText(textFragment, 70)}
-													</span>
-												)}
 												{item.source.title && (
 													<span fg={COLORS.REASONING_DIM}>
 														{" · "}

@@ -129,21 +129,28 @@ function AppOverlaysImpl({ conversationHistory, currentContentBlocks }: AppOverl
 				/>
 			)}
 
-			{menus.showHotkeysPane && <HotkeysPane onClose={() => menus.setShowHotkeysPane(false)} />}
-
-			{menus.showGroundingMenu && (
-				<GroundingMenu
-					allGroundingMaps={grounding.allGroundingMaps}
-					conversationHistory={conversationHistory}
-					targetMessageId={latestMessage?.id}
-					initialIndex={grounding.groundingInitialIndex}
-					onClose={() => menus.setShowGroundingMenu(false)}
-					onSelect={groundingCallbacks.onGroundingSelect}
-					onAgentHighlight={groundingCallbacks.onGroundingAgentHighlight}
-					onCopyHighlight={groundingCallbacks.onGroundingCopyHighlight}
-					onSelectedIndexChange={groundingCallbacks.onGroundingIndexChange}
+			{menus.showHotkeysPane && (
+				<HotkeysPane
+					hasGrounding={!!grounding.latestGroundingMap && grounding.latestGroundingMap.items.length > 0}
+					onClose={() => menus.setShowHotkeysPane(false)}
 				/>
 			)}
+
+			{menus.showGroundingMenu &&
+				grounding.latestGroundingMap &&
+				grounding.latestGroundingMap.items.length > 0 && (
+					<GroundingMenu
+						allGroundingMaps={grounding.allGroundingMaps}
+						conversationHistory={conversationHistory}
+						targetMessageId={latestMessage?.id}
+						initialIndex={grounding.groundingInitialIndex}
+						onClose={() => menus.setShowGroundingMenu(false)}
+						onSelect={groundingCallbacks.onGroundingSelect}
+						onAgentHighlight={groundingCallbacks.onGroundingAgentHighlight}
+						onCopyHighlight={groundingCallbacks.onGroundingCopyHighlight}
+						onSelectedIndexChange={groundingCallbacks.onGroundingIndexChange}
+					/>
+				)}
 
 			{menus.showUrlMenu && <UrlMenu items={urlMenuItems} onClose={() => menus.setShowUrlMenu(false)} />}
 

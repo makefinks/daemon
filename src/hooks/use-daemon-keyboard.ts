@@ -11,6 +11,7 @@ export interface KeyboardHandlerState {
 	isOverlayOpen: boolean;
 	escPendingCancel: boolean;
 	hasInteracted: boolean;
+	hasGrounding: boolean;
 	showFullReasoning: boolean;
 	showToolOutput: boolean;
 	currentModelProvider: LlmProvider;
@@ -54,6 +55,7 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 		isOverlayOpen,
 		escPendingCancel,
 		hasInteracted,
+		hasGrounding,
 		showFullReasoning,
 		currentModelProvider,
 		supportsReasoning,
@@ -198,6 +200,10 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 					currentState === DaemonState.SPEAKING ||
 					currentState === DaemonState.RESPONDING)
 			) {
+				if (!hasGrounding) {
+					key.preventDefault();
+					return;
+				}
 				closeAllMenus();
 				actions.setShowGroundingMenu(true);
 				key.preventDefault();
@@ -497,6 +503,7 @@ export function useDaemonKeyboard(state: KeyboardHandlerState, actions: Keyboard
 			isOverlayOpen,
 			escPendingCancel,
 			hasInteracted,
+			hasGrounding,
 			showFullReasoning,
 			state.showToolOutput,
 			currentModelProvider,
